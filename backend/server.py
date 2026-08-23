@@ -49,12 +49,13 @@ EMAIL_KEY = os.environ.get("EMERGENT_EMAIL_KEY", "")
 EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "Dukaan")
 OWNER_NOTIFY_EMAIL = os.environ.get("OWNER_NOTIFY_EMAIL", "").strip()
 FRONTEND_URL_ENV = os.environ.get("FRONTEND_URL", "").rstrip("/")
+origins = os.environ.get("CORS_ORIGINS", "*").split(",")
 
 app = FastAPI(title="Dukaan API")
 api = APIRouter(prefix="/api")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=origins, 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
