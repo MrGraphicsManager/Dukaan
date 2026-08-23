@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Rozha+One&family=Mukta:wght@400;500;600;700;800&family=Hind:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: 'Hind', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #FBF8F1;
+  color: #1F1A5D;
+}
+
+@layer base {
+  :root {
+    --background: 40 48% 97%;
+    --foreground: 244 58% 24%;
+    --card: 0 0% 100%;
+    --card-foreground: 244 58% 24%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 244 58% 24%;
+    --primary: 17 51% 53%;                 /* Terracotta #C36A4A */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 244 58% 24%;              /* Indigo */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 38 33% 88%;
+    --muted-foreground: 34 6% 46%;
+    --accent: 244 33% 60%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 74% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 36 24% 84%;
+    --input: 36 24% 84%;
+    --ring: 17 51% 53%;
+    --radius: 0.75rem;
+    --chart-1: 17 51% 53%;
+    --chart-2: 244 58% 24%;
+    --chart-3: 158 46% 33%;
+    --chart-4: 38 60% 56%;
+    --chart-5: 244 33% 60%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
+  h1, h2, h3 { font-family: 'Mukta', sans-serif; letter-spacing: -0.01em; }
+  .font-display { font-family: 'Rozha One', serif; }
+}
+
+@layer utilities {
+  .noise {
+    background-image:
+      radial-gradient(rgba(31,26,93,0.03) 1px, transparent 1px),
+      radial-gradient(rgba(195,106,74,0.03) 1px, transparent 1px);
+    background-size: 22px 22px, 40px 40px;
+    background-position: 0 0, 11px 11px;
+  }
+  .ledger-lines {
+    background-image: linear-gradient(to bottom, transparent 31px, rgba(31,26,93,0.06) 32px);
+    background-size: 100% 32px;
+  }
+}
+
+/* Prevent iOS zoom on focus */
+input, select, textarea { font-size: 16px; }
+
+/* Debug wrapper */
+[data-debug-wrapper="true"] { display: contents !important; }
