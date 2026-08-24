@@ -5,6 +5,7 @@ import {
   Route,
   Navigate,
   useLocation,
+  Link,
 } from "react-router-dom";
 
 import { Toaster } from "sonner";
@@ -38,9 +39,8 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundPolicy from "./pages/RefundPolicy";
 import Info from "./pages/Info.jsx";
 
-
 /* =========================================================
-   LAUNCH DATE
+   DUKAAN OFFICIAL LAUNCH
    27 AUGUST 2026 — 1:00 PM IST
 ========================================================= */
 
@@ -48,23 +48,19 @@ const LAUNCH_TIME = new Date(
   "2026-08-27T13:00:00+05:30"
 ).getTime();
 
-
 /* =========================================================
-   COUNTDOWN PAGE
+   LAUNCH COUNTDOWN PAGE
 ========================================================= */
 
 function LaunchLock() {
-  const calculateTimeLeft = () => {
-    return Math.max(0, LAUNCH_TIME - Date.now());
-  };
+  const getTimeLeft = () =>
+    Math.max(0, LAUNCH_TIME - Date.now());
 
-  const [timeLeft, setTimeLeft] = useState(
-    calculateTimeLeft()
-  );
+  const [timeLeft, setTimeLeft] = useState(getTimeLeft());
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setTimeLeft(calculateTimeLeft());
+      setTimeLeft(getTimeLeft());
     }, 1000);
 
     return () => clearInterval(timer);
@@ -94,134 +90,230 @@ function LaunchLock() {
     String(value).padStart(2, "0");
 
   return (
-    <div className="min-h-screen bg-[#F7F2E9] text-[#1E1B4B] flex items-center justify-center px-5 py-12">
+    <div
+      className="min-h-screen bg-brand-sand text-brand-indigo noise"
+      style={{
+        fontFamily:
+          "var(--font-body, Arial, Helvetica, sans-serif)",
+      }}
+    >
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
 
-      <div className="w-full max-w-4xl text-center">
+      <header className="border-b border-brand-mitti bg-brand-sand/95">
+        <div className="mx-auto max-w-6xl px-5 h-16 flex items-center justify-between">
 
-        {/* ================= BRAND ================= */}
+          <Link
+            to="/"
+            className="font-display text-2xl md:text-3xl"
+          >
+            दुकान · Dukaan
+          </Link>
 
-        <div className="text-2xl md:text-3xl font-bold mb-12">
-          दुकान{" "}
-          <span className="text-[#C9713F]">
-            Dukaan
-          </span>
+          <Link
+            to="/login"
+            className="text-sm font-medium text-brand-indigo hover:text-brand-terracotta transition-colors"
+          >
+            Admin Login
+          </Link>
+
         </div>
+      </header>
 
 
-        {/* ================= LOCK ICON ================= */}
+      {/* =====================================================
+          HERO
+      ===================================================== */}
 
-        <div className="text-4xl mb-6">
-          🔒
-        </div>
+      <main className="mx-auto max-w-6xl px-5">
 
+        <section className="min-h-[calc(100vh-64px)] flex items-center justify-center py-16">
 
-        {/* ================= LABEL ================= */}
+          <div className="w-full max-w-5xl text-center">
 
-        <div className="font-sans text-xs font-bold tracking-[0.2em] text-[#C9713F] mb-4">
-          LAUNCH COUNTDOWN
-        </div>
+            {/* Label */}
 
-
-        {/* ================= HEADING ================= */}
-
-        <h1 className="text-4xl md:text-6xl font-serif font-bold tracking-tight mb-6">
-          Dukaan is getting ready.
-        </h1>
-
-
-        {/* ================= DESCRIPTION ================= */}
-
-        <p className="font-sans text-[#3A3660] text-sm md:text-base leading-7 mb-10">
-          We're preparing everything for launch.
-          <br />
-
-          Dukaan officially launches on{" "}
-          <strong>
-            27 August 2026 at 1:00 PM IST.
-          </strong>
-        </p>
-
-
-        {/* ================= COUNTDOWN ================= */}
-
-        <div className="grid grid-cols-4 gap-2 sm:gap-4 max-w-2xl mx-auto mb-10">
-
-          {/* DAYS */}
-
-          <div className="bg-white border border-[#E4DCC9] rounded-xl p-4 sm:p-6">
-
-            <div className="text-2xl sm:text-4xl font-bold">
-              {format(days)}
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-brand-mitti bg-white/60 text-xs font-semibold uppercase tracking-widest text-brand-terracotta">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-terracotta" />
+              Launching Soon
             </div>
 
-            <div className="font-sans text-[9px] sm:text-[10px] tracking-widest text-[#5A5670] mt-2">
-              DAYS
+
+            {/* Heading */}
+
+            <h1 className="mt-6 font-display text-5xl md:text-7xl lg:text-8xl leading-[1.02] tracking-tight">
+
+              The shop is
+              <br />
+
+              <span className="text-brand-terracotta">
+                almost open.
+              </span>
+
+            </h1>
+
+
+            {/* Description */}
+
+            <p className="mt-6 mx-auto max-w-2xl text-base md:text-lg text-brand-indigo/75 leading-relaxed">
+
+              Dukaan is getting the shelves ready for you.
+              Billing, stock and udhaar — built for Indian
+              small shops — arrive on
+
+              <strong className="text-brand-indigo">
+                {" "}27 August 2026 at 1:00 PM IST.
+              </strong>
+
+            </p>
+
+
+            {/* =================================================
+                COUNTDOWN
+            ================================================= */}
+
+            <div className="mt-12 grid grid-cols-4 gap-2 sm:gap-4 max-w-3xl mx-auto">
+
+              {/* DAYS */}
+
+              <div className="bg-white rounded-xl border border-brand-mitti p-4 sm:p-6 shadow-card">
+
+                <div className="font-display text-3xl sm:text-5xl md:text-6xl">
+                  {format(days)}
+                </div>
+
+                <div className="mt-2 text-[9px] sm:text-xs uppercase tracking-widest text-brand-indigo/55 font-semibold">
+                  Days
+                </div>
+
+              </div>
+
+
+              {/* HOURS */}
+
+              <div className="bg-white rounded-xl border border-brand-mitti p-4 sm:p-6 shadow-card">
+
+                <div className="font-display text-3xl sm:text-5xl md:text-6xl">
+                  {format(hours)}
+                </div>
+
+                <div className="mt-2 text-[9px] sm:text-xs uppercase tracking-widest text-brand-indigo/55 font-semibold">
+                  Hours
+                </div>
+
+              </div>
+
+
+              {/* MINUTES */}
+
+              <div className="bg-white rounded-xl border border-brand-mitti p-4 sm:p-6 shadow-card">
+
+                <div className="font-display text-3xl sm:text-5xl md:text-6xl">
+                  {format(minutes)}
+                </div>
+
+                <div className="mt-2 text-[9px] sm:text-xs uppercase tracking-widest text-brand-indigo/55 font-semibold">
+                  Minutes
+                </div>
+
+              </div>
+
+
+              {/* SECONDS */}
+
+              <div className="bg-white rounded-xl border border-brand-mitti p-4 sm:p-6 shadow-card">
+
+                <div className="font-display text-3xl sm:text-5xl md:text-6xl">
+                  {format(seconds)}
+                </div>
+
+                <div className="mt-2 text-[9px] sm:text-xs uppercase tracking-widest text-brand-indigo/55 font-semibold">
+                  Seconds
+                </div>
+
+              </div>
+
             </div>
+
+
+            {/* Launch date */}
+
+            <div className="mt-8 text-xs md:text-sm uppercase tracking-widest text-brand-terracotta font-semibold">
+              27 · 08 · 2026&nbsp;&nbsp; | &nbsp;&nbsp;01:00 PM IST
+            </div>
+
+
+            {/* =================================================
+                FEATURE CARDS
+            ================================================= */}
+
+            <div className="mt-14 grid md:grid-cols-3 gap-4 text-left">
+
+              <div className="bg-white rounded-xl border border-brand-mitti p-5 shadow-card">
+
+                <div className="w-10 h-10 rounded-lg bg-brand-indigo text-white grid place-items-center font-bold">
+                  ₹
+                </div>
+
+                <div className="mt-4 font-heading text-lg font-bold">
+                  Billing
+                </div>
+
+                <p className="mt-1 text-sm text-brand-indigo/70">
+                  Fast billing with Cash, UPI and Udhaar.
+                </p>
+
+              </div>
+
+
+              <div className="bg-white rounded-xl border border-brand-mitti p-5 shadow-card">
+
+                <div className="w-10 h-10 rounded-lg bg-brand-indigo text-white grid place-items-center font-bold">
+                  ▣
+                </div>
+
+                <div className="mt-4 font-heading text-lg font-bold">
+                  Inventory
+                </div>
+
+                <p className="mt-1 text-sm text-brand-indigo/70">
+                  Track products, stock and low-stock alerts.
+                </p>
+
+              </div>
+
+
+              <div className="bg-white rounded-xl border border-brand-mitti p-5 shadow-card">
+
+                <div className="w-10 h-10 rounded-lg bg-brand-indigo text-white grid place-items-center font-bold">
+                  ₹
+                </div>
+
+                <div className="mt-4 font-heading text-lg font-bold">
+                  Udhaar
+                </div>
+
+                <p className="mt-1 text-sm text-brand-indigo/70">
+                  Track pending payments and reminders.
+                </p>
+
+              </div>
+
+            </div>
+
+
+            {/* Footer message */}
+
+            <p className="mt-10 text-sm text-brand-indigo/55">
+              Made for Indian small businesses.
+            </p>
 
           </div>
 
+        </section>
 
-          {/* HOURS */}
-
-          <div className="bg-white border border-[#E4DCC9] rounded-xl p-4 sm:p-6">
-
-            <div className="text-2xl sm:text-4xl font-bold">
-              {format(hours)}
-            </div>
-
-            <div className="font-sans text-[9px] sm:text-[10px] tracking-widest text-[#5A5670] mt-2">
-              HOURS
-            </div>
-
-          </div>
-
-
-          {/* MINUTES */}
-
-          <div className="bg-white border border-[#E4DCC9] rounded-xl p-4 sm:p-6">
-
-            <div className="text-2xl sm:text-4xl font-bold">
-              {format(minutes)}
-            </div>
-
-            <div className="font-sans text-[9px] sm:text-[10px] tracking-widest text-[#5A5670] mt-2">
-              MINUTES
-            </div>
-
-          </div>
-
-
-          {/* SECONDS */}
-
-          <div className="bg-white border border-[#E4DCC9] rounded-xl p-4 sm:p-6">
-
-            <div className="text-2xl sm:text-4xl font-bold">
-              {format(seconds)}
-            </div>
-
-            <div className="font-sans text-[9px] sm:text-[10px] tracking-widest text-[#5A5670] mt-2">
-              SECONDS
-            </div>
-
-          </div>
-
-        </div>
-
-
-        {/* ================= LAUNCH DATE ================= */}
-
-        <div className="font-sans text-xs tracking-widest text-[#C9713F]">
-          27 · 08 · 2026&nbsp;&nbsp; | &nbsp;&nbsp;01:00 PM IST
-        </div>
-
-
-        {/* ================= FOOTER ================= */}
-
-        <div className="mt-10 font-sans text-xs text-[#5A5670]">
-          Made for Indian small businesses.
-        </div>
-
-      </div>
+      </main>
 
     </div>
   );
@@ -233,7 +325,6 @@ function LaunchLock() {
 ========================================================= */
 
 function Protected({ children }) {
-
   const { user } = useAuth();
 
   if (user === null) {
@@ -258,11 +349,10 @@ function Protected({ children }) {
 
 
 /* =========================================================
-   LAUNCH ROUTE CONTROL
+   LAUNCH ROUTE CONTROLLER
 ========================================================= */
 
 function LaunchController() {
-
   const location = useLocation();
 
   const [launched, setLaunched] = useState(
@@ -270,7 +360,6 @@ function LaunchController() {
   );
 
   useEffect(() => {
-
     const checkLaunch = () => {
       setLaunched(
         Date.now() >= LAUNCH_TIME
@@ -287,7 +376,6 @@ function LaunchController() {
     return () => {
       clearInterval(timer);
     };
-
   }, []);
 
 
@@ -300,17 +388,21 @@ function LaunchController() {
     "/app/admin",
   ];
 
-  const isAdminPath =
-    adminPaths.some((path) =>
+  const isAdminPath = adminPaths.some(
+    (path) =>
       location.pathname === path ||
-      location.pathname.startsWith(
-        path + "/"
-      )
-    );
+      location.pathname.startsWith(path + "/")
+  );
 
 
   /* =======================================================
      BEFORE LAUNCH
+
+     ONLY:
+     - Admin Login
+     - Admin page
+
+     Everything else = countdown
   ======================================================= */
 
   if (!launched && !isAdminPath) {
@@ -319,22 +411,24 @@ function LaunchController() {
 
 
   /* =======================================================
-     NORMAL WEBSITE / ADMIN
+     AFTER LAUNCH / ADMIN
   ======================================================= */
 
   return (
     <Routes>
 
-      {/* ================= PUBLIC PAGES ================= */}
+      {/* ===================================================
+          PUBLIC PAGES
+      =================================================== */}
+
+      <Route
+        path="/"
+        element={<Landing />}
+      />
 
       <Route
         path="/info"
         element={<Info />}
-      />
-
-      <Route
-        path="/refund-policy"
-        element={<RefundPolicy />}
       />
 
       <Route
@@ -343,12 +437,14 @@ function LaunchController() {
       />
 
       <Route
-        path="/"
-        element={<Landing />}
+        path="/refund-policy"
+        element={<RefundPolicy />}
       />
 
 
-      {/* ================= LOGIN ================= */}
+      {/* ===================================================
+          AUTH
+      =================================================== */}
 
       <Route
         path="/login"
@@ -376,7 +472,9 @@ function LaunchController() {
       />
 
 
-      {/* ================= PROTECTED APP ================= */}
+      {/* ===================================================
+          PROTECTED APP
+      =================================================== */}
 
       <Route
         element={
@@ -385,6 +483,8 @@ function LaunchController() {
           </Protected>
         }
       >
+
+        {/* Dashboard */}
 
         <Route
           path="/app"
@@ -395,6 +495,9 @@ function LaunchController() {
           }
         />
 
+
+        {/* POS */}
+
         <Route
           path="/app/pos"
           element={
@@ -403,6 +506,9 @@ function LaunchController() {
             </SubGate>
           }
         />
+
+
+        {/* Products */}
 
         <Route
           path="/app/products"
@@ -413,6 +519,9 @@ function LaunchController() {
           }
         />
 
+
+        {/* Stock */}
+
         <Route
           path="/app/stock"
           element={
@@ -421,6 +530,9 @@ function LaunchController() {
             </SubGate>
           }
         />
+
+
+        {/* Customers */}
 
         <Route
           path="/app/customers"
@@ -431,6 +543,9 @@ function LaunchController() {
           }
         />
 
+
+        {/* Customer Detail */}
+
         <Route
           path="/app/customers/:id"
           element={
@@ -439,6 +554,9 @@ function LaunchController() {
             </SubGate>
           }
         />
+
+
+        {/* Udhaar */}
 
         <Route
           path="/app/udhaar"
@@ -449,6 +567,9 @@ function LaunchController() {
           }
         />
 
+
+        {/* Orders */}
+
         <Route
           path="/app/orders"
           element={
@@ -457,6 +578,9 @@ function LaunchController() {
             </SubGate>
           }
         />
+
+
+        {/* Order Detail */}
 
         <Route
           path="/app/orders/:id"
@@ -467,6 +591,9 @@ function LaunchController() {
           }
         />
 
+
+        {/* Reports */}
+
         <Route
           path="/app/reports"
           element={
@@ -476,6 +603,9 @@ function LaunchController() {
           }
         />
 
+
+        {/* Settings */}
+
         <Route
           path="/app/settings"
           element={
@@ -483,12 +613,20 @@ function LaunchController() {
           }
         />
 
+
+        {/* Billing */}
+
         <Route
           path="/app/billing"
           element={
             <Billing />
           }
         />
+
+
+        {/* =================================================
+            ADMIN
+        ================================================= */}
 
         <Route
           path="/app/admin"
@@ -500,7 +638,9 @@ function LaunchController() {
       </Route>
 
 
-      {/* ================= UNKNOWN URL ================= */}
+      {/* ===================================================
+          UNKNOWN ROUTE
+      =================================================== */}
 
       <Route
         path="*"
@@ -522,7 +662,6 @@ function LaunchController() {
 ========================================================= */
 
 function App() {
-
   return (
     <AuthProvider>
 
@@ -540,6 +679,5 @@ function App() {
     </AuthProvider>
   );
 }
-
 
 export default App;
