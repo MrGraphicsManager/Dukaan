@@ -230,6 +230,12 @@ export default function Landing() {
     >
       Privacy Policy
     </a>
+    <a
+  href="/refund-policy"
+  className="text-brand-terracotta hover:underline"
+>
+  Refund Policy
+</a>
   </div>
 </footer>
     </div>
