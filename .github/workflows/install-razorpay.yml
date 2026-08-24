@@ -21,4 +21,4 @@ jobs:
           git config user.email 'bot@officialdukaan.in'
           git add backend/server.py frontend/src/pages/Subscribe.jsx frontend/src/lib/razorpay.js frontend/src/components/RenewalBanner.jsx frontend/src/pages/Dashboard.jsx frontend/src/lib/AuthContext.jsx .github/workflows/subscription-maintenance.yml
           git commit -m 'Add Razorpay checkout and subscription renewal system [dukaan-renewal-patch]'
-          git push --force-with-lease origin "HEAD:${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          git push -f origin "HEAD:${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
