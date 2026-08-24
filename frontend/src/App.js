@@ -144,7 +144,7 @@ function LaunchLock() {
 
             <h1 className="mt-6 font-display text-5xl md:text-7xl lg:text-8xl leading-[1.02] tracking-tight">
 
-              The shop is
+              The dukaan is
               <br />
 
               <span className="text-brand-terracotta">
