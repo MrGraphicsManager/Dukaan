@@ -24,6 +24,7 @@ import Billing from "@/pages/Billing";
 import AdminSubscriptions from "@/pages/AdminSubscriptions";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundPolicy from "./pages/RefundPolicy";
+import Info from "./pages/Info";
 
 function Protected({ children }) {
   const { user } = useAuth();
@@ -38,6 +39,7 @@ function App() {
       <BrowserRouter>
         <Toaster position="top-center" richColors />
         <Routes>
+          <Route path="/info" element={<Info />} />
           <Route path="/refund-policy" element={<RefundPolicy />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/" element={<Landing />} />

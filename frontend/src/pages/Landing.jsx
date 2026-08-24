@@ -219,12 +219,14 @@ export default function Landing() {
       </section>
 
       <footer className="border-t border-brand-mitti py-8 text-center text-sm text-brand-indigo/60">
-  <div className="flex flex-col items-center gap-2">
-    <div>
-      © {new Date().getFullYear()} Dukaan · Made with ♥ for Indian small businesses By Priyen Naik
-    </div>
+  <div className="flex items-center justify-center gap-6 mt-2">
+  <a
+    href="/info"
+    className="text-brand-terracotta hover:underline"
+  >
+    Info
+  </a>
 
-   <div className="flex items-center justify-center gap-6 mt-2">
   <a
     href="/privacy-policy"
     className="text-brand-terracotta hover:underline"
@@ -239,7 +241,6 @@ export default function Landing() {
     Refund Policy
   </a>
 </div>
-  </div>
 </footer>
     </div>
   );
