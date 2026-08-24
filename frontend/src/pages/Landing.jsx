@@ -211,15 +211,15 @@ export default function Landing() {
           <p className="mt-4 text-brand-indigo/75">Have a question? Write to us and we'll respond within a day.</p>
           <div className="mt-4 rounded-xl border border-brand-mitti bg-white p-6">
             <div className="text-sm text-brand-indigo/60 uppercase tracking-widest">Email</div>
-            <div className="mt-1 font-heading text-lg font-semibold">hello@dukaan.app</div>
+            <div className="mt-1 font-heading text-lg font-semibold">contact@officialdukaan.in</div>
             <div className="mt-4 text-sm text-brand-indigo/60 uppercase tracking-widest">Phone</div>
-            <div className="mt-1 font-heading text-lg font-semibold">+91 90000 00000</div>
+            <div className="mt-1 font-heading text-lg font-semibold">+91 7016430577</div>
           </div>
         </div>
       </section>
 
       <footer className="border-t border-brand-mitti py-8 text-center text-sm text-brand-indigo/60">
-        © {new Date().getFullYear()} Dukaan · Made with ♥ for Indian small businesses
+        © {new Date().getFullYear()} Dukaan · Made with ♥ for Indian small businesses By Priyen Naik
       </footer>
     </div>
   );
