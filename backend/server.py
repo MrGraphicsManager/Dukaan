@@ -18,6 +18,8 @@ import re
 import ipaddress
 import httpx
 import secrets as pysecrets
+import hashlib
+import hmac
 from html import escape
 from html.parser import HTMLParser
 from urllib.parse import urlparse
@@ -49,6 +51,10 @@ EMAIL_KEY = os.environ.get("EMERGENT_EMAIL_KEY", "")
 EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "Dukaan")
 OWNER_NOTIFY_EMAIL = os.environ.get("OWNER_NOTIFY_EMAIL", "").strip()
 FRONTEND_URL_ENV = os.environ.get("FRONTEND_URL", "").rstrip("/")
+RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "").strip()
+RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "").strip()
+RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "").strip()
+SUBSCRIPTION_CRON_SECRET = os.environ.get("SUBSCRIPTION_CRON_SECRET", "").strip()
 origins = os.environ.get("CORS_ORIGINS", "*").split(",")
 
 app = FastAPI(title="Dukaan API")
@@ -314,6 +320,16 @@ class SubscriptionSubmitIn(BaseModel):
     upi_ref: str = Field(min_length=3)
     payer_name: Optional[str] = ""
     screenshot_data_url: Optional[str] = ""
+
+
+class RazorpayOrderIn(BaseModel):
+    plan: Literal["starter","business","premium"]
+    renew: bool = False
+
+class RazorpayVerifyIn(BaseModel):
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
 
 
 PLANS = {
@@ -690,6 +706,77 @@ async def admin_stats(admin: dict = Depends(get_admin_user)):
         "pending_subscriptions": pending_subs,
     }
 
+
+# === DUKAAN_RAZORPAY_RENEWAL_V1 ===
+async def _rzp_call(method, url, **kwargs):
+    if not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
+        raise HTTPException(503, "Razorpay is not configured yet")
+    async with httpx.AsyncClient(timeout=20) as c:
+        r = await c.request(method, url, auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET), **kwargs)
+    try: payload = r.json()
+    except Exception: payload = {"raw": r.text}
+    if r.status_code >= 400: raise HTTPException(502, "Razorpay request failed")
+    return payload
+
+def _iso_dt(v):
+    if not v: return None
+    try:
+        d = datetime.fromisoformat(str(v).replace('Z','+00:00'))
+        return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+    except Exception: return None
+
+@api.post("/subscriptions/razorpay/order")
+async def razorpay_order(body:RazorpayOrderIn,user:dict=Depends(get_current_user)):
+    active = await _active_sub(user['id']); now = datetime.now(timezone.utc)
+    if body.renew and active:
+        existing = await db.subscriptions.find_one({"user_id":user['id'],"status":"scheduled","starts_at":{"$gt":now.isoformat()}})
+        if existing: raise HTTPException(400,"A renewal is already scheduled")
+        starts = (_iso_dt(active.get('expires_at')) or now) + timedelta(seconds=1)
+    else: starts = now
+    plan = PLANS[body.plan]
+    order = await _rzp_call('POST','https://api.razorpay.com/v1/orders',json={"amount":int(plan['monthly']*100),"currency":"INR","receipt":f"dukaan-{user['id'][-8:]}-{int(now.timestamp())}"[:40]})
+    await db.subscriptions.insert_one({"user_id":user['id'],"user_email":user['email'],"plan":body.plan,"plan_name":plan['name'],"amount":plan['monthly'],"status":"pending","payment_method":"razorpay","renewal":bool(body.renew and active),"razorpay_order_id":order['id'],"razorpay_payment_id":None,"activated_at":None,"starts_at":starts.isoformat(),"expires_at":(starts+timedelta(days=30)).isoformat(),"created_at":now_iso()})
+    return {"key_id":RAZORPAY_KEY_ID,"order_id":order['id'],"amount":order['amount'],"currency":"INR","plan":body.plan,"renew":bool(body.renew and active)}
+
+@api.post("/subscriptions/razorpay/verify")
+async def razorpay_verify(body:RazorpayVerifyIn,user:dict=Depends(get_current_user)):
+    sub = await db.subscriptions.find_one({"user_id":user['id'],"razorpay_order_id":body.razorpay_order_id,"status":"pending","payment_method":"razorpay"})
+    if not sub: raise HTTPException(404,"Payment order not found or already processed")
+    expected = hmac.new(RAZORPAY_KEY_SECRET.encode(),f"{body.razorpay_order_id}|{body.razorpay_payment_id}".encode(),hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected,body.razorpay_signature): raise HTTPException(400,"Payment signature verification failed")
+    payment = await _rzp_call('GET',f"https://api.razorpay.com/v1/payments/{body.razorpay_payment_id}")
+    if payment.get('order_id')!=sub['razorpay_order_id'] or int(payment.get('amount',0))!=int(sub['amount']*100) or payment.get('currency')!='INR': raise HTTPException(400,'Payment mismatch')
+    if payment.get('status') not in ('captured','authorized'): raise HTTPException(400,f"Payment status is {payment.get('status','unknown')}")
+    now = datetime.now(timezone.utc); starts = _iso_dt(sub.get('starts_at')) or now; scheduled = starts > now + timedelta(seconds=1)
+    if not scheduled:
+        await db.subscriptions.update_many({"user_id":user['id'],"status":"active"},{"$set":{"status":"superseded","superseded_at":now.isoformat()}}); starts = now
+    status='scheduled' if scheduled else 'active'; expires=starts+timedelta(days=30)
+    await db.subscriptions.update_one({"_id":sub['_id']},{"$set":{"status":status,"activated_at":None if scheduled else now.isoformat(),"starts_at":starts.isoformat(),"expires_at":expires.isoformat(),"razorpay_payment_id":body.razorpay_payment_id,"verified_at":now.isoformat()}})
+    return {"ok":True,"status":status,"starts_at":starts.isoformat(),"expires_at":expires.isoformat()}
+
+@api.post("/internal/subscription-maintenance")
+async def subscription_maintenance(request:Request):
+    if not SUBSCRIPTION_CRON_SECRET or request.headers.get('X-Cron-Secret')!=SUBSCRIPTION_CRON_SECRET: raise HTTPException(403,'Forbidden')
+    now=datetime.now(timezone.utc); activated=0; reminded=0
+    queued=await db.subscriptions.find({"status":"scheduled","starts_at":{"$lte":now.isoformat()}}).to_list(200)
+    for sub in queued:
+        await db.subscriptions.update_many({"user_id":sub['user_id'],"status":"active"},{"$set":{"status":"expired","expired_at":now.isoformat()}})
+        await db.subscriptions.update_one({"_id":sub['_id'],"status":"scheduled"},{"$set":{"status":"active","activated_at":now.isoformat()}}); activated+=1
+    cutoff=(now+timedelta(days=5)).isoformat()
+    due=await db.subscriptions.find({"status":"active","expires_at":{"$gt":now.isoformat(),"$lte":cutoff},"renewal_reminder_5_sent":{"$ne":True}}).to_list(500)
+    for sub in due:
+        if sub.get('user_email'):
+            link=f"{FRONTEND_URL_ENV or 'https://officialdukaan.in'}/subscribe?plan={sub.get('plan','business')}&renew=1"
+            await send_email(to=sub['user_email'],subject='Dukaan: subscription expires in 5 days',html=f'<p>Your <b>{escape(sub.get("plan_name","Dukaan"))}</b> subscription expires in 5 days.</p><p><a href="{escape(link)}">Renew Subscription</a></p>')
+        await db.subscriptions.update_one({"_id":sub['_id']},{"$set":{"renewal_reminder_5_sent":True,"renewal_reminder_sent_at":now.isoformat()}}); reminded+=1
+    return {"ok":True,"renewals_activated":activated,"reminders_sent":reminded}
+
+@api.post("/webhooks/razorpay")
+async def razorpay_webhook(request:Request):
+    if not RAZORPAY_WEBHOOK_SECRET: raise HTTPException(503,'Webhook secret not configured')
+    raw=await request.body(); sig=request.headers.get('X-Razorpay-Signature',''); expected=hmac.new(RAZORPAY_WEBHOOK_SECRET.encode(),raw,hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected,sig): raise HTTPException(400,'Invalid webhook signature')
+    return {"ok":True}
 
 # =========================================================
 # SHOPS

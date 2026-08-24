@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { t } from "@/lib/i18n";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import RenewalBanner from "@/components/RenewalBanner";
 import {
   Receipt, Package, Warehouse, Users, Wallet, ClipboardList, BarChart3,
   IndianRupee, ShoppingCart, AlertTriangle, ArrowUpRight
@@ -47,6 +48,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 animate-fade-up" data-testid="dashboard">
+      <RenewalBanner />
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
           <div className="text-xs uppercase tracking-widest text-brand-terracotta font-semibold">{t(lang,"hello")}</div>

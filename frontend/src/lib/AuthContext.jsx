@@ -44,8 +44,7 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     try {
       const { data } = await api.post("/auth/login", { email, password });
-      setUser(data);
-      await loadShops(data.default_shop_id);
+      await refresh();
       return { ok: true };
     } catch (e) {
       return { ok: false, error: formatApiError(e.response?.data?.detail) || e.message };
@@ -55,8 +54,7 @@ export function AuthProvider({ children }) {
   const register = async (name, email, password) => {
     try {
       const { data } = await api.post("/auth/register", { name, email, password });
-      setUser(data);
-      await loadShops(data.default_shop_id);
+      await refresh();
       return { ok: true };
     } catch (e) {
       return { ok: false, error: formatApiError(e.response?.data?.detail) || e.message };
