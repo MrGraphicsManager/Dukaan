@@ -16,8 +16,9 @@ jobs:
         run: |
           python tools/install_razorpay.py
           rm tools/install_razorpay.py
+          git rm -f .github/workflows/install-razorpay.yml
           git config user.name 'Dukaan Bot'
           git config user.email 'bot@officialdukaan.in'
-          git add backend/server.py frontend/src/pages/Subscribe.jsx frontend/src/lib/razorpay.js frontend/src/components/RenewalBanner.jsx frontend/src/pages/Dashboard.jsx frontend/src/lib/AuthContext.jsx .github/workflows/subscription-maintenance.yml tools/install_razorpay.py
+          git add backend/server.py frontend/src/pages/Subscribe.jsx frontend/src/lib/razorpay.js frontend/src/components/RenewalBanner.jsx frontend/src/pages/Dashboard.jsx frontend/src/lib/AuthContext.jsx .github/workflows/subscription-maintenance.yml
           git commit -m 'Add Razorpay checkout and subscription renewal system [dukaan-renewal-patch]'
-          git push origin "HEAD:${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          git push --force-with-lease origin "HEAD:${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
