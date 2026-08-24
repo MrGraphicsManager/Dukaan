@@ -22,6 +22,7 @@ import Settings from "@/pages/Settings";
 import Subscribe from "@/pages/Subscribe";
 import Billing from "@/pages/Billing";
 import AdminSubscriptions from "@/pages/AdminSubscriptions";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 function Protected({ children }) {
   const { user } = useAuth();
@@ -36,6 +37,7 @@ function App() {
       <BrowserRouter>
         <Toaster position="top-center" richColors />
         <Routes>
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />

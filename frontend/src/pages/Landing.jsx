@@ -219,8 +219,19 @@ export default function Landing() {
       </section>
 
       <footer className="border-t border-brand-mitti py-8 text-center text-sm text-brand-indigo/60">
-        © {new Date().getFullYear()} Dukaan · Made with ♥ for Indian small businesses By Priyen Naik
-      </footer>
+  <div className="flex flex-col items-center gap-2">
+    <div>
+      © {new Date().getFullYear()} Dukaan · Made with ♥ for Indian small businesses By Priyen Naik
+    </div>
+
+    <a
+      href="/privacy-policy"
+      className="text-brand-terracotta hover:underline"
+    >
+      Privacy Policy
+    </a>
+  </div>
+</footer>
     </div>
   );
 }
