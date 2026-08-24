@@ -224,18 +224,21 @@ export default function Landing() {
       © {new Date().getFullYear()} Dukaan · Made with ♥ for Indian small businesses By Priyen Naik
     </div>
 
-    <a
-      href="/privacy-policy"
-      className="text-brand-terracotta hover:underline"
-    >
-      Privacy Policy
-    </a>
-    <a
-  href="/refund-policy"
-  className="text-brand-terracotta hover:underline"
->
-  Refund Policy
-</a>
+   <div className="flex items-center justify-center gap-6 mt-2">
+  <a
+    href="/privacy-policy"
+    className="text-brand-terracotta hover:underline"
+  >
+    Privacy Policy
+  </a>
+
+  <a
+    href="/refund-policy"
+    className="text-brand-terracotta hover:underline"
+  >
+    Refund Policy
+  </a>
+</div>
   </div>
 </footer>
     </div>
