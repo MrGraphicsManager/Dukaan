@@ -24,7 +24,7 @@ import Billing from "@/pages/Billing";
 import AdminSubscriptions from "@/pages/AdminSubscriptions";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundPolicy from "./pages/RefundPolicy";
-import Info from "./pages/Info";
+import Info from "./pages/Info.jsx";
 
 function Protected({ children }) {
   const { user } = useAuth();
