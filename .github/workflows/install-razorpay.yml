@@ -1,0 +1,21 @@
+name: Install Razorpay and renewal features
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[dukaan-renewal-patch]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply patch
+        run: |
+          python tools/install_razorpay.py
+          rm tools/install_razorpay.py
+          git config user.name 'Dukaan Bot'
+          git config user.email 'bot@officialdukaan.in'
+          git add backend/server.py frontend/src/pages/Subscribe.jsx frontend/src/lib/razorpay.js frontend/src/components/RenewalBanner.jsx frontend/src/pages/Dashboard.jsx frontend/src/lib/AuthContext.jsx .github/workflows/subscription-maintenance.yml tools/install_razorpay.py
+          git commit -m 'Add Razorpay checkout and subscription renewal system [dukaan-renewal-patch]'
+          git push
