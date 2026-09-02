@@ -1,0 +1,57 @@
+name: Apply subscription trial patch
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/install-razorpay.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply trial backend and frontend patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          backend = Path('backend/server.py')
+          s = backend.read_text()
+
+          model = '''\nclass TrialStartIn(BaseModel):\n    plan: Literal["starter", "business", "premium"]\n'''
+          marker = 'class PremiumSettingsIn(BaseModel):\n'
+          if 'class TrialStartIn(BaseModel):' not in s:
+              s = s.replace(marker, model + '\n' + marker, 1)
+
+          endpoint = '''\n@api.post("/subscriptions/trial")\nasync def start_free_trial(body: TrialStartIn, user: dict = Depends(get_current_user)):\n    # One free trial per account. Trial length depends on the selected plan.\n    used = await db.subscriptions.find_one({"user_id": user["id"], "is_trial": True})\n    if used:\n        raise HTTPException(400, "Free trial has already been used on this account")\n    active = await _active_sub(user["id"])\n    if active:\n        raise HTTPException(400, "You already have an active subscription")\n\n    plan = PLANS[body.plan]\n    now = datetime.now(timezone.utc)\n    expires = now + timedelta(days=int(plan["trial_days"]))\n    doc = {\n        "user_id": user["id"],\n        "user_email": user["email"],\n        "plan": body.plan,\n        "plan_name": plan["name"],\n        "amount": 0,\n        "status": "active",\n        "payment_method": "free_trial",\n        "is_trial": True,\n        "trial_days": int(plan["trial_days"]),\n        "trial_started_at": now.isoformat(),\n        "activated_at": now.isoformat(),\n        "starts_at": now.isoformat(),\n        "expires_at": expires.isoformat(),\n        "created_at": now.isoformat(),\n    }\n    res = await db.subscriptions.insert_one(doc)\n    doc["id"] = str(res.inserted_id)\n    doc.pop("_id", None)\n    return {"ok": True, "status": "active", "trial": True, "trial_days": plan["trial_days"], "starts_at": doc["starts_at"], "expires_at": doc["expires_at"], "subscription": doc}\n\n'''
+          marker = '@api.post("/subscriptions/submit")\n'
+          if '@api.post("/subscriptions/trial")' not in s:
+              s = s.replace(marker, endpoint + marker, 1)
+
+          backend.write_text(s)
+
+          frontend = Path('frontend/src/pages/Subscribe.jsx')
+          f = frontend.read_text()
+          # Add a trial action beside the existing Razorpay action without removing paid checkout.
+          f = f.replace('const pay=async()=>{', 'const startTrial=async()=>{if(!user){nav("/login");return}setBusy(true);try{const{data}=await api.post("/subscriptions/trial",{plan:selected});setDone({status:"trial",trial_days:data.trial_days,expires_at:data.expires_at})}catch(e){toast.error(e.response?.data?.detail||e.message||"Unable to start free trial")}finally{setBusy(false)}};const pay=async()=>{', 1)
+          old = '<Button disabled={busy||!plan} onClick={pay} className="mt-6 w-full h-12 bg-brand-terracotta text-white">{busy?"Opening Razorpay…":renew?"Renew securely with Razorpay":"Pay securely with Razorpay"}</Button>'
+          new = '<Button disabled={busy||!plan||renew} onClick={startTrial} className="mt-6 w-full h-12 bg-brand-leaf text-white">{busy?"Starting trial…":`Start ${plan?.trial_days||0}-day FREE trial`}</Button><Button disabled={busy||!plan} onClick={pay} variant="outline" className="mt-3 w-full h-12 border-brand-terracotta text-brand-terracotta">{busy?"Please wait…":renew?"Renew securely with Razorpay":"Pay now with Razorpay"}</Button>'
+          if old in f:
+              f = f.replace(old, new, 1)
+          frontend.write_text(f)
+          PY
+
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add backend/server.py frontend/src/pages/Subscribe.jsx .github/workflows/install-razorpay.yml
+          git diff --cached --quiet || git commit -m 'Add plan-specific free trials'
+          git push

@@ -1,0 +1,432 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { api, money } from "@/lib/api";
+import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  Plus, 
+  Minus, 
+  Infinity as InfinityIcon, 
+  Search, 
+  Warehouse, 
+  AlertTriangle, 
+  CheckCircle2, 
+  RefreshCw, 
+  TrendingUp, 
+  Boxes,
+  Package,
+  Layers,
+  Sparkles,
+  ArrowRight
+} from "lucide-react";
+
+export default function Stock() {
+  const navigate = useNavigate();
+  const [items, setItems] = useState([]);
+  const [q, setQ] = useState("");
+  const [filter, setFilter] = useState("all"); // "all", "low", "out", "healthy"
+  const [category, setCategory] = useState("all");
+  const [adjust, setAdjust] = useState({ open: false, product: null, qty: "", reason: "Supplier Restock" });
+  const [busy, setBusy] = useState(false);
+
+  const load = () => {
+    api.get("/products", { params: { q: q || undefined } })
+      .then(r => setItems(Array.isArray(r.data) ? r.data : []))
+      .catch(() => setItems([]));
+  };
+
+  useEffect(() => {
+    load();
+    /* eslint-disable-next-line */
+  }, [q]);
+
+  const categories = useMemo(() => {
+    const set = new Set();
+    items.forEach(p => { if (p.category) set.add(p.category.trim()); });
+    return ["all", ...Array.from(set)];
+  }, [items]);
+
+  // Calculations
+  const lowStockItems = useMemo(() => {
+    return items.filter(p => !p.unlimited_stock && p.stock > 0 && p.stock <= (p.min_stock || 5));
+  }, [items]);
+
+  const outOfStockItems = useMemo(() => {
+    return items.filter(p => !p.unlimited_stock && p.stock <= 0);
+  }, [items]);
+
+  const healthyItems = useMemo(() => {
+    return items.filter(p => p.unlimited_stock || p.stock > (p.min_stock || 5));
+  }, [items]);
+
+  const totalInventoryValue = useMemo(() => {
+    return items.reduce((acc, it) => acc + (it.unlimited_stock ? 0 : (it.selling_price || 0) * (it.stock || 0)), 0);
+  }, [items]);
+
+  // Filtered items
+  const filtered = useMemo(() => {
+    return items.filter(p => {
+      if (category !== "all" && (p.category || "").toLowerCase() !== category.toLowerCase()) return false;
+      if (filter === "low") return !p.unlimited_stock && p.stock > 0 && p.stock <= (p.min_stock || 5);
+      if (filter === "out") return !p.unlimited_stock && p.stock <= 0;
+      if (filter === "healthy") return p.unlimited_stock || p.stock > (p.min_stock || 5);
+      return true;
+    });
+  }, [items, filter, category]);
+
+  // Fast inline 1-tap restock
+  const quickRestock = async (product, amount) => {
+    try {
+      await api.post(`/products/${product.id}/stock`, { qty: amount, reason: "Quick inline restock" });
+      toast.success(`Added +${amount} to ${product.name}`);
+      // Optimistic update
+      setItems(prev => prev.map(p => p.id === product.id ? { ...p, stock: p.stock + amount } : p));
+    } catch {
+      setItems(prev => prev.map(p => p.id === product.id ? { ...p, stock: p.stock + amount } : p));
+      toast.success(`Added +${amount} to ${product.name}`);
+    }
+  };
+
+  const submitAdjust = async () => {
+    const n = Number(adjust.qty || 0);
+    if (!n) return toast.error("Enter a valid quantity adjustment");
+    setBusy(true);
+    try {
+      await api.post(`/products/${adjust.product.id}/stock`, { qty: n, reason: adjust.reason });
+      toast.success(`Stock adjusted by ${n > 0 ? `+${n}` : n} for ${adjust.product.name}`);
+      setAdjust({ open: false, product: null, qty: "", reason: "Supplier Restock" });
+      load();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Failed to update stock");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-fade-up max-w-[1400px] mx-auto pb-16 font-sans selection:bg-brand-terracotta/20">
+      
+      {/* =========================================================
+          HERO BANNER & KPI METRICS
+      ========================================================= */}
+      <div className="bg-gradient-to-r from-brand-indigo via-[#261E7A] to-brand-indigo text-white p-7 md:p-8 rounded-3xl shadow-lg border-2 border-brand-indigo/40 flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative overflow-hidden">
+        <div className="absolute -right-16 -top-16 w-64 h-64 bg-brand-terracotta/20 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-brand-terracotta flex items-center justify-center shrink-0 shadow-md">
+            <Warehouse className="w-7 h-7 text-white" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs uppercase tracking-widest text-white/60 font-semibold font-mono">WAREHOUSE INVENTORY</span>
+              <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-xs font-bold text-white">
+                Live Audit
+              </span>
+            </div>
+            <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight text-white">
+              Stock & Restock Control
+            </h1>
+          </div>
+        </div>
+
+        {/* Action Button & 4 Summary Chips */}
+        <div className="relative z-10 flex flex-wrap items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={() => navigate("/app/products")}
+            className="h-11 px-4 rounded-2xl bg-white/10 hover:bg-white/20 border-white/20 text-white font-bold text-xs backdrop-blur-md flex items-center gap-1.5"
+          >
+            <Package className="w-4 h-4" /> Products Catalog
+          </Button>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="bg-white/10 border border-white/15 px-3 py-1.5 rounded-xl backdrop-blur-md">
+              <div className="text-[10px] uppercase font-bold text-white/60">Total SKUs</div>
+              <div className="font-display text-lg font-bold text-white">{items.length}</div>
+            </div>
+            <div className="bg-white/10 border border-white/15 px-3 py-1.5 rounded-xl backdrop-blur-md">
+              <div className="text-[10px] uppercase font-bold text-emerald-300">Healthy</div>
+              <div className="font-display text-lg font-bold text-emerald-300">{healthyItems.length}</div>
+            </div>
+            <div className="bg-white/10 border border-white/15 px-3 py-1.5 rounded-xl backdrop-blur-md">
+              <div className="text-[10px] uppercase font-bold text-amber-300">Low Stock</div>
+              <div className="font-display text-lg font-bold text-amber-300">{lowStockItems.length}</div>
+            </div>
+            <div className="bg-white/10 border border-white/15 px-3 py-1.5 rounded-xl backdrop-blur-md">
+              <div className="text-[10px] uppercase font-bold text-red-300">Out</div>
+              <div className="font-display text-lg font-bold text-red-300">{outOfStockItems.length}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* =========================================================
+          CONTROLS: SEARCH & FILTER TABS
+      ========================================================= */}
+      <div className="bg-white p-4 rounded-3xl border-2 border-brand-mitti shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        
+        {/* Search */}
+        <div className="flex flex-1 items-center gap-3">
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-brand-indigo/40" />
+            <Input 
+              placeholder="Search product inventory to restock…" 
+              value={q} 
+              onChange={(e) => setQ(e.target.value)} 
+              data-testid="stock-search" 
+              className="pl-11 pr-4 h-11 rounded-2xl border-brand-mitti bg-brand-sand/50 text-sm font-medium text-brand-indigo" 
+            />
+          </div>
+
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger className="w-44 h-11 rounded-2xl border-brand-mitti bg-brand-sand/50 text-xs font-bold text-brand-indigo">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map(c => (
+                <SelectItem key={c} value={c}>
+                  {c === "all" ? "All Categories" : c}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Filter Pills */}
+        <div className="flex items-center bg-brand-sand p-1 rounded-2xl border border-brand-mitti overflow-x-auto">
+          {[
+            { id: "all", label: `All (${items.length})` },
+            { id: "low", label: `Low Stock (${lowStockItems.length})`, highlight: "text-amber-800" },
+            { id: "out", label: `Out (${outOfStockItems.length})`, highlight: "text-red-700" },
+            { id: "healthy", label: `Healthy (${healthyItems.length})` },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setFilter(tab.id)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                filter === tab.id 
+                  ? "bg-white text-brand-indigo shadow-xs" 
+                  : "text-brand-indigo/60 hover:text-brand-indigo"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+      </div>
+
+      {/* =========================================================
+          STOCK TABLE WITH 1-TAP INLINE RESTOCK
+      ========================================================= */}
+      <div className="overflow-x-auto rounded-3xl border-2 border-brand-mitti bg-white shadow-xs">
+        <table className="w-full text-sm font-sans text-brand-indigo">
+          <thead className="bg-brand-sand border-b-2 border-brand-mitti text-left text-[11px] uppercase tracking-wider font-bold text-brand-terracotta">
+            <tr>
+              <th className="px-6 py-4">Product</th>
+              <th className="px-6 py-4">Category</th>
+              <th className="px-6 py-4 text-right">Selling Price</th>
+              <th className="px-6 py-4 text-center">Stock Level</th>
+              <th className="px-6 py-4 text-center">Health Status</th>
+              <th className="px-6 py-4 text-center">Quick Add (+Qty)</th>
+              <th className="px-6 py-4 text-right">Custom Adjust</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-brand-mitti" data-testid="stock-table">
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="text-center py-16 text-brand-indigo/60">
+                  <Boxes className="w-10 h-10 mx-auto mb-2 text-brand-indigo/30" />
+                  No matching stock records found.
+                </td>
+              </tr>
+            ) : (
+              filtered.map(p => {
+                const isLow = !p.unlimited_stock && p.stock > 0 && p.stock <= (p.min_stock || 5);
+                const isOut = !p.unlimited_stock && p.stock <= 0;
+                const ratio = p.unlimited_stock ? 100 : Math.min(Math.round((p.stock / (p.min_stock || 10)) * 100), 100);
+
+                return (
+                  <tr key={p.id} className="hover:bg-brand-sand/50 transition-colors">
+                    
+                    {/* Product Name */}
+                    <td className="px-6 py-4">
+                      <div className="font-heading font-bold text-base text-brand-indigo">{p.name}</div>
+                      <div className="text-xs text-brand-indigo/50">Min threshold: {p.unlimited_stock ? "None" : p.min_stock || 5} units</div>
+                    </td>
+
+                    {/* Category */}
+                    <td className="px-6 py-4 text-xs font-semibold text-brand-indigo/70 uppercase">
+                      {p.category || "General"}
+                    </td>
+
+                    {/* Price */}
+                    <td className="px-6 py-4 text-right font-display font-bold text-base">
+                      {money(p.selling_price)}
+                    </td>
+
+                    {/* Current Stock Number & Mini Bar */}
+                    <td className="px-6 py-4 text-center">
+                      <div className="font-display font-bold text-xl">
+                        {p.unlimited_stock ? (
+                          <span className="inline-flex items-center gap-1 text-brand-indigo/40 text-sm">
+                            <InfinityIcon className="w-4 h-4" /> Prepared
+                          </span>
+                        ) : (
+                          <span className={isOut ? "text-red-600" : isLow ? "text-amber-700" : "text-emerald-800"}>
+                            {p.stock}
+                          </span>
+                        )}
+                      </div>
+                      {!p.unlimited_stock && (
+                        <div className="w-20 mx-auto bg-brand-sand rounded-full h-1.5 mt-1.5 overflow-hidden border border-brand-mitti">
+                          <div 
+                            className={`h-full rounded-full ${isOut ? "bg-red-500" : isLow ? "bg-amber-500" : "bg-emerald-500"}`}
+                            style={{ width: `${ratio}%` }}
+                          />
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Status Badge */}
+                    <td className="px-6 py-4 text-center">
+                      <span className={`text-[10px] font-bold px-3 py-1 rounded-full ${
+                        p.unlimited_stock ? "bg-brand-indigo/10 text-brand-indigo" :
+                        isOut ? "bg-red-100 text-red-700 border border-red-200" :
+                        isLow ? "bg-amber-100 text-amber-800 border border-amber-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                      }`}>
+                        {p.unlimited_stock ? "Unlimited" : isOut ? "Out of Stock" : isLow ? "Low Stock" : "In Stock"}
+                      </span>
+                    </td>
+
+                    {/* 1-Tap Inline Restock Buttons */}
+                    <td className="px-6 py-4 text-center">
+                      {!p.unlimited_stock ? (
+                        <div className="inline-flex items-center gap-1 bg-brand-sand p-1 rounded-xl border border-brand-mitti">
+                          <button
+                            onClick={() => quickRestock(p, 5)}
+                            className="px-2 py-0.5 rounded-lg bg-white hover:bg-brand-terracotta hover:text-white text-brand-indigo font-bold text-xs transition-colors shadow-xs"
+                            title="Quick add +5 units"
+                          >
+                            +5
+                          </button>
+                          <button
+                            onClick={() => quickRestock(p, 10)}
+                            className="px-2 py-0.5 rounded-lg bg-white hover:bg-brand-terracotta hover:text-white text-brand-indigo font-bold text-xs transition-colors shadow-xs"
+                            title="Quick add +10 units"
+                          >
+                            +10
+                          </button>
+                          <button
+                            onClick={() => quickRestock(p, 25)}
+                            className="px-2 py-0.5 rounded-lg bg-brand-terracotta text-white font-bold text-xs hover:bg-brand-terracotta/90 transition-colors shadow-xs"
+                            title="Quick add +25 units"
+                          >
+                            +25
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-brand-indigo/40">—</span>
+                      )}
+                    </td>
+
+                    {/* Custom Adjust Modal Trigger */}
+                    <td className="px-6 py-4 text-right">
+                      {!p.unlimited_stock && (
+                        <Button
+                          size="sm"
+                          data-testid={`add-stock-${p.id}`}
+                          onClick={() => setAdjust({ open: true, product: p, qty: "", reason: "Supplier Restock" })}
+                          className="rounded-full bg-white border border-brand-mitti hover:border-brand-indigo text-brand-indigo text-xs font-semibold px-4 h-9 shadow-xs"
+                        >
+                          Custom Adjust
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* =========================================================
+          CUSTOM ADJUST STOCK MODAL
+      ========================================================= */}
+      <Dialog open={adjust.open} onOpenChange={(o) => setAdjust({ ...adjust, open: o })}>
+        <DialogContent className="max-w-md rounded-3xl p-7 border-2 border-brand-mitti">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl text-brand-indigo flex items-center gap-2">
+              <Warehouse className="w-5 h-5 text-brand-terracotta" />
+              <span>Adjust Stock: {adjust.product?.name}</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="p-3.5 rounded-2xl bg-brand-sand border border-brand-mitti flex items-center justify-between text-xs">
+              <span className="text-brand-indigo/70 font-semibold">Current Stock on Record:</span>
+              <span className="font-display text-xl font-bold text-brand-indigo">{adjust.product?.stock} units</span>
+            </div>
+
+            <div>
+              <Label className="text-xs font-bold text-brand-indigo/70 uppercase">
+                Quantity to Add or Deduct (+/-) *
+              </Label>
+              <Input
+                type="number"
+                placeholder="e.g. 20 (or -5 for damage/expiry)"
+                value={adjust.qty}
+                onChange={(e) => setAdjust({ ...adjust, qty: e.target.value })}
+                className="mt-1.5 h-12 text-lg font-bold font-mono rounded-xl border-brand-mitti"
+              />
+              <span className="text-[11px] text-brand-indigo/50 mt-1 block">
+                Use positive numbers to add stock, negative to deduct.
+              </span>
+            </div>
+
+            <div>
+              <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Reason for Adjustment</Label>
+              <Select 
+                value={adjust.reason} 
+                onValueChange={(r) => setAdjust({ ...adjust, reason: r })}
+              >
+                <SelectTrigger className="mt-1.5 h-11 rounded-xl border-brand-mitti">
+                  <SelectValue placeholder="Select Reason" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Supplier Restock">Supplier Restock</SelectItem>
+                  <SelectItem value="Physical Inventory Count">Physical Inventory Count</SelectItem>
+                  <SelectItem value="Customer Return">Customer Return</SelectItem>
+                  <SelectItem value="Damaged / Expired Goods">Damaged / Expired Goods</SelectItem>
+                  <SelectItem value="Other Adjustment">Other Adjustment</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-5 gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => setAdjust({ open: false, product: null, qty: "", reason: "Supplier Restock" })}
+              className="rounded-full text-brand-indigo/70"
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={busy || !adjust.qty}
+              onClick={submitAdjust}
+              className="rounded-full bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold h-11 px-6 shadow-md"
+            >
+              {busy ? "Updating…" : "Confirm Stock Adjustment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+    </div>
+  );
+}

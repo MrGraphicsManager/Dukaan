@@ -1,0 +1,26 @@
+name: Apply Free Trial Backend Patch
+
+on:
+  push:
+    paths:
+      - scripts/apply_free_trial.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Apply patch
+        run: python scripts/apply_free_trial.py
+      - name: Commit backend patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/server.py
+          git diff --cached --quiet || git commit -m "Enable 30-day free trial for new users"
+          git push

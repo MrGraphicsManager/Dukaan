@@ -1,0 +1,15 @@
+/* Premium polish: keep Dukaan's original cream / navy / terracotta language. */
+.premium-topbar .text-white{color:#1F1A5D!important}
+
+/* Bottom navigation should feel like a classic app navigation bar, not a floating card. */
+.premium-bottom-nav{left:0!important;right:0!important;bottom:0!important;border-left:0!important;border-right:0!important;border-bottom:0!important;border-radius:0!important;background:rgba(251,248,241,.98)!important;box-shadow:0 -6px 24px rgba(31,26,93,.08)!important;backdrop-filter:blur(14px)!important}
+.premium-bottom-inner{max-width:1400px;margin:0 auto;padding:6px 18px!important;justify-content:space-between!important}
+.premium-bottom-item{min-width:78px!important;padding:9px 10px!important;border-radius:9px!important;color:rgba(31,26,93,.72)!important;gap:4px!important}
+.premium-bottom-item:hover{color:#1F1A5D!important;background:#F3EEE5!important}
+.premium-bottom-active{color:#fff!important;background:#C76B4A!important;box-shadow:none!important}
+
+@media(max-width:767px){
+  .premium-bottom-nav{left:0!important;right:0!important;bottom:0!important}
+  .premium-bottom-inner{padding:5px 4px!important;justify-content:space-around!important}
+  .premium-bottom-item{min-width:62px!important;padding:8px 5px!important;font-size:10px!important}
+}

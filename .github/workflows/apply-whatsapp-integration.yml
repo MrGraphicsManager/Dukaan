@@ -1,0 +1,47 @@
+name: Apply WhatsApp integration
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-server:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch backend startup
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('backend/server.py')
+          s = p.read_text()
+
+          if 'from whatsapp_integration import reminder_loop' not in s:
+              s = s.replace('import os\n', 'import os\nimport asyncio\n', 1)
+              marker = 'from reportlab.lib.units import mm\n'
+              s = s.replace(marker, marker + 'from whatsapp_integration import reminder_loop\n', 1)
+
+          block = '''\n\n# =========================================================\n# Premium WhatsApp udhaar reminders\n# =========================================================\n_whatsapp_reminder_task = None\n\n@app.on_event("startup")\nasync def _start_whatsapp_reminder_loop():\n    global _whatsapp_reminder_task\n    if os.environ.get("AUTHKEY_API_KEY", "").strip():\n        _whatsapp_reminder_task = asyncio.create_task(reminder_loop(db))\n\n@app.on_event("shutdown")\nasync def _stop_whatsapp_reminder_loop():\n    global _whatsapp_reminder_task\n    if _whatsapp_reminder_task:\n        _whatsapp_reminder_task.cancel()\n        try:\n            await _whatsapp_reminder_task\n        except asyncio.CancelledError:\n            pass\n        _whatsapp_reminder_task = None\n'''
+          anchor = '\n# =========================================================\n# Root\n# =========================================================\n'
+          if '_start_whatsapp_reminder_loop' not in s:
+              s = s.replace(anchor, block + anchor, 1)
+
+          p.write_text(s)
+          PY
+
+      - name: Commit patched server
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add backend/server.py
+          if git diff --cached --quiet; then
+            echo 'No patch needed'
+            exit 0
+          fi
+          git commit -m 'Connect Premium WhatsApp udhaar reminders [skip ci]'
+          git push

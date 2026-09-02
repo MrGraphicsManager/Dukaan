@@ -1,0 +1,1258 @@
+from dotenv import load_dotenv
+from pathlib import Path
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env')
+
+import os
+import asyncio
+import io
+import base64
+import logging
+import secrets
+from datetime import datetime, timezone, timedelta
+from typing import List, Optional, Literal, Annotated
+
+import bcrypt
+import jwt
+import qrcode
+import re
+import ipaddress
+import httpx
+import secrets as pysecrets
+import hashlib
+import hmac
+from html import escape
+from html.parser import HTMLParser
+from urllib.parse import urlparse
+from bson import ObjectId
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, Header
+from fastapi.responses import StreamingResponse
+from starlette.middleware.cors import CORSMiddleware
+from motor.motor_asyncio import AsyncIOMotorClient
+from pydantic import BaseModel, Field, BeforeValidator, EmailStr, ConfigDict
+from reportlab.lib.pagesizes import A5
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib.units import mm
+from whatsapp_integration import reminder_loop
+
+# =========================================================
+# Setup
+# =========================================================
+mongo_url = os.environ['MONGO_URL']
+client = AsyncIOMotorClient(mongo_url)
+db = client[os.environ['DB_NAME']]
+
+JWT_ALGORITHM = "HS256"
+JWT_SECRET = os.environ["JWT_SECRET"]
+
+# Email (Emergent-managed Resend)
+EMAIL_BASE_URL = "https://integrations.emergentagent.com"
+EMAIL_KEY = os.environ.get("EMERGENT_EMAIL_KEY", "")
+EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "Dukaan")
+OWNER_NOTIFY_EMAIL = os.environ.get("OWNER_NOTIFY_EMAIL", "").strip()
+FRONTEND_URL_ENV = os.environ.get("FRONTEND_URL", "").rstrip("/")
+RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "").strip()
+RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "").strip()
+RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "").strip()
+SUBSCRIPTION_CRON_SECRET = os.environ.get("SUBSCRIPTION_CRON_SECRET", "").strip()
+origins = os.environ.get("CORS_ORIGINS", "*").split(",")
+
+app = FastAPI(title="Dukaan API")
+api = APIRouter(prefix="/api")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("dukaan")
+
+
+# =========================================================
+# Helpers
+# =========================================================
+def _oid(v):
+    if isinstance(v, ObjectId):
+        return str(v)
+    if isinstance(v, str) and ObjectId.is_valid(v):
+        return v
+    raise ValueError("Invalid ObjectId")
+
+PyObjectId = Annotated[str, BeforeValidator(_oid)]
+
+
+def hash_password(pw: str) -> str:
+    return bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode()
+
+
+def verify_password(pw: str, hashed: str) -> bool:
+    try:
+        return bcrypt.checkpw(pw.encode(), hashed.encode())
+    except Exception:
+        return False
+
+
+def create_access_token(user_id: str, email: str) -> str:
+    payload = {
+        "sub": user_id,
+        "email": email,
+        "exp": datetime.now(timezone.utc) + timedelta(days=7),
+        "type": "access",
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def _set_cookie(resp: Response, token: str):
+    resp.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=7 * 24 * 3600,
+        path="/",
+    )
+
+
+async def get_admin_user(request: Request) -> dict:
+    user = await _get_current_user(request)
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    return user
+
+
+async def _get_current_user(request: Request) -> dict:
+    token = request.cookies.get("access_token")
+    if not token:
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            token = auth[7:]
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        user["id"] = str(user.pop("_id"))
+        user.pop("password_hash", None)
+        return user
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+
+async def get_current_user(request: Request) -> dict:
+    return await _get_current_user(request)
+
+
+PLAN_TIER = {"starter": 1, "business": 2, "premium": 3}
+
+
+async def _active_sub(user_id: str) -> Optional[dict]:
+    now_iso_str = datetime.now(timezone.utc).isoformat()
+    return await db.subscriptions.find_one({
+        "user_id": user_id,
+        "status": "active",
+        "$or": [{"expires_at": None}, {"expires_at": {"$gt": now_iso_str}}],
+    }, sort=[("activated_at", -1)])
+
+
+async def require_active_subscription(user: dict = Depends(get_current_user)) -> dict:
+    if user.get("is_admin"):
+        return user
+    sub = await _active_sub(user["id"])
+    if not sub:
+        raise HTTPException(status_code=402, detail="Subscription required")
+    return {**user, "subscription": clean(sub) if sub else None}
+
+
+def require_plan(min_plan: str):
+    """Dependency factory: user must have active subscription with tier >= min_plan."""
+    async def _dep(user: dict = Depends(require_active_subscription)) -> dict:
+        if user.get("is_admin"):
+            return user
+        current = user.get("subscription", {}).get("plan", "")
+        if PLAN_TIER.get(current, 0) < PLAN_TIER.get(min_plan, 0):
+            raise HTTPException(status_code=402, detail=f"Upgrade required: {min_plan}")
+        return user
+    return _dep
+
+
+async def get_shop(
+    request: Request,
+    user: dict = Depends(get_current_user),
+    x_shop_id: Optional[str] = Header(None, alias="X-Shop-Id"),
+) -> dict:
+    shop_id = x_shop_id or request.query_params.get("shop_id")
+    if not shop_id or not ObjectId.is_valid(shop_id):
+        raise HTTPException(status_code=400, detail="Shop id required")
+    shop = await db.shops.find_one({"_id": ObjectId(shop_id), "owner_id": user["id"]})
+    if not shop:
+        raise HTTPException(status_code=403, detail="Shop not found or not owned")
+    shop["id"] = str(shop.pop("_id"))
+    return shop
+
+
+async def get_shop_paid(
+    request: Request,
+    user: dict = Depends(get_current_user),
+    x_shop_id: Optional[str] = Header(None, alias="X-Shop-Id"),
+) -> dict:
+    """Same as get_shop, but also requires an active subscription (or admin)."""
+    shop_id = x_shop_id or request.query_params.get("shop_id")
+    if not shop_id or not ObjectId.is_valid(shop_id):
+        raise HTTPException(status_code=400, detail="Shop id required")
+    shop = await db.shops.find_one({"_id": ObjectId(shop_id), "owner_id": user["id"]})
+    if not shop:
+        raise HTTPException(status_code=403, detail="Shop not found or not owned")
+    if not user.get("is_admin"):
+        sub = await _active_sub(user["id"])
+        if not sub:
+            raise HTTPException(status_code=402, detail="Subscription required")
+    shop["id"] = str(shop.pop("_id"))
+    return shop
+
+
+def get_shop_plan(min_plan: str):
+    async def _dep(
+        request: Request,
+        user: dict = Depends(get_current_user),
+        x_shop_id: Optional[str] = Header(None, alias="X-Shop-Id"),
+    ) -> dict:
+        shop_id = x_shop_id or request.query_params.get("shop_id")
+        if not shop_id or not ObjectId.is_valid(shop_id):
+            raise HTTPException(status_code=400, detail="Shop id required")
+        shop = await db.shops.find_one({"_id": ObjectId(shop_id), "owner_id": user["id"]})
+        if not shop:
+            raise HTTPException(status_code=403, detail="Shop not found or not owned")
+        if not user.get("is_admin"):
+            sub = await _active_sub(user["id"])
+            if not sub:
+                raise HTTPException(status_code=402, detail="Subscription required")
+            if PLAN_TIER.get(sub.get("plan",""), 0) < PLAN_TIER.get(min_plan, 0):
+                raise HTTPException(status_code=402, detail=f"Upgrade to {min_plan} required")
+        shop["id"] = str(shop.pop("_id"))
+        return shop
+    return _dep
+
+
+def now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def clean(doc: dict) -> dict:
+    if not doc:
+        return doc
+    if "_id" in doc:
+        doc["id"] = str(doc.pop("_id"))
+    return doc
+
+
+# =========================================================
+# Schemas
+# =========================================================
+class RegisterIn(BaseModel):
+    name: str
+    email: EmailStr
+    password: str = Field(min_length=6)
+
+class LoginIn(BaseModel):
+    email: EmailStr
+    password: str
+
+class ShopIn(BaseModel):
+    name: str
+    owner_name: Optional[str] = ""
+    phone: Optional[str] = ""
+    address: Optional[str] = ""
+    upi_id: Optional[str] = ""
+    upi_qr_data_url: Optional[str] = ""
+    logo_data_url: Optional[str] = ""
+    invoice_footer: Optional[str] = "Thank you for shopping with us!"
+    min_stock_default: int = 5
+    contact_email: Optional[str] = ""
+    store_category: Optional[str] = ""
+    gst_number: Optional[str] = ""
+    gst_status: Optional[str] = "not_submitted"
+    gst_review_note: Optional[str] = ""
+    gst_verified_at: Optional[str] = None
+    gst_verified_by: Optional[str] = ""
+    gst_enabled: bool = False
+    gst_rate: float = 0
+    financial_year: Optional[str] = "2026-27"
+    store_active: bool = True
+
+class ProductIn(BaseModel):
+    name: str
+    category: Optional[str] = "General"
+    selling_price: float
+    purchase_price: Optional[float] = 0
+    stock: int = 0
+    min_stock: int = 5
+    unlimited_stock: bool = False
+    image_data_url: Optional[str] = ""
+
+class CustomerIn(BaseModel):
+    name: str
+    phone: Optional[str] = ""
+    notes: Optional[str] = ""
+
+class OrderItemIn(BaseModel):
+    product_id: str
+    name: str
+    price: float
+    qty: int
+
+class OrderIn(BaseModel):
+    items: List[OrderItemIn]
+    discount: float = 0
+    customer_id: Optional[str] = None
+    payment_method: Literal["cash", "upi", "udhaar"]
+    amount_received: Optional[float] = None
+    note: Optional[str] = ""
+
+class StockAdjustIn(BaseModel):
+    qty: int
+    reason: str = "restock"
+
+class UdhaarPaymentIn(BaseModel):
+    customer_id: str
+    amount: float
+    note: Optional[str] = ""
+
+class SubscriptionSubmitIn(BaseModel):
+    plan: Literal["starter", "business", "premium"]
+    upi_ref: str = Field(min_length=3)
+    payer_name: Optional[str] = ""
+    screenshot_data_url: Optional[str] = ""
+
+class RazorpayOrderIn(BaseModel):
+    plan: Literal["starter","business","premium"]
+    renew: bool = False
+
+class RazorpayVerifyIn(BaseModel):
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
+
+class PremiumProfileIn(BaseModel):
+    owner_name: str = ""
+    phone: str = ""
+    contact_email: EmailStr
+    name: str
+    store_category: str
+
+class GSTSubmitIn(BaseModel):
+    gst_number: str = Field(min_length=5, max_length=20)
+
+class GSTReviewIn(BaseModel):
+    note: Optional[str] = ""
+
+
+class TrialStartIn(BaseModel):
+    plan: Literal["starter", "business", "premium"]
+
+class PremiumSettingsIn(BaseModel):
+    gst_enabled: bool = False
+    gst_rate: float = Field(default=0, ge=0, le=100)
+    financial_year: str = "2026-27"
+    store_active: bool = True
+
+PLANS = {
+    "starter":  {"name": "Starter",  "setup": 299, "monthly": 99, "trial_days": 90},
+    "business": {"name": "Business", "setup": 499, "monthly": 149, "trial_days": 60},
+    "premium":  {"name": "Premium",  "setup": 999, "monthly": 299, "trial_days": 30},
+}
+
+
+# =========================================================
+# EMAIL (Emergent-managed Resend) with G1-G5 guardrails
+# =========================================================
+_SHORTENERS = ("bit.ly", "tinyurl.com", "t.co", "is.gd", "cutt.ly", "goo.gl", "rebrand.ly")
+_CRED_ASK = ("reply with your password", "reply with the code", "send your password", "cvv",
+             "send us your password", "enter your password below", "confirm your card number",
+             "your full card number", "seed phrase", "recovery phrase", "verify your card",
+             "social security number", "confirm your bank details")
+_HOSTISH = re.compile(r"\b(?:https?://)?((?:[a-z0-9-]+\.)+[a-z]{2,})", re.I)
+
+
+def _host_ok(host: str) -> bool:
+    if not host or "xn--" in host:
+        return False
+    try:
+        ipaddress.ip_address(host)
+        return False
+    except ValueError:
+        pass
+    return not any(host == s or host.endswith("." + s) for s in _SHORTENERS)
+
+
+def _same_site(shown: str, real: str) -> bool:
+    return shown == real or real.endswith("." + shown) or shown.endswith("." + real)
+
+
+class _EmailScan(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.tags, self.urls, self.anchors = set(), [], []
+        self._href, self._text = None, []
+    def handle_starttag(self, tag, attrs):
+        self.tags.add(tag.lower())
+        self.urls += [v for k, v in attrs if k.lower() in ("href", "src") and v]
+        if tag.lower() == "a":
+            self._href = dict((k.lower(), v) for k, v in attrs).get("href")
+            self._text = []
+    def handle_data(self, data):
+        if self._href is not None:
+            self._text.append(data)
+    def handle_endtag(self, tag):
+        if tag.lower() == "a" and self._href is not None:
+            self.anchors.append((self._href, "".join(self._text)))
+            self._href, self._text = None, []
+
+
+def _assert_safe_email(subject: str, html: str) -> None:
+    scan = _EmailScan(); scan.feed(html)
+    if scan.tags & {"form", "input", "textarea", "select"}:
+        raise ValueError("No forms in email (G2)")
+    body = f"{subject}\n{html}".lower()
+    for p in _CRED_ASK:
+        if p in body:
+            raise ValueError(f"Email asks for credentials: {p!r} (G2)")
+    for url in scan.urls:
+        low = url.strip().lower()
+        if low.startswith(("mailto:", "tel:", "cid:", "#")):
+            continue
+        if not low.startswith("https://"):
+            raise ValueError(f"Email links must be https: {url!r} (G3)")
+        host = urlparse(low).hostname or ""
+        if not _host_ok(host) or urlparse(low).username is not None:
+            raise ValueError(f"Unsafe URL: {url!r} (G3)")
+    for href, text in scan.anchors:
+        real = urlparse(href.strip().lower()).hostname or ""
+        if not real:
+            continue
+        for m in _HOSTISH.finditer(text):
+            if not _same_site(m.group(1).lower(), real):
+                raise ValueError("Visible link text does not match destination (G4)")
+
+
+async def send_email(to: str, subject: str, html: str):
+    if not EMAIL_KEY or not to:
+        return
+    _assert_safe_email(subject, html)
+    payload = {"to":[to],"subject":subject,"html":html,"from":EMAIL_FROM_NAME}
+    async with httpx.AsyncClient(timeout=20) as c:
+        await c.post(f"{EMAIL_BASE_URL}/resend/send-email", headers={"Authorization":f"Bearer {EMAIL_KEY}"}, json=payload)
+
+
+# =========================================================
+# Auth
+# =========================================================
+@api.post("/auth/register")
+async def register(body: RegisterIn, response: Response):
+    email = body.email.lower().strip()
+    existing = await db.users.find_one({"email": email})
+    if existing:
+        raise HTTPException(409, "Email already registered")
+    now = now_iso()
+    doc = {"name": body.name.strip(), "email": email, "password_hash": hash_password(body.password), "created_at": now, "is_admin": False}
+    res = await db.users.insert_one(doc)
+    uid = str(res.inserted_id)
+    
+    shop_doc = {'name': body.name.strip() + "'s Shop", 'owner_id': uid, 'owner_name': body.name.strip(), 'phone': '', 'address': '', 'upi_id': '', 'upi_qr_data_url': '', 'logo_data_url': '', 'invoice_footer': 'Thank you for shopping with us!', 'min_stock_default': 5, 'contact_email': email, 'store_category': '', 'gst_number': '', 'gst_status': 'not_submitted', 'gst_enabled': False, 'gst_rate': 0, 'financial_year': '2026-27', 'store_active': True, 'created_at': now}
+    shop_res = await db.shops.insert_one(shop_doc)
+    
+    token = create_access_token(uid, email)
+    _set_cookie(response, token)
+    return {"ok": True, "access_token": token, "token_type": "bearer", "user": {"id": uid, "name": doc["name"], "email": email, "is_admin": False}, "shop_id": str(shop_res.inserted_id)}
+
+@api.post("/auth/login")
+async def login(body: LoginIn, response: Response):
+    email = body.email.lower().strip()
+    user = await db.users.find_one({"email": email})
+    if not user or not verify_password(body.password, user.get("password_hash", "")):
+        raise HTTPException(401, "Invalid email or password")
+    uid = str(user["_id"])
+    token = create_access_token(uid, email)
+    _set_cookie(response, token)
+    return {"ok": True, "access_token": token, "token_type": "bearer", "user": {"id": uid, "name": user.get("name", ""), "email": email, "is_admin": bool(user.get("is_admin"))}}
+
+@api.post("/auth/logout")
+async def logout(response: Response):
+    response.delete_cookie("access_token", path="/")
+    return {"ok": True}
+
+@api.post("/auth/forgot-password")
+async def forgot_password(body: dict):
+    email = body.get("email", "").lower().strip()
+    user = await db.users.find_one({"email": email})
+    if user:
+        token = pysecrets.token_urlsafe(32)
+        await db.password_resets.insert_one({
+            "token": token,
+            "user_id": str(user["_id"]),
+            "expires_at": datetime.now(timezone.utc) + timedelta(hours=1)
+        })
+        link = f"{FRONTEND_URL_ENV}/reset-password?token={token}"
+        html = f'<p>Click <a href="{link}">here</a> to reset your password. Link expires in 1 hour.</p>'
+        try:
+            await send_email(to=email, subject="Reset your Dukaan password", html=html)
+        except Exception:
+            pass
+    return {"ok": True}
+
+@api.post("/auth/reset-password")
+async def reset_password(body: dict):
+    token = body.get("token")
+    new_password = body.get("new_password")
+    if not token or not new_password:
+        raise HTTPException(400, "Missing token or password")
+    reset_doc = await db.password_resets.find_one({"token": token})
+    if not reset_doc or reset_doc["expires_at"].replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+        raise HTTPException(400, "Invalid or expired token")
+    
+    await db.users.update_one(
+        {"_id": ObjectId(reset_doc["user_id"])},
+        {"$set": {"password_hash": hash_password(new_password)}}
+    )
+    await db.password_resets.delete_one({"_id": reset_doc["_id"]})
+    return {"ok": True}
+
+@api.get("/auth/me")
+async def me(user: dict = Depends(get_current_user)):
+    return user
+
+
+# =========================================================
+# Subscription helpers & admin activation
+# =========================================================
+@api.get("/subscriptions/me")
+async def my_subscription(user: dict = Depends(get_current_user)):
+    active = await _active_sub(user["id"])
+    scheduled = await db.subscriptions.find_one({"user_id":user["id"],"status":"scheduled"}, sort=[("starts_at",1)])
+    latest = await db.subscriptions.find_one({"user_id":user["id"]}, sort=[("created_at",-1)])
+    return {
+        "active": clean(active) if active else None,
+        "scheduled": clean(scheduled) if scheduled else None,
+        "latest": clean(latest) if latest else None,
+    }
+
+
+@api.post("/subscriptions/trial")
+async def start_free_trial(body: TrialStartIn, user: dict = Depends(get_current_user)):
+    # One free trial per account. Trial length depends on the selected plan.
+    used = await db.subscriptions.find_one({"user_id": user["id"], "is_trial": True})
+    if used:
+        raise HTTPException(400, "Free trial has already been used on this account")
+    active = await _active_sub(user["id"])
+    if active:
+        raise HTTPException(400, "You already have an active subscription")
+
+    plan = PLANS[body.plan]
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(days=int(plan["trial_days"]))
+    doc = {
+        "user_id": user["id"],
+        "user_email": user["email"],
+        "plan": body.plan,
+        "plan_name": plan["name"],
+        "amount": 0,
+        "status": "active",
+        "payment_method": "free_trial",
+        "is_trial": True,
+        "trial_days": int(plan["trial_days"]),
+        "trial_started_at": now.isoformat(),
+        "activated_at": now.isoformat(),
+        "starts_at": now.isoformat(),
+        "expires_at": expires.isoformat(),
+        "created_at": now.isoformat(),
+    }
+    res = await db.subscriptions.insert_one(doc)
+    doc["id"] = str(res.inserted_id)
+    doc.pop("_id", None)
+    return {"ok": True, "status": "active", "trial": True, "trial_days": plan["trial_days"], "starts_at": doc["starts_at"], "expires_at": doc["expires_at"], "subscription": doc}
+
+@api.post("/subscriptions/submit")
+async def submit_subscription(body: SubscriptionSubmitIn, user: dict = Depends(get_current_user)):
+    plan = PLANS[body.plan]
+    now = now_iso()
+    doc = {
+        "user_id": user["id"], "user_email": user["email"], "plan": body.plan, "plan_name": plan["name"],
+        "amount": plan["monthly"], "status": "pending", "payment_method": "upi_manual",
+        "upi_ref": body.upi_ref, "payer_name": body.payer_name or "", "screenshot_data_url": body.screenshot_data_url or "",
+        "created_at": now,
+    }
+    r = await db.subscriptions.insert_one(doc)
+    doc["id"] = str(r.inserted_id); doc.pop("_id", None)
+    return clean(doc)
+
+@api.get("/admin/subscriptions")
+async def admin_subscriptions(admin: dict = Depends(get_admin_user), status: Optional[str] = None):
+    query = {} if not status or status == "all" else {"status": status}
+    cur = db.subscriptions.find(query).sort("created_at", -1)
+    return [clean(x) for x in await cur.to_list(500)]
+
+@api.post("/admin/subscriptions/{sid}/approve")
+async def admin_approve(sid: str, admin: dict = Depends(get_admin_user)):
+    if not ObjectId.is_valid(sid):
+        raise HTTPException(400, "bad id")
+    sub = await db.subscriptions.find_one({"_id": ObjectId(sid)})
+    if not sub:
+        raise HTTPException(404, "not found")
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(days=30)
+    await db.subscriptions.update_one({"_id": ObjectId(sid)}, {"$set": {"status": "active", "activated_at": now.isoformat(), "expires_at": expires.isoformat(), "reviewed_by": admin["email"]}})
+    doc = await db.subscriptions.find_one({"_id": ObjectId(sid)})
+    if sub.get("user_email"):
+        html = (
+            '<table role="presentation" width="100%"><tr><td style="padding:24px;font-family:Arial,sans-serif;color:#1F1A5D;background:#FBF8F1">'
+            f'<h2 style="font-family:Georgia,serif">Your Dukaan subscription is active</h2>'
+            f'<p>Your <b>{escape(sub.get("plan_name",""))}</b> plan is now active until <b>{escape(expires.isoformat()[:10])}</b>.</p>'
+            f'<p><a href="{escape((FRONTEND_URL_ENV or "") + "/app")}" style="display:inline-block;background:#C36A4A;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600">Open dashboard</a></p>'
+            f'<p style="font-size:12px;color:#7B766D">Sent by {escape(EMAIL_FROM_NAME)}.</p>'
+            '</td></tr></table>'
+        )
+        try:
+            await send_email(to=sub["user_email"], subject="Your Dukaan subscription is active", html=html)
+        except Exception:
+            pass
+    return clean(doc)
+
+@api.post("/admin/subscriptions/{sid}/reject")
+async def admin_reject(sid: str, admin: dict = Depends(get_admin_user), note: str = ""):
+    if not ObjectId.is_valid(sid):
+        raise HTTPException(400, "bad id")
+    res = await db.subscriptions.update_one({"_id": ObjectId(sid)}, {"$set": {"status": "rejected", "reviewed_by": admin["email"], "review_note": note}})
+    if res.matched_count == 0:
+        raise HTTPException(404, "not found")
+    return clean(await db.subscriptions.find_one({"_id": ObjectId(sid)}))
+
+@api.get("/admin/stats")
+async def admin_stats(admin: dict = Depends(get_admin_user)):
+    return {
+        "users": await db.users.count_documents({}),
+        "shops": await db.shops.count_documents({}),
+        "active_subscriptions": await db.subscriptions.count_documents({"status": "active"}),
+        "pending_subscriptions": await db.subscriptions.count_documents({"status": "pending"}),
+    }
+
+
+# === DUKAAN_RAZORPAY_RENEWAL_V2 ===
+async def _rzp_call(method, url, **kwargs):
+    if not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
+        raise HTTPException(503, "Razorpay is not configured yet")
+    async with httpx.AsyncClient(timeout=20) as c:
+        r = await c.request(method, url, auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET), **kwargs)
+    try:
+        payload = r.json()
+    except Exception:
+        payload = {"raw": r.text}
+    if r.status_code >= 400:
+        raise HTTPException(502, "Razorpay request failed")
+    return payload
+
+
+def _iso_dt(v):
+    if not v:
+        return None
+    try:
+        d = datetime.fromisoformat(str(v).replace('Z','+00:00'))
+        return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+
+
+@api.post("/subscriptions/razorpay/order")
+async def razorpay_order(body: RazorpayOrderIn, user: dict = Depends(get_current_user)):
+    active = await _active_sub(user['id'])
+    now = datetime.now(timezone.utc)
+    if body.renew and active:
+        existing = await db.subscriptions.find_one({"user_id":user['id'],"status":"scheduled","starts_at":{"$gt":now.isoformat()}})
+        if existing:
+            raise HTTPException(400,"A renewal is already scheduled")
+        starts = (_iso_dt(active.get('expires_at')) or now) + timedelta(seconds=1)
+    else:
+        starts = now
+    plan = PLANS[body.plan]
+    order = await _rzp_call('POST','https://api.razorpay.com/v1/orders',json={"amount":int(plan['monthly']*100),"currency":"INR","receipt":f"dukaan-{user['id'][-8:]}-{int(now.timestamp())}"[:40]})
+    await db.subscriptions.insert_one({"user_id":user['id'],"user_email":user['email'],"plan":body.plan,"plan_name":plan['name'],"amount":plan['monthly'],"status":"pending","payment_method":"razorpay","renewal":bool(body.renew and active),"razorpay_order_id":order['id'],"razorpay_payment_id":None,"activated_at":None,"starts_at":starts.isoformat(),"expires_at":(starts+timedelta(days=30)).isoformat(),"created_at":now_iso()})
+    return {"key_id":RAZORPAY_KEY_ID,"order_id":order['id'],"amount":order['amount'],"currency":"INR","plan":body.plan,"renew":bool(body.renew and active)}
+
+
+async def _activate_verified_rzp_subscription(sub: dict, payment_id: str) -> dict:
+    """Idempotently activate/schedule a verified Razorpay subscription record."""
+    current = await db.subscriptions.find_one({"_id": sub["_id"]})
+    if not current:
+        raise HTTPException(404, "Payment order not found")
+    if current.get("status") in ("active", "scheduled") and current.get("razorpay_payment_id") == payment_id:
+        return clean(current)
+
+    now = datetime.now(timezone.utc)
+    starts = _iso_dt(current.get("starts_at")) or now
+    scheduled = starts > now + timedelta(seconds=1)
+
+    if not scheduled:
+        await db.subscriptions.update_many(
+            {"user_id": current["user_id"], "status": "active"},
+            {"$set": {"status": "superseded", "superseded_at": now.isoformat(), "superseded_by_payment": payment_id}},
+        )
+        starts = now
+
+    expires = starts + timedelta(days=30)
+    status = "scheduled" if scheduled else "active"
+    activated_at = None if scheduled else now.isoformat()
+
+    await db.subscriptions.update_one(
+        {"_id": current["_id"], "status": "pending"},
+        {"$set": {
+            "status": status,
+            "activated_at": activated_at,
+            "starts_at": starts.isoformat(),
+            "expires_at": expires.isoformat(),
+            "razorpay_payment_id": payment_id,
+            "verified_at": now.isoformat(),
+        }},
+    )
+    return clean(await db.subscriptions.find_one({"_id": current["_id"]}))
+
+
+async def _finalize_razorpay_payment(order_id: str, payment_id: str, signature: Optional[str] = None, require_signature: bool = True):
+    sub = await db.subscriptions.find_one({"razorpay_order_id": order_id, "status": {"$in": ["pending", "active", "scheduled"]}, "payment_method": "razorpay"})
+    if not sub:
+        return None
+
+    if require_signature:
+        expected = hmac.new(RAZORPAY_KEY_SECRET.encode(), f"{order_id}|{payment_id}".encode(), hashlib.sha256).hexdigest()
+        if not signature or not hmac.compare_digest(expected, signature):
+            raise HTTPException(400,"Payment signature verification failed")
+
+    payment = await _rzp_call('GET',f"https://api.razorpay.com/v1/payments/{payment_id}")
+    if payment.get('order_id') != order_id or int(payment.get('amount',0)) != int(float(sub['amount'])*100) or payment.get('currency') != 'INR':
+        raise HTTPException(400,'Payment mismatch')
+    if payment.get('status') not in ('captured','authorized'):
+        raise HTTPException(400,f"Payment status is {payment.get('status','unknown')}")
+
+    return await _activate_verified_rzp_subscription(sub, payment_id)
+
+
+@api.post("/subscriptions/razorpay/verify")
+async def razorpay_verify(body: RazorpayVerifyIn, user: dict = Depends(get_current_user)):
+    sub = await db.subscriptions.find_one({"user_id":user['id'],"razorpay_order_id":body.razorpay_order_id,"status":"pending","payment_method":"razorpay"})
+    if not sub:
+        existing = await db.subscriptions.find_one({"user_id":user['id'],"razorpay_order_id":body.razorpay_order_id,"razorpay_payment_id":body.razorpay_payment_id})
+        if existing:
+            return {"ok":True,"status":existing.get("status"),"starts_at":existing.get("starts_at"),"expires_at":existing.get("expires_at")}
+        raise HTTPException(404,"Payment order not found or already processed")
+    result = await _finalize_razorpay_payment(body.razorpay_order_id, body.razorpay_payment_id, body.razorpay_signature, require_signature=True)
+    return {"ok":True,"status":result.get("status"),"starts_at":result.get("starts_at"),"expires_at":result.get("expires_at")}
+
+
+@api.post("/internal/subscription-maintenance")
+async def subscription_maintenance(request:Request):
+    if not SUBSCRIPTION_CRON_SECRET or request.headers.get('X-Cron-Secret')!=SUBSCRIPTION_CRON_SECRET:
+        raise HTTPException(403,'Forbidden')
+    now=datetime.now(timezone.utc); activated=0; reminded=0
+    queued=await db.subscriptions.find({"status":"scheduled","starts_at":{"$lte":now.isoformat()}}).to_list(200)
+    for sub in queued:
+        await db.subscriptions.update_many({"user_id":sub['user_id'],"status":"active"},{"$set":{"status":"expired","expired_at":now.isoformat()}})
+        await db.subscriptions.update_one({"_id":sub['_id'],"status":"scheduled"},{"$set":{"status":"active","activated_at":now.isoformat()}})
+        activated+=1
+    cutoff=(now+timedelta(days=5)).isoformat()
+    due=await db.subscriptions.find({"status":"active","expires_at":{"$gt":now.isoformat(),"$lte":cutoff},"renewal_reminder_5_sent":{"$ne":True}}).to_list(500)
+    for sub in due:
+        if sub.get('user_email'):
+            link=f"{FRONTEND_URL_ENV or 'https://officialdukaan.in'}/subscribe?plan={sub.get('plan','business')}&renew=1"
+            await send_email(to=sub['user_email'],subject='Dukaan: subscription expires in 5 days',html=f'<p>Your <b>{escape(sub.get("plan_name","Dukaan"))}</b> subscription expires in 5 days.</p><p><a href="{escape(link)}">Renew Subscription</a></p>')
+        await db.subscriptions.update_one({"_id":sub['_id']},{"$set":{"renewal_reminder_5_sent":True,"renewal_reminder_sent_at":now.isoformat()}})
+        reminded+=1
+    return {"ok":True,"renewals_activated":activated,"reminders_sent":reminded}
+
+
+@api.post("/webhooks/razorpay")
+async def razorpay_webhook(request:Request):
+    if not RAZORPAY_WEBHOOK_SECRET:
+        raise HTTPException(503,'Webhook secret not configured')
+    raw=await request.body(); sig=request.headers.get('X-Razorpay-Signature','')
+    expected=hmac.new(RAZORPAY_WEBHOOK_SECRET.encode(),raw,hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected,sig):
+        raise HTTPException(400,'Invalid webhook signature')
+
+    try:
+        payload = await request.json()
+        event = payload.get("event", "")
+        entity = (payload.get("payload", {}).get("payment", {}).get("entity") or {})
+        payment_id = entity.get("id")
+        order_id = entity.get("order_id")
+
+        if event in {"payment.captured", "order.paid"} and payment_id and order_id:
+            await _finalize_razorpay_payment(order_id, payment_id, signature=None, require_signature=False)
+            logger.info("Razorpay webhook finalized payment order=%s payment=%s event=%s", order_id, payment_id, event)
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Razorpay webhook processing failed: %s", exc)
+        raise HTTPException(500, "Webhook processing failed")
+
+    return {"ok":True}
+
+# =========================================================
+# SHOPS
+# =========================================================
+@api.get("/shops")
+async def list_shops(user: dict = Depends(get_current_user)):
+    cur = db.shops.find({"owner_id": user["id"]}).sort("created_at", 1)
+    return [clean(s) for s in await cur.to_list(100)]
+
+@api.post("/shops")
+async def create_shop(body: ShopIn, user: dict = Depends(get_current_user)):
+    doc = body.model_dump(); doc["owner_id"] = user["id"]; doc["created_at"] = now_iso()
+    res = await db.shops.insert_one(doc); doc["id"] = str(res.inserted_id); doc.pop("_id", None)
+    return doc
+
+@api.put("/shops/{shop_id}")
+async def update_shop(shop_id: str, body: ShopIn, user: dict = Depends(get_current_user)):
+    if not ObjectId.is_valid(shop_id): raise HTTPException(400, "bad id")
+    res = await db.shops.update_one({"_id": ObjectId(shop_id), "owner_id": user["id"]}, {"$set": body.model_dump()})
+    if res.matched_count == 0: raise HTTPException(404, "not found")
+    return clean(await db.shops.find_one({"_id": ObjectId(shop_id)}))
+
+@api.get("/upi/qr")
+async def generate_upi_qr(amount: float, upi_id: Optional[str] = None, shop: dict = Depends(get_shop)):
+    target_upi = upi_id or shop.get("upi_id")
+    if not target_upi: raise HTTPException(400, "No UPI ID available")
+    
+    shop_name = shop.get("name", "Shop")
+    url = f"upi://pay?pa={target_upi}&pn={shop_name}&am={amount:.2f}&cu=INR"
+    
+    qr = qrcode.QRCode(version=1, box_size=10, border=4)
+    qr.add_data(url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    
+    return StreamingResponse(buf, media_type="image/png")
+
+# =========================================================
+# PREMIUM PROFILE + MANUAL GST VERIFICATION
+# =========================================================
+@api.get("/premium/profile")
+async def premium_profile(shop: dict = Depends(get_shop_plan("premium"))):
+    return {
+        "owner_name": shop.get("owner_name", ""),
+        "phone": shop.get("phone", ""),
+        "contact_email": shop.get("contact_email", ""),
+        "name": shop.get("name", ""),
+        "store_category": shop.get("store_category", ""),
+        "gst_number": shop.get("gst_number", ""),
+        "gst_status": shop.get("gst_status", "not_submitted"),
+        "gst_review_note": shop.get("gst_review_note", ""),
+        "gst_verified_at": shop.get("gst_verified_at"),
+        "gst_enabled": bool(shop.get("gst_enabled", False)),
+        "gst_rate": float(shop.get("gst_rate", 0) or 0),
+        "financial_year": shop.get("financial_year", "2026-27"),
+        "store_active": bool(shop.get("store_active", True)),
+    }
+
+@api.put("/premium/profile")
+async def update_premium_profile(body: PremiumProfileIn, shop: dict = Depends(get_shop_plan("premium"))):
+    categories = {"Kirana Store", "Medical Store", "Stationery", "Others"}
+    if body.store_category not in categories:
+        raise HTTPException(400, "Invalid store category")
+    await db.shops.update_one(
+        {"_id": ObjectId(shop["id"])},
+        {"$set": {
+            "owner_name": body.owner_name.strip(),
+            "phone": body.phone.strip(),
+            "contact_email": str(body.contact_email).lower(),
+            "name": body.name.strip(),
+            "store_category": body.store_category,
+        }},
+    )
+    return {
+        "owner_name": body.owner_name,
+        "phone": body.phone,
+        "contact_email": str(body.contact_email).lower(),
+        "name": body.name,
+        "store_category": body.store_category,
+        "gst_number": shop.get("gst_number", ""),
+        "gst_status": shop.get("gst_status", "not_submitted"),
+        "gst_review_note": shop.get("gst_review_note", ""),
+        "gst_verified_at": shop.get("gst_verified_at"),
+        "gst_enabled": bool(shop.get("gst_enabled", False)),
+        "gst_rate": float(shop.get("gst_rate", 0) or 0),
+        "financial_year": shop.get("financial_year", "2026-27"),
+        "store_active": bool(shop.get("store_active", True)),
+    }
+
+@api.post("/premium/gst")
+async def submit_gst(body: GSTSubmitIn, shop: dict = Depends(get_shop_plan("premium"))):
+    gst = re.sub(r"\s+", "", body.gst_number).upper()
+    if not re.fullmatch(r"[0-9A-Z]{5,20}", gst):
+        raise HTTPException(400, "Invalid GST number format")
+    now = now_iso()
+    await db.shops.update_one(
+        {"_id": ObjectId(shop["id"])},
+        {"$set": {
+            "gst_number": gst,
+            "gst_status": "pending",
+            "gst_review_note": "",
+            "gst_submitted_at": now,
+            "gst_verified_at": None,
+            "gst_verified_by": "",
+        }},
+    )
+    existing = await db.gst_requests.find_one({"shop_id": shop["id"], "status": "pending"})
+    payload = {
+        "shop_id": shop["id"],
+        "owner_id": shop["owner_id"],
+        "shop_name": shop.get("name", ""),
+        "owner_name": shop.get("owner_name", ""),
+        "user_email": shop.get("contact_email", ""),
+        "gst_number": gst,
+        "status": "pending",
+        "submitted_at": now,
+        "review_note": "",
+    }
+    if existing:
+        await db.gst_requests.update_one({"_id": existing["_id"]}, {"$set": payload})
+    else:
+        await db.gst_requests.insert_one(payload)
+    return {"ok": True, "status": "pending", "gst_number": gst}
+
+@api.get("/premium/gst")
+async def get_gst(shop: dict = Depends(get_shop_plan("premium"))):
+    return {
+        "gst_number": shop.get("gst_number", ""),
+        "status": shop.get("gst_status", "not_submitted"),
+        "review_note": shop.get("gst_review_note", ""),
+        "verified_at": shop.get("gst_verified_at"),
+    }
+
+@api.put("/premium/settings")
+async def update_premium_settings(body: PremiumSettingsIn, shop: dict = Depends(get_shop_plan("premium"))):
+    await db.shops.update_one({"_id": ObjectId(shop["id"])}, {"$set": body.model_dump()})
+    return {"ok": True, **body.model_dump()}
+
+@api.get("/admin/gst-requests")
+async def admin_gst_requests(admin: dict = Depends(get_admin_user), status: Optional[str] = "pending"):
+    query = {} if not status or status == "all" else {"status": status}
+    rows = await db.gst_requests.find(query).sort("submitted_at", -1).to_list(500)
+    return [clean(x) for x in rows]
+
+@api.post("/admin/gst-requests/{gid}/approve")
+async def admin_gst_approve(gid: str, body: GSTReviewIn, admin: dict = Depends(get_admin_user)):
+    if not ObjectId.is_valid(gid):
+        raise HTTPException(400, "bad id")
+    req = await db.gst_requests.find_one({"_id": ObjectId(gid)})
+    if not req:
+        raise HTTPException(404, "GST request not found")
+    now = now_iso()
+    await db.gst_requests.update_one(
+        {"_id": ObjectId(gid)},
+        {"$set": {"status": "approved", "reviewed_at": now, "reviewed_by": admin.get("email", ""), "review_note": body.note or ""}},
+    )
+    if ObjectId.is_valid(req.get("shop_id", "")):
+        await db.shops.update_one(
+            {"_id": ObjectId(req["shop_id"])},
+            {"$set": {"gst_number": req["gst_number"], "gst_status": "verified", "gst_verified_at": now, "gst_verified_by": admin.get("email", ""), "gst_review_note": body.note or ""}},
+        )
+    return clean(await db.gst_requests.find_one({"_id": ObjectId(gid)}))
+
+@api.post("/admin/gst-requests/{gid}/decline")
+async def admin_gst_decline(gid: str, body: GSTReviewIn, admin: dict = Depends(get_admin_user)):
+    if not ObjectId.is_valid(gid):
+        raise HTTPException(400, "bad id")
+    req = await db.gst_requests.find_one({"_id": ObjectId(gid)})
+    if not req:
+        raise HTTPException(404, "GST request not found")
+    now = now_iso()
+    await db.gst_requests.update_one(
+        {"_id": ObjectId(gid)},
+        {"$set": {"status": "declined", "reviewed_at": now, "reviewed_by": admin.get("email", ""), "review_note": body.note or ""}},
+    )
+    if ObjectId.is_valid(req.get("shop_id", "")):
+        await db.shops.update_one({"_id": ObjectId(req["shop_id"])}, {"$set": {"gst_status": "declined", "gst_review_note": body.note or ""}})
+    return clean(await db.gst_requests.find_one({"_id": ObjectId(gid)}))
+
+
+# =========================================================
+# PRODUCTS
+# =========================================================
+@api.get("/products")
+async def list_products(shop: dict = Depends(get_shop), q: Optional[str] = None, category: Optional[str] = None):
+    query = {"shop_id": shop["id"]}
+    if q: query["name"] = {"$regex": re.escape(q), "$options": "i"}
+    if category and category != "all": query["category"] = category
+    return [clean(x) for x in await db.products.find(query).sort("name", 1).to_list(1000)]
+
+@api.post("/products")
+async def create_product(body: ProductIn, shop: dict = Depends(get_shop)):
+    doc = body.model_dump(); doc["shop_id"] = shop["id"]; doc["created_at"] = now_iso()
+    r = await db.products.insert_one(doc); doc["id"] = str(r.inserted_id); doc.pop("_id", None)
+    return doc
+
+@api.put("/products/{pid}")
+async def update_product(pid: str, body: ProductIn, shop: dict = Depends(get_shop)):
+    if not ObjectId.is_valid(pid): raise HTTPException(400, "bad id")
+    res = await db.products.update_one({"_id": ObjectId(pid), "shop_id": shop["id"]}, {"$set": body.model_dump()})
+    if res.matched_count == 0: raise HTTPException(404, "not found")
+    return clean(await db.products.find_one({"_id": ObjectId(pid)}))
+
+@api.post("/products/{pid}/stock")
+async def adjust_stock(pid: str, body: StockAdjustIn, shop: dict = Depends(get_shop)):
+    if not ObjectId.is_valid(pid): raise HTTPException(400, "bad id")
+    prod = await db.products.find_one({"_id": ObjectId(pid), "shop_id": shop["id"]})
+    if not prod: raise HTTPException(404, "not found")
+    if prod.get("unlimited_stock"): return clean(prod)
+    await db.products.update_one({"_id": prod["_id"]}, {"$inc": {"stock": body.qty}})
+    await db.stock_movements.insert_one({"shop_id": shop["id"],"product_id":pid,"qty":body.qty,"reason":body.reason,"created_at":now_iso()})
+    return clean(await db.products.find_one({"_id": prod["_id"]}))
+
+# =========================================================
+# CUSTOMERS
+# =========================================================
+@api.get("/customers")
+async def list_customers(shop: dict = Depends(get_shop), q: Optional[str] = None):
+    query = {"shop_id": shop["id"]}
+    if q: query["$or"] = [{"name":{"$regex":re.escape(q),"$options":"i"}},{"phone":{"$regex":re.escape(q),"$options":"i"}}]
+    return [clean(x) for x in await db.customers.find(query).sort("name",1).to_list(1000)]
+
+@api.post("/customers")
+async def create_customer(body: CustomerIn, shop: dict = Depends(get_shop)):
+    doc = body.model_dump(); doc["shop_id"] = shop["id"]; doc["created_at"] = now_iso()
+    r=await db.customers.insert_one(doc); doc["id"]=str(r.inserted_id); doc.pop("_id",None); return doc
+
+@api.put("/customers/{cid}")
+async def update_customer(cid: str, body: CustomerIn, shop: dict = Depends(get_shop)):
+    if not ObjectId.is_valid(cid): raise HTTPException(400,"bad id")
+    res=await db.customers.update_one({"_id":ObjectId(cid),"shop_id":shop["id"]},{"$set":body.model_dump()})
+    if res.matched_count==0: raise HTTPException(404,"not found")
+    return clean(await db.customers.find_one({"_id":ObjectId(cid)}))
+
+@api.get("/customers/{cid}")
+async def get_customer(cid: str, shop: dict = Depends(get_shop_paid)):
+    if not ObjectId.is_valid(cid): raise HTTPException(400, "bad id")
+    c = await db.customers.find_one({"_id": ObjectId(cid), "shop_id": shop["id"]})
+    if not c: raise HTTPException(404, "not found")
+    
+    orders = await db.orders.find({"customer_id": cid, "shop_id": shop["id"]}).sort("created_at", -1).to_list(20)
+    total_orders = await db.orders.count_documents({"customer_id": cid, "shop_id": shop["id"]})
+    
+    pipeline = [
+        {"$match": {"customer_id": cid, "shop_id": shop["id"]}},
+        {"$group": {
+            "_id": None,
+            "total_spent": {"$sum": "$total"},
+            "total_paid": {"$sum": "$paid_amount"},
+            "total_pending": {"$sum": "$pending_amount"}
+        }}
+    ]
+    agg = await db.orders.aggregate(pipeline).to_list(1)
+    
+    c = clean(c)
+    c["total_orders"] = total_orders
+    if agg:
+        c["total_spent"] = agg[0]["total_spent"]
+        c["total_paid"] = agg[0]["total_paid"]
+        c["total_pending"] = agg[0]["total_pending"]
+    else:
+        c["total_spent"] = 0
+        c["total_paid"] = 0
+        c["total_pending"] = 0
+    c["recent_orders"] = [clean(o) for o in orders]
+    return c
+
+# =========================================================
+# ORDERS / DASHBOARD / UDHAAR
+# =========================================================
+@api.post("/orders")
+async def create_order(body: OrderIn, shop: dict = Depends(get_shop)):
+    if not body.items: raise HTTPException(400,"No items")
+    subtotal=sum(float(i.price)*int(i.qty) for i in body.items)
+    total=max(0, subtotal-float(body.discount or 0))
+    paid=total if body.payment_method in ("cash","upi") else float(body.amount_received or 0)
+    pending=max(0,total-paid) if body.payment_method=="udhaar" else 0
+    order_no=f"OD-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{secrets.token_hex(2).upper()}"
+    doc={"shop_id":shop["id"],"order_no":order_no,"items":[i.model_dump() for i in body.items],"subtotal":subtotal,"discount":float(body.discount or 0),"total":total,"customer_id":body.customer_id,"payment_method":body.payment_method,"paid_amount":paid,"pending_amount":pending,"amount_received":body.amount_received,"note":body.note or "","created_at":now_iso(),"status":"udhaar" if pending>0 else "paid"}
+    r=await db.orders.insert_one(doc); order_id=str(r.inserted_id)
+    for item in body.items:
+        if ObjectId.is_valid(item.product_id):
+            prod=await db.products.find_one({"_id":ObjectId(item.product_id),"shop_id":shop["id"]})
+            if prod and prod.get("unlimited_stock"): continue
+            await db.products.update_one({"_id":ObjectId(item.product_id),"shop_id":shop["id"]},{"$inc":{"stock":-item.qty}})
+            await db.stock_movements.insert_one({"shop_id":shop["id"],"product_id":item.product_id,"qty":-item.qty,"reason":f"sale#{order_no}","created_at":now_iso()})
+    doc["id"]=order_id; doc.pop("_id",None); return doc
+
+@api.get("/orders")
+async def list_orders(shop: dict = Depends(get_shop), status: Optional[str] = None, payment_method: Optional[str] = None, q: Optional[str] = None, limit: int = 200):
+    query={"shop_id":shop["id"]}
+    if status and status!="all": query["status"]=status
+    if payment_method and payment_method!="all": query["payment_method"]=payment_method
+    orders=[clean(o) for o in await db.orders.find(query).sort("created_at",-1).limit(limit).to_list(limit)]
+    cust_ids=list({o.get("customer_id") for o in orders if o.get("customer_id")}); cust_map={}
+    if cust_ids:
+        valid=[ObjectId(c) for c in cust_ids if ObjectId.is_valid(c)]
+        async for c in db.customers.find({"_id":{"$in":valid}}): cust_map[str(c["_id"])] = c.get("name","")
+    for o in orders: o["customer_name"] = cust_map.get(o.get("customer_id") or "","")
+    if q:
+        ql=q.lower(); orders=[o for o in orders if ql in str(o.get("order_no","")).lower() or ql in (o.get("customer_name") or "").lower()]
+    return orders
+
+@api.get("/orders/{oid}")
+async def get_order(oid: str, shop: dict = Depends(get_shop)):
+    if not ObjectId.is_valid(oid): raise HTTPException(400,"bad id")
+    o=await db.orders.find_one({"_id":ObjectId(oid),"shop_id":shop["id"]})
+    if not o: raise HTTPException(404,"not found")
+    o=clean(o)
+    if o.get("customer_id") and ObjectId.is_valid(o["customer_id"]):
+        c=await db.customers.find_one({"_id":ObjectId(o["customer_id"])})
+        if c: o["customer_name"]=c.get("name",""); o["customer_phone"]=c.get("phone","")
+    return o
+
+@api.get("/orders/{oid}/invoice.pdf")
+async def get_order_invoice(oid: str, shop: dict = Depends(get_shop)):
+    if not ObjectId.is_valid(oid): raise HTTPException(400, "bad id")
+    o = await db.orders.find_one({"_id": ObjectId(oid), "shop_id": shop["id"]})
+    if not o: raise HTTPException(404, "not found")
+    
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A5, rightMargin=10*mm, leftMargin=10*mm, topMargin=15*mm, bottomMargin=15*mm)
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    elements.append(Paragraph(shop.get("name", "Shop Invoice"), styles['Title']))
+    if shop.get("address"): elements.append(Paragraph(shop["address"], styles['Normal']))
+    elements.append(Spacer(1, 5*mm))
+    
+    elements.append(Paragraph(f"Order No: {o.get('order_no', '')}", styles['Normal']))
+    elements.append(Paragraph(f"Date: {o.get('created_at', '')[:10]}", styles['Normal']))
+    if o.get("customer_id") and ObjectId.is_valid(o["customer_id"]):
+        c = await db.customers.find_one({"_id": ObjectId(o["customer_id"])})
+        if c: elements.append(Paragraph(f"Customer: {c.get('name', '')}", styles['Normal']))
+    elements.append(Spacer(1, 5*mm))
+    
+    data = [["Item", "Qty", "Price", "Total"]]
+    for item in o.get("items", []):
+        data.append([item.get("name", ""), str(item.get("qty", 0)), f"{float(item.get('price', 0)):.2f}", f"{float(item.get('price',0))*int(item.get('qty',0)):.2f}"])
+    
+    t = Table(data, colWidths=[60*mm, 15*mm, 20*mm, 25*mm])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.grey),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0,0), (-1,0), 12),
+        ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+        ('GRID', (0,0), (-1,-1), 1, colors.black)
+    ]))
+    elements.append(t)
+    elements.append(Spacer(1, 5*mm))
+    
+    elements.append(Paragraph(f"Subtotal: {float(o.get('subtotal', 0)):.2f}", styles['Normal']))
+    elements.append(Paragraph(f"Discount: {float(o.get('discount', 0)):.2f}", styles['Normal']))
+    elements.append(Paragraph(f"Total: {float(o.get('total', 0)):.2f}", styles['Normal']))
+    elements.append(Paragraph(f"Payment Method: {o.get('payment_method', '')}", styles['Normal']))
+    
+    elements.append(Spacer(1, 10*mm))
+    elements.append(Paragraph(shop.get("invoice_footer", "Thank you for shopping with us!"), styles['Italic']))
+    
+    doc.build(elements)
+    buffer.seek(0)
+    
+    return StreamingResponse(buffer, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename=invoice_{oid}.pdf"})
+
+@api.get("/udhaar")
+async def list_udhaar(shop: dict = Depends(get_shop_plan("business"))):
+    pipeline=[{"$match":{"shop_id":shop["id"],"pending_amount":{"$gt":0}}},{"$group":{"_id":"$customer_id","pending":{"$sum":"$pending_amount"},"last_order_at":{"$max":"$created_at"},"count":{"$sum":1}}}]
+    rows=await db.orders.aggregate(pipeline).to_list(1000); result=[]
+    for r in rows:
+        cid=r["_id"]
+        if not cid or not ObjectId.is_valid(cid): continue
+        c=await db.customers.find_one({"_id":ObjectId(cid)})
+        if c: result.append({"customer_id":cid,"customer_name":c.get("name",""),"customer_phone":c.get("phone",""),"pending":r["pending"],"count":r["count"],"last_order_at":r["last_order_at"]})
+    result.sort(key=lambda x:x["pending"],reverse=True); return result
+
+@api.post("/udhaar/pay")
+async def udhaar_pay(body: UdhaarPaymentIn, shop: dict = Depends(get_shop_plan("business"))):
+    if not ObjectId.is_valid(body.customer_id): raise HTTPException(400,"bad customer id")
+    remaining=float(body.amount)
+    if remaining<=0: raise HTTPException(400,"invalid amount")
+    cur=db.orders.find({"shop_id":shop["id"],"customer_id":body.customer_id,"pending_amount":{"$gt":0}}).sort("created_at",1)
+    async for o in cur:
+        if remaining<=0: break
+        pay=min(remaining,float(o["pending_amount"])); new_pending=float(o["pending_amount"])-pay; new_paid=float(o.get("paid_amount",0))+pay; new_status="paid" if new_pending==0 else "udhaar"
+        await db.orders.update_one({"_id":o["_id"]},{"$set":{"pending_amount":new_pending,"paid_amount":new_paid,"status":new_status}}); remaining-=pay
+    await db.udhaar_payments.insert_one({"shop_id":shop["id"],"customer_id":body.customer_id,"amount":float(body.amount),"note":body.note or "","created_at":now_iso()})
+    return {"ok":True,"unallocated":remaining}
+
+
+def _today_bounds():
+    now=datetime.now(timezone.utc); start=now.replace(hour=0,minute=0,second=0,microsecond=0); return start.isoformat(), now.isoformat()
+
+@api.get("/dashboard")
+async def dashboard(shop: dict = Depends(get_shop)):
+    start,end=_today_bounds(); match_today={"shop_id":shop["id"],"created_at":{"$gte":start,"$lte":end}}
+    agg=await db.orders.aggregate([{"$match":match_today},{"$group":{"_id":"$payment_method","total":{"$sum":"$total"},"count":{"$sum":1}}}]).to_list(10)
+    by_method={r["_id"]:{"total":r["total"],"count":r["count"]} for r in agg}; todays_total=sum(v["total"] for v in by_method.values()); todays_orders=sum(v["count"] for v in by_method.values())
+    pending_agg=await db.orders.aggregate([{"$match":{"shop_id":shop["id"],"pending_amount":{"$gt":0}}},{"$group":{"_id":None,"pending":{"$sum":"$pending_amount"}}}]).to_list(1)
+    total_pending=pending_agg[0]["pending"] if pending_agg else 0
+    low_stock=await db.products.find({"shop_id":shop["id"],"unlimited_stock":{"$ne":True},"$expr":{"$lte":["$stock","$min_stock"]}}).limit(50).to_list(50)
+    return {"today_sales":todays_total,"today_orders":todays_orders,"cash":by_method.get("cash",{}).get("total",0),"upi":by_method.get("upi",{}).get("total",0),"udhaar":by_method.get("udhaar",{}).get("total",0),"pending_udhaar":total_pending,"low_stock_count":len(low_stock),"low_stock":[clean(p) for p in low_stock]}
+
+
+# =========================================================
+# Reports (existing endpoints kept lightweight)
+# =========================================================
+@api.get("/reports/summary")
+async def reports_summary(shop: dict = Depends(get_shop)):
+    cur=db.orders.find({"shop_id":shop["id"]}); orders=await cur.to_list(5000)
+    total_sales=sum(float(o.get("total",0)) for o in orders); total_orders=len(orders)
+    cash=sum(float(o.get("total",0)) for o in orders if o.get("payment_method")=="cash")
+    upi=sum(float(o.get("total",0)) for o in orders if o.get("payment_method")=="upi")
+    udhaar=sum(float(o.get("total",0)) for o in orders if o.get("payment_method")=="udhaar")
+    return {"total_sales":total_sales,"total_orders":total_orders,"cash":cash,"upi":upi,"udhaar":udhaar}
+
+
+
+# =========================================================
+# Premium WhatsApp udhaar reminders
+# =========================================================
+_whatsapp_reminder_task = None
+
+@app.on_event("startup")
+async def _start_whatsapp_reminder_loop():
+    global _whatsapp_reminder_task
+    if os.environ.get("AUTHKEY_API_KEY", "").strip():
+        _whatsapp_reminder_task = asyncio.create_task(reminder_loop(db))
+
+@app.on_event("shutdown")
+async def _stop_whatsapp_reminder_loop():
+    global _whatsapp_reminder_task
+    if _whatsapp_reminder_task:
+        _whatsapp_reminder_task.cancel()
+        try:
+            await _whatsapp_reminder_task
+        except asyncio.CancelledError:
+            pass
+        _whatsapp_reminder_task = None
+
+# =========================================================
+# Root
+# =========================================================
+@app.get("/")
+async def root():
+    return {"ok":True,"service":"dukaan-api"}
+
+app.include_router(api)
