@@ -76,18 +76,29 @@ export default function Dashboard() {
     { hour: "7 PM", sales: 0 },
   ];
 
+  const getSafeOrders = useCallback(() => {
+    try {
+      const raw = localStorage.getItem("dukaan_orders");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }, []);
+
   const loadDashboard = useCallback(async ({ silent = false } = {}) => {
     if (!currentShopId) return;
     if (silent) setRefreshing(true); else setLoading(true);
     setErr("");
     try {
       const [dashboardRes, ordersRes, productsRes] = await Promise.all([
-        api.get("/dashboard"),
-        api.get("/orders", { params: { limit: 8 } }),
-        api.get("/products"),
+        api.get("/dashboard").catch(() => null),
+        api.get("/orders", { params: { limit: 8 } }).catch(() => null),
+        api.get("/products").catch(() => null),
       ]);
       const data = dashboardRes?.data || {};
-      const localOrders = JSON.parse(localStorage.getItem("dukaan_orders") || "[]");
+      const localOrders = getSafeOrders();
       const orders = (Array.isArray(ordersRes?.data) && ordersRes.data.length > 0) ? ordersRes.data : localOrders;
       const allProducts = Array.isArray(productsRes?.data) ? productsRes.data : [];
 
@@ -97,7 +108,8 @@ export default function Dashboard() {
       let actualUpi = 0;
       let actualUdhaar = 0;
 
-      orders.forEach(o => {
+      (orders || []).forEach(o => {
+        if (!o) return;
         const tot = Number(o.total || 0);
         actualSales += tot;
         actualOrders += 1;
@@ -107,8 +119,10 @@ export default function Dashboard() {
       });
 
       const productSalesMap = {};
-      orders.forEach(o => {
-        (o.items || []).forEach(it => {
+      (orders || []).forEach(o => {
+        if (!o || !Array.isArray(o.items)) return;
+        o.items.forEach(it => {
+          if (!it) return;
           const key = it.name || "Item";
           if (!productSalesMap[key]) productSalesMap[key] = { name: key, qty: 0, rev: 0 };
           productSalesMap[key].qty += Number(it.qty || 1);
@@ -116,7 +130,7 @@ export default function Dashboard() {
         });
       });
       const topProductsList = Object.values(productSalesMap).sort((a, b) => b.qty - a.qty);
-      const udhaarOrders = orders.filter(o => o.payment_method === "udhaar" || o.status === "udhaar");
+      const udhaarOrders = (orders || []).filter(o => o && (o.payment_method === "udhaar" || o.status === "udhaar"));
 
       setD({
         today: {
@@ -126,21 +140,22 @@ export default function Dashboard() {
           upi: actualUpi,
         },
         total_pending: actualUdhaar,
-        low_stock: allProducts.filter(p => !p.unlimited_stock && p.stock <= (p.min_stock || 5)),
-        recent_orders: orders.slice(0, 10),
+        low_stock: (allProducts || []).filter(p => p && !p.unlimited_stock && Number(p.stock || 0) <= Number(p.min_stock || 5)),
+        recent_orders: (orders || []).slice(0, 10),
         top_products: topProductsList,
         udhaar_orders: udhaarOrders,
         allProductsCount: allProducts.length,
       });
     } catch (e) {
-      const localOrders = JSON.parse(localStorage.getItem("dukaan_orders") || "[]");
+      const localOrders = getSafeOrders();
       let actualSales = 0;
       let actualOrders = 0;
       let actualCash = 0;
       let actualUpi = 0;
       let actualUdhaar = 0;
 
-      localOrders.forEach(o => {
+      (localOrders || []).forEach(o => {
+        if (!o) return;
         const tot = Number(o.total || 0);
         actualSales += tot;
         actualOrders += 1;
@@ -150,8 +165,10 @@ export default function Dashboard() {
       });
 
       const productSalesMap = {};
-      localOrders.forEach(o => {
-        (o.items || []).forEach(it => {
+      (localOrders || []).forEach(o => {
+        if (!o || !Array.isArray(o.items)) return;
+        o.items.forEach(it => {
+          if (!it) return;
           const key = it.name || "Item";
           if (!productSalesMap[key]) productSalesMap[key] = { name: key, qty: 0, rev: 0 };
           productSalesMap[key].qty += Number(it.qty || 1);
@@ -159,7 +176,7 @@ export default function Dashboard() {
         });
       });
       const topProductsList = Object.values(productSalesMap).sort((a, b) => b.qty - a.qty);
-      const udhaarOrders = localOrders.filter(o => o.payment_method === "udhaar" || o.status === "udhaar");
+      const udhaarOrders = (localOrders || []).filter(o => o && (o.payment_method === "udhaar" || o.status === "udhaar"));
 
       setD({
         today: {
@@ -170,7 +187,7 @@ export default function Dashboard() {
         },
         total_pending: actualUdhaar,
         low_stock: [],
-        recent_orders: localOrders.slice(0, 10),
+        recent_orders: (localOrders || []).slice(0, 10),
         top_products: topProductsList,
         udhaar_orders: udhaarOrders,
         allProductsCount: 0,
@@ -179,7 +196,7 @@ export default function Dashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [currentShopId]);
+  }, [currentShopId, getSafeOrders]);
 
   useEffect(() => {
     api.get("/subscriptions/me").then(r => setSub(r.data?.active || null)).catch(() => setSub(null));
