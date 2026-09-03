@@ -16,7 +16,7 @@ jobs:
   # =========================================================
   build-windows:
     name: 🖥️ Build Windows PC Software (.exe)
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -40,8 +40,8 @@ jobs:
 
       - name: Copy Frontend Build to Desktop Folder
         run: |
-          mkdir -p desktop/build
-          cp -r frontend/build/* desktop/build/
+          New-Item -ItemType Directory -Force -Path desktop/build
+          Copy-Item -Recurse -Force frontend/build/* desktop/build/
 
       - name: Install Desktop Dependencies
         working-directory: ./desktop
@@ -49,15 +49,17 @@ jobs:
 
       - name: Package Windows Executables (.exe)
         working-directory: ./desktop
-        run: npx electron-builder --win nsis --publish never
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx @electron/packager . Dukaan --platform=win32 --arch=x64 --icon=icon.ico --out=dist --overwrite
 
-      - name: Upload Windows .exe Artifacts
+      - name: Compress Windows Executable Package
+        run: |
+          Compress-Archive -Path desktop/dist/Dukaan-win32-x64/* -DestinationPath desktop/dist/Dukaan-Windows-PC.zip -Force
+
+      - name: Upload Windows .exe Package
         uses: actions/upload-artifact@v4
         with:
           name: Dukaan-Windows-PC-Software
-          path: desktop/dist/*.exe
+          path: desktop/dist/Dukaan-Windows-PC.zip
           retention-days: 30
 
   # =========================================================
