@@ -120,7 +120,7 @@ function useNotifications() {
 export default function AppLayout() {
   const { user, shops, currentShopId, setActiveShop, logout, lang, setLang } = useAuth();
   const nav = useNavigate();
-  const activeShop = shops.find(s => s.id === currentShopId);
+  const activeShop = (shops || []).find(s => s?.id === currentShopId) || shops?.[0] || { name: "Apni Dukaan" };
   const [subscription, setSubscription] = useState(null);
   const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
   const { notifications, unreadCount, fetchNotifications, markRead, markAllRead } = useNotifications();
@@ -312,51 +312,49 @@ export default function AppLayout() {
 
       <div className={`mx-auto max-w-[1400px] flex ${isPremium ? "premium-content" : ""}`}>
 
-        {/* Desktop sidebar (Standard users only) */}
-        {!isPremium && (
-          <aside className="hidden md:flex flex-col w-56 shrink-0 border-r border-brand-mitti min-h-[calc(100vh-4rem)] pt-6 px-3 bg-white">
-            <nav className="space-y-1 flex-1">
-              {NAV.map(({ to, key, Icon, end }) => {
-                const locked = isLocked(to);
-                return (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    end={end}
-                    data-testid={`nav-${key}`}
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive ? "bg-brand-indigo text-white" : "text-brand-indigo/80 hover:bg-brand-mitti/50"}`
-                    }
-                  >
-                    <Icon className="w-4 h-4"/>
-                    <span className="flex-1">{t(lang, key)}</span>
-                    {locked && <Lock className="w-3 h-3 text-brand-terracotta" data-testid={`lock-${key}`}/>}
-                  </NavLink>
-                );
-              })}
-              {user?.is_admin && (
+        {/* Desktop sidebar */}
+        <aside className="hidden md:flex flex-col w-56 shrink-0 border-r border-brand-mitti min-h-[calc(100vh-4rem)] pt-6 px-3 bg-white">
+          <nav className="space-y-1 flex-1">
+            {NAV.map(({ to, key, Icon, end }) => {
+              const locked = isLocked(to);
+              return (
                 <NavLink
-                  to="/app/admin"
-                  data-testid="nav-admin"
+                  key={to}
+                  to={to}
+                  end={end}
+                  data-testid={`nav-${key}`}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive ? "bg-brand-terracotta text-white" : "text-brand-terracotta hover:bg-brand-terracotta/10"}`
+                    `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive ? "bg-brand-indigo text-white" : "text-brand-indigo/80 hover:bg-brand-mitti/50"}`
                   }
                 >
-                  <ShieldCheck className="w-4 h-4"/> Admin
+                  <Icon className="w-4 h-4"/>
+                  <span className="flex-1">{t(lang, key)}</span>
+                  {locked && <Lock className="w-3 h-3 text-brand-terracotta" data-testid={`lock-${key}`}/>}
                 </NavLink>
-              )}
-            </nav>
-            <div className="mt-6 mb-6 px-1">
-              <Button
-                className="w-full bg-brand-terracotta hover:bg-brand-terracotta/90 text-white rounded-full active:scale-95 transition-all"
-                onClick={() => nav("/app/pos")}
-                data-testid="sidebar-new-bill"
+              );
+            })}
+            {user?.is_admin && (
+              <NavLink
+                to="/app/admin"
+                data-testid="nav-admin"
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive ? "bg-brand-terracotta text-white" : "text-brand-terracotta hover:bg-brand-terracotta/10"}`
+                }
               >
-                + {t(lang, "new_bill")}
-              </Button>
-            </div>
-          </aside>
-        )}
+                <ShieldCheck className="w-4 h-4"/> Admin
+              </NavLink>
+            )}
+          </nav>
+          <div className="mt-6 mb-6 px-1">
+            <Button
+              className="w-full bg-brand-terracotta hover:bg-brand-terracotta/90 text-white rounded-full active:scale-95 transition-all"
+              onClick={() => nav("/app/pos")}
+              data-testid="sidebar-new-bill"
+            >
+              + {t(lang, "new_bill")}
+            </Button>
+          </div>
+        </aside>
 
         {/* Main content */}
         <main className={`flex-1 min-w-0 px-4 md:px-8 py-6 ${isPremium ? "premium-main" : "pb-24 md:pb-6"}`}>
@@ -366,26 +364,24 @@ export default function AppLayout() {
 
 
       {/* =====================================================
-          BOTTOM NAVIGATION (Mobile / Premium)
+          BOTTOM NAVIGATION (Mobile Only)
       ===================================================== */}
 
-      <nav className={isPremium ? "premium-bottom-nav" : "md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-brand-mitti shadow-nav"}>
-        <div className={isPremium ? "premium-bottom-inner" : "grid grid-cols-5"}>
-          {(isPremium ? NAV : MOBILE_NAV).map(({ to, key, Icon, end }) => (
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-brand-mitti shadow-nav">
+        <div className="grid grid-cols-5">
+          {MOBILE_NAV.map(({ to, key, Icon, end }) => (
             <NavLink
               key={to}
               to={to}
               end={end}
               data-testid={`bottomnav-${key}`}
               className={({ isActive }) =>
-                `${isPremium ? "premium-bottom-item" : "flex flex-col items-center justify-center gap-1 py-3 text-[11px] font-medium transition-colors relative"} ${isActive ? (isPremium ? "premium-bottom-active" : "text-brand-terracotta") : (isPremium ? "" : "text-brand-indigo/70")}`
+                `flex flex-col items-center justify-center gap-1 py-3 text-[11px] font-medium transition-colors relative ${isActive ? "text-brand-terracotta" : "text-brand-indigo/70"}`
               }
             >
               <Icon className="w-5 h-5"/>
               <span>{t(lang, key)}</span>
-              {!isPremium && (
-                <span className={`absolute top-1 right-3 w-1.5 h-1.5 rounded-full bg-brand-terracotta ${isActive ? "opacity-100" : "opacity-0"}`} />
-              )}
+              <span className={`absolute top-1 right-3 w-1.5 h-1.5 rounded-full bg-brand-terracotta ${isActive ? "opacity-100" : "opacity-0"}`} />
             </NavLink>
           ))}
         </div>
