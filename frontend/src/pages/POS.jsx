@@ -31,10 +31,11 @@ import {
   Zap,
   Volume2
 } from "lucide-react";
+import { getStoredProducts } from "@/lib/defaultProducts";
 
 export default function POS() {
   const nav = useNavigate();
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState(() => getStoredProducts());
   const [q, setQ] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [cart, setCart] = useState([]); // {product_id, name, price, qty, unit}
@@ -58,7 +59,9 @@ export default function POS() {
   const [newCustomer, setNewCustomer] = useState({ open: false, name: "", phone: "" });
 
   useEffect(() => {
-    api.get("/products").then(r => setProducts(Array.isArray(r.data) ? r.data : []));
+    api.get("/products")
+      .then(r => setProducts(Array.isArray(r.data) && r.data.length > 0 ? r.data : getStoredProducts()))
+      .catch(() => setProducts(getStoredProducts()));
     api.get("/customers").then(r => setCustomers(Array.isArray(r.data) ? r.data : []));
     api.get("/shops").then(r => {
       const shopId = localStorage.getItem("dukaan_shop_id");

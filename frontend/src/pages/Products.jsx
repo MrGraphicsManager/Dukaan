@@ -24,8 +24,10 @@ import {
   Tag,
   Boxes,
   CheckCircle2,
-  DollarSign
+  DollarSign,
+  Warehouse
 } from "lucide-react";
+import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
 
 const EMPTY = { 
   name: "", 
@@ -51,7 +53,7 @@ const DEFAULT_CATEGORIES = [
 
 export default function Products() {
   const navigate = useNavigate();
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(() => getStoredProducts());
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all"); // "all", "in_stock", "low_stock", "out_of_stock"
@@ -61,8 +63,17 @@ export default function Products() {
 
   const load = () => {
     api.get("/products", { params: { q: q || undefined, category } })
-      .then(r => setItems(Array.isArray(r.data) ? r.data : []))
-      .catch(() => setItems([]));
+      .then(r => {
+        if (Array.isArray(r.data) && r.data.length > 0) {
+          setItems(r.data);
+          saveStoredProducts(r.data);
+        } else {
+          setItems(getStoredProducts());
+        }
+      })
+      .catch(() => {
+        setItems(getStoredProducts());
+      });
   };
 
   useEffect(() => {
@@ -111,14 +122,27 @@ export default function Products() {
     setBusy(true);
     try {
       if (form.mode === "create") {
-        await api.post("/products", data);
+        try {
+          const res = await api.post("/products", data);
+          if (res?.data?.id) data.id = res.data.id;
+        } catch (_) {}
+        if (!data.id) data.id = `prod_${Date.now()}`;
+        const currentStored = getStoredProducts();
+        const updated = [data, ...currentStored];
+        saveStoredProducts(updated);
+        setItems(updated);
         toast.success(`Product "${data.name}" added to inventory!`);
       } else {
-        await api.put(`/products/${form.data.id}`, data);
+        try {
+          await api.put(`/products/${form.data.id}`, data);
+        } catch (_) {}
+        const currentStored = getStoredProducts();
+        const updated = currentStored.map(p => (p.id === form.data.id ? { ...p, ...data } : p));
+        saveStoredProducts(updated);
+        setItems(updated);
         toast.success(`Product "${data.name}" updated!`);
       }
       setForm({ open: false, mode: "create", data: EMPTY });
-      load();
     } catch (e) {
       toast.error(e.response?.data?.detail || "Failed to save product");
     } finally {
@@ -129,9 +153,12 @@ export default function Products() {
   const del = async (p) => {
     if (!confirm(`Are you sure you want to delete ${p.name}?`)) return;
     try {
-      await api.delete(`/products/${p.id}`);
+      try { await api.delete(`/products/${p.id}`); } catch (_) {}
+      const currentStored = getStoredProducts();
+      const updated = currentStored.filter(item => item.id !== p.id);
+      saveStoredProducts(updated);
+      setItems(updated);
       toast.success(`Deleted ${p.name}`);
-      load();
     } catch {
       toast.error("Failed to delete product");
     }

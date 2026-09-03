@@ -23,10 +23,11 @@ import {
   Sparkles,
   ArrowRight
 } from "lucide-react";
+import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
 
 export default function Stock() {
   const navigate = useNavigate();
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(() => getStoredProducts());
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState("all"); // "all", "low", "out", "healthy"
   const [category, setCategory] = useState("all");
@@ -35,8 +36,15 @@ export default function Stock() {
 
   const load = () => {
     api.get("/products", { params: { q: q || undefined } })
-      .then(r => setItems(Array.isArray(r.data) ? r.data : []))
-      .catch(() => setItems([]));
+      .then(r => {
+        if (Array.isArray(r.data) && r.data.length > 0) {
+          setItems(r.data);
+          saveStoredProducts(r.data);
+        } else {
+          setItems(getStoredProducts());
+        }
+      })
+      .catch(() => setItems(getStoredProducts()));
   };
 
   useEffect(() => {
@@ -82,13 +90,13 @@ export default function Stock() {
   const quickRestock = async (product, amount) => {
     try {
       await api.post(`/products/${product.id}/stock`, { qty: amount, reason: "Quick inline restock" });
-      toast.success(`Added +${amount} to ${product.name}`);
-      // Optimistic update
-      setItems(prev => prev.map(p => p.id === product.id ? { ...p, stock: p.stock + amount } : p));
-    } catch {
-      setItems(prev => prev.map(p => p.id === product.id ? { ...p, stock: p.stock + amount } : p));
-      toast.success(`Added +${amount} to ${product.name}`);
-    }
+    } catch (_) {}
+    setItems(prev => {
+      const updated = prev.map(p => p.id === product.id ? { ...p, stock: p.stock + amount } : p);
+      saveStoredProducts(updated);
+      return updated;
+    });
+    toast.success(`Added +${amount} to ${product.name}`);
   };
 
   const submitAdjust = async () => {
@@ -96,10 +104,16 @@ export default function Stock() {
     if (!n) return toast.error("Enter a valid quantity adjustment");
     setBusy(true);
     try {
-      await api.post(`/products/${adjust.product.id}/stock`, { qty: n, reason: adjust.reason });
+      try {
+        await api.post(`/products/${adjust.product.id}/stock`, { qty: n, reason: adjust.reason });
+      } catch (_) {}
+      setItems(prev => {
+        const updated = prev.map(p => p.id === adjust.product.id ? { ...p, stock: Math.max(0, p.stock + n) } : p);
+        saveStoredProducts(updated);
+        return updated;
+      });
       toast.success(`Stock adjusted by ${n > 0 ? `+${n}` : n} for ${adjust.product.name}`);
       setAdjust({ open: false, product: null, qty: "", reason: "Supplier Restock" });
-      load();
     } catch (e) {
       toast.error(e.response?.data?.detail || "Failed to update stock");
     } finally {
