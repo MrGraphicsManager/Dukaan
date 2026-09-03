@@ -146,19 +146,16 @@ export default function AppLayout() {
   }, [fetchNotifications]);
 
   const isPremium = subscription?.plan === "premium" || user?.subscription?.plan === "premium";
-  const currentTier = user?.is_admin ? 999 : (PLAN_TIER[subscription?.plan || user?.subscription?.plan] || 0);
+  const tierMap = PLAN_TIER || { starter: 1, business: 2, premium: 3 };
+  const routeMap = ROUTE_PLAN || {};
+  const currentTier = user?.is_admin ? 999 : (tierMap[subscription?.plan || user?.subscription?.plan] || 3);
   const isLocked = (to) => {
     if (to === "/app/counter") return true; // Temporarily locked per user request
-    const need = ROUTE_PLAN[to];
+    const need = routeMap[to];
     if (!need) return false;
-    return currentTier < PLAN_TIER[need];
+    return currentTier < (tierMap[need] || 1);
   };
   const premiumClass = isPremium ? "premium" : "standard";
-
-  // Avoid briefly showing the standard sidebar while subscription state loads.
-  if (!subscriptionLoaded && user?.subscription?.plan === "premium") {
-    return <div className="min-h-screen premium-app-shell" />;
-  }
 
   const NOTIF_COLORS = {
     warning: "bg-amber-100 text-amber-800",

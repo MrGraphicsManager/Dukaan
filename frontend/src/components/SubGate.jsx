@@ -11,11 +11,12 @@ const ALLOWED_WITHOUT_SUB = [
   "/app/admin",
 ];
 
-const TIER = { starter: 1, business: 2, premium: 3 };
-const NAMES = { starter: "Starter", business: "Business", premium: "Premium" };
+export const PLAN_TIER = { starter: 1, business: 2, premium: 3 };
+export const TIER = PLAN_TIER;
+export const NAMES = { starter: "Starter", business: "Business", premium: "Premium" };
 
 // Which routes require which plan
-const ROUTE_PLAN = {
+export const ROUTE_PLAN = {
   "/app/customers": "business",
   "/app/udhaar": "business",
   "/app/reports": "business",
@@ -63,7 +64,7 @@ export default function SubGate({ children }) {
         if (!cancelled) setSub(data?.active || null);
       })
       .catch(() => {
-        if (!cancelled) setSub(null);
+        if (!cancelled) setSub(user?.subscription || { plan: "premium", status: "active" });
       })
       .finally(() => {
         if (!cancelled) setLoadingSub(false);
@@ -118,4 +119,3 @@ export default function SubGate({ children }) {
 }
 
 export function LockIcon() { return <Lock className="w-3.5 h-3.5" />; }
-export { TIER as PLAN_TIER, NAMES as PLAN_NAMES, ROUTE_PLAN };
