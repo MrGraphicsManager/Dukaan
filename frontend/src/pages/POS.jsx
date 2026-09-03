@@ -180,6 +180,9 @@ export default function POS() {
     : Number(discount || 0);
   const total = Math.max(0, subtotal - discountAmount);
 
+  // Selected customer details
+  const selectedCustomerObj = customers.find(c => c.id === customerId);
+
   const deductStockAndSync = (cartItems) => {
     const currentProds = getStoredProducts();
     const updated = currentProds.map(p => {
