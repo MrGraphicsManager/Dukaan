@@ -60,19 +60,40 @@ function Protected({ children }) {
    LAUNCH ROUTE CONTROLLER
 ========================================================= */
 
+export const isStandaloneApp = () => {
+  if (typeof window === "undefined") return false;
+  // Electron desktop app
+  if (window.navigator?.userAgent?.includes("DukaanDesktop") || window.isElectron) return true;
+  // Capacitor / Cordova / Native Android
+  if (window.Capacitor?.isNativePlatform() || window.AndroidBridge) return true;
+  // PWA Standalone Mode
+  if (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) return true;
+  if (window.navigator?.standalone) return true;
+  // App mode flag in URL or localStorage
+  if (window.location?.search?.includes("app_mode=1")) {
+    try { localStorage.setItem("dukaan_app_mode", "1"); } catch {}
+    return true;
+  }
+  try {
+    if (localStorage.getItem("dukaan_app_mode") === "1") return true;
+  } catch {}
+  return false;
+};
+
 function LaunchController() {
   const location = useLocation();
+  const isApp = isStandaloneApp();
 
   return (
     <Routes>
 
       {/* ===================================================
-          PUBLIC PAGES
+          PUBLIC PAGES / APP ROOT
       =================================================== */}
 
       <Route
         path="/"
-        element={<Landing />}
+        element={isApp ? <Navigate to="/app" replace /> : <Landing />}
       />
 
       <Route

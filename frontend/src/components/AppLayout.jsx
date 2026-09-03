@@ -357,18 +357,18 @@ export default function AppLayout() {
         </aside>
 
         {/* Main content */}
-        <main className={`flex-1 min-w-0 px-4 md:px-8 py-6 ${isPremium ? "premium-main" : "pb-24 md:pb-6"}`}>
+        <main className={`flex-1 min-w-0 px-3 sm:px-4 md:px-8 py-4 sm:py-6 ${isPremium ? "premium-main pb-28 md:pb-6" : "pb-28 md:pb-6"}`}>
           <Outlet/>
         </main>
       </div>
 
 
       {/* =====================================================
-          BOTTOM NAVIGATION (Mobile Only)
+          BOTTOM NAVIGATION (Mobile Only - Native App Feel)
       ===================================================== */}
 
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-brand-mitti shadow-nav">
-        <div className="grid grid-cols-5">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-brand-mitti shadow-nav pb-[env(safe-area-inset-bottom,0px)]">
+        <div className="grid grid-cols-5 h-16 items-center px-1">
           {MOBILE_NAV.map(({ to, key, Icon, end }) => (
             <NavLink
               key={to}
@@ -376,14 +376,17 @@ export default function AppLayout() {
               end={end}
               data-testid={`bottomnav-${key}`}
               className={({ isActive }) =>
-                `flex flex-col items-center justify-center gap-1 py-3 text-[11px] font-medium transition-colors relative ${isActive ? "text-brand-terracotta" : "text-brand-indigo/70"}`
+                `flex flex-col items-center justify-center gap-1 py-1.5 rounded-2xl text-[11px] font-bold transition-all relative ${
+                  isActive 
+                    ? "text-brand-terracotta bg-brand-terracotta/10 scale-105" 
+                    : "text-brand-indigo/65 hover:text-brand-indigo active:scale-95"
+                }`
               }
             >
               {({ isActive }) => (
                 <>
-                  <Icon className="w-5 h-5"/>
-                  <span>{t(lang, key)}</span>
-                  <span className={`absolute top-1 right-3 w-1.5 h-1.5 rounded-full bg-brand-terracotta ${isActive ? "opacity-100" : "opacity-0"}`} />
+                  <Icon className={`w-5 h-5 transition-transform ${isActive ? "scale-110" : ""}`} />
+                  <span className="leading-tight truncate max-w-[64px]">{t(lang, key)}</span>
                 </>
               )}
             </NavLink>

@@ -1,0 +1,22 @@
+{
+  "appId": "in.officialdukaan.app",
+  "appName": "Dukaan",
+  "webDir": "build",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://officialdukaan.in/app?app_mode=1",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "backgroundColor": "#1B1464",
+      "showSpinner": false
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "name": "dukaan-desktop",
+  "version": "1.0.0",
+  "description": "Dukaan Shop Assistant PC Software",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "in.officialdukaan.desktop",
+    "productName": "Dukaan",
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Dukaan"
+    },
+    "directories": {
+      "output": "dist"
+    }
+  },
+  "author": "Dukaan Technologies",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  }
+}
