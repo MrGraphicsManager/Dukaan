@@ -32,7 +32,8 @@ import {
   Volume2,
   VolumeX,
   Share2,
-  Crown
+  Crown,
+  AlertTriangle
 } from "lucide-react";
 import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
 import { useAuth } from "@/lib/AuthContext";
