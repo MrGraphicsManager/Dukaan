@@ -16,7 +16,7 @@ jobs:
   # =========================================================
   build-windows:
     name: 🖥️ Build Windows PC Software (.exe)
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -40,8 +40,8 @@ jobs:
 
       - name: Copy Frontend Build to Desktop Folder
         run: |
-          New-Item -ItemType Directory -Force -Path desktop/build
-          Copy-Item -Recurse -Force frontend/build/* desktop/build/
+          mkdir -p desktop/build
+          cp -r frontend/build/* desktop/build/
 
       - name: Install Desktop Dependencies
         working-directory: ./desktop
@@ -49,7 +49,7 @@ jobs:
 
       - name: Package Windows Executables (.exe)
         working-directory: ./desktop
-        run: npx electron-builder --win nsis portable --publish never
+        run: npx electron-builder --win nsis --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

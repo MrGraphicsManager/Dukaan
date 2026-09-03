@@ -10,7 +10,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 700,
     title: "Dukaan · Shop Assistant",
-    icon: path.join(__dirname, "icon.png"),
+    icon: path.join(__dirname, "icon.ico"),
     backgroundColor: "#FDF8F3",
     webPreferences: {
       nodeIntegration: false,
