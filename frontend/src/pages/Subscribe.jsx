@@ -113,7 +113,7 @@ const FAQS = [
 export default function Subscribe() {
   const [params] = useSearchParams();
   const nav = useNavigate();
-  const { user, shops, currentShopId, loadShops, setActiveShop } = useAuth();
+  const { user, shops, currentShopId, loadShops, setActiveShop, refresh } = useAuth();
   const [selected, setSelected] = useState(params.get("plan") || "business");
   const [billingCycle, setBillingCycle] = useState("monthly"); // "monthly" or "annual"
   const [busy, setBusy] = useState(false);
@@ -125,7 +125,7 @@ export default function Subscribe() {
   const plan = PLANS[selected] || PLANS.business;
   const isPremium = selected === "premium";
   const isAnnual = billingCycle === "annual";
-  const activeShop = shops.find((s) => s.id === currentShopId) || shops[0];
+  const activeShop = (shops || []).find((s) => s?.id === currentShopId) || shops?.[0] || { name: "Apni Dukaan" };
 
   const initialPremium = useMemo(() => ({
     ...EMPTY_PREMIUM_ONBOARDING,
@@ -232,6 +232,14 @@ export default function Subscribe() {
             }); 
           } catch (_) {}
 
+          try {
+            const rawUser = localStorage.getItem("dukaan_user");
+            const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
+            parsed.subscription = { plan: selected, status: "active", is_trial: true };
+            localStorage.setItem("dukaan_user", JSON.stringify(parsed));
+            if (refresh) refresh();
+          } catch {}
+
           const expires = new Date();
           expires.setDate(expires.getDate() + plan.trial_days);
           setDone({ 
@@ -310,6 +318,14 @@ export default function Subscribe() {
               annual: isAnnual
             }); 
           } catch (_) {}
+          try {
+            const rawUser = localStorage.getItem("dukaan_user");
+            const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
+            parsed.subscription = { plan: selected, status: "active", is_annual: isAnnual };
+            localStorage.setItem("dukaan_user", JSON.stringify(parsed));
+            if (refresh) refresh();
+          } catch {}
+
           setDone({ status: "active", plan: selected, annual: isAnnual }); 
         },
         modal: {

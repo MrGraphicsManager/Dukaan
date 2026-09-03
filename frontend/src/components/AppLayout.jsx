@@ -379,9 +379,13 @@ export default function AppLayout() {
                 `flex flex-col items-center justify-center gap-1 py-3 text-[11px] font-medium transition-colors relative ${isActive ? "text-brand-terracotta" : "text-brand-indigo/70"}`
               }
             >
-              <Icon className="w-5 h-5"/>
-              <span>{t(lang, key)}</span>
-              <span className={`absolute top-1 right-3 w-1.5 h-1.5 rounded-full bg-brand-terracotta ${isActive ? "opacity-100" : "opacity-0"}`} />
+              {({ isActive }) => (
+                <>
+                  <Icon className="w-5 h-5"/>
+                  <span>{t(lang, key)}</span>
+                  <span className={`absolute top-1 right-3 w-1.5 h-1.5 rounded-full bg-brand-terracotta ${isActive ? "opacity-100" : "opacity-0"}`} />
+                </>
+              )}
             </NavLink>
           ))}
         </div>

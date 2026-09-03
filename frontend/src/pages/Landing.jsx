@@ -159,6 +159,20 @@ export default function Landing() {
 
           <div className="flex items-center gap-3">
             <Button 
+              onClick={() => nav("/login")} 
+              variant="ghost"
+              className="hidden sm:inline-flex text-brand-indigo hover:text-brand-terracotta rounded-full px-4 h-11 text-sm font-semibold transition-all"
+            >
+              Log in
+            </Button>
+            <Button 
+              onClick={() => nav("/register")} 
+              variant="outline"
+              className="hidden sm:inline-flex border-brand-indigo/30 text-brand-indigo hover:bg-brand-indigo/5 rounded-full px-4 h-11 text-sm font-semibold transition-all"
+            >
+              Sign Up Free
+            </Button>
+            <Button 
               onClick={() => nav("/app")} 
               data-testid="cta-open-app" 
               className="bg-brand-indigo hover:bg-brand-indigo/90 text-white rounded-full px-5 h-11 text-sm font-semibold active:scale-95 transition-all shadow-md flex items-center gap-1.5"

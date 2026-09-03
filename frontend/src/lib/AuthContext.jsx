@@ -31,9 +31,9 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
       const stored = localStorage.getItem("dukaan_user");
-      return stored ? JSON.parse(stored) : DEMO_USER;
+      return stored ? JSON.parse(stored) : null;
     } catch {
-      return DEMO_USER;
+      return null;
     }
   });
   const [shops, setShops] = useState([DEMO_SHOP]);
@@ -75,13 +75,23 @@ export function AuthProvider({ children }) {
         return data;
       }
     } catch {
-      // Local fallback mode
+      // If there's a stored user, keep using it (offline mode)
+      // If no stored user, stay logged out — don't force DEMO_USER
       const stored = localStorage.getItem("dukaan_user");
-      const current = stored ? JSON.parse(stored) : DEMO_USER;
-      setUser(current);
-      setShops([DEMO_SHOP]);
-      setActiveShop(DEMO_SHOP.id);
-      return current;
+      if (stored) {
+        try {
+          const current = JSON.parse(stored);
+          setUser(current);
+          setShops([DEMO_SHOP]);
+          setActiveShop(DEMO_SHOP.id);
+          return current;
+        } catch {
+          // corrupt stored data — stay logged out
+          localStorage.removeItem("dukaan_user");
+          setUser(null);
+        }
+      }
+      return null;
     }
   }, [loadShops, setActiveShop]);
 
