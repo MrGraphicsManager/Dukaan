@@ -34,7 +34,7 @@ export default function ResetPassword() {
   return (
     <div className="min-h-screen grid place-items-center bg-brand-sand px-4">
       <form onSubmit={submit} className="w-full max-w-sm space-y-4" data-testid="reset-form">
-        <Link to="/" className="font-display text-3xl text-brand-indigo">दुकान · Dukaan</Link>
+        <Link to="/" className="font-display text-3xl font-bold text-brand-indigo">Dukaan</Link>
         <h1 className="font-heading text-2xl font-bold">Set new password</h1>
         {!token && <div className="text-sm text-destructive">Missing reset token. Use the link from your email.</div>}
         <div className="space-y-2">

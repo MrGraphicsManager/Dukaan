@@ -82,7 +82,7 @@ export default function SubGate({ children }) {
       return (
         <Wall
           title={`${NAMES[needed]} Feature`}
-          msg={`Yeh feature sirf "${NAMES[needed]}" ya "Premium" plan mein available hai. Aapka current plan "${NAMES[userPlan]}" hai. Is feature ko unlock karne ke liye apna plan upgrade karein.`}
+          msg={`This feature requires the ${NAMES[needed]} or Premium plan. Your current plan is ${NAMES[userPlan]}. Upgrade your subscription to unlock this feature.`}
           cta={`Upgrade to ${NAMES[needed]} (₹${needed === "business" ? "399" : "799"}/mo)`}
           neededPlan={needed}
           onCta={() => nav(`/subscribe?plan=${needed}&renew=1`)}

@@ -76,7 +76,7 @@ export default function Login() {
             <Store className="w-5 h-5 text-amber-400" />
           </div>
           <div>
-            <div className="font-display font-bold text-2xl text-brand-indigo tracking-tight">दुकान · Dukaan</div>
+            <div className="font-display font-bold text-2xl text-brand-indigo tracking-tight">Dukaan</div>
             <div className="text-[10px] text-brand-indigo/50 uppercase tracking-widest font-mono font-bold">Smart Retail OS</div>
           </div>
         </Link>

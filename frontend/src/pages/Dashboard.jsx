@@ -87,23 +87,6 @@ export default function Dashboard() {
     toast.success("Opening WhatsApp with Daily Hisab summary...");
   };
 
-  // Hourly trend dynamically calculated from actual today's sales
-  const salesHourlyData = (d?.today?.sales > 0) ? [
-    { hour: "9 AM", sales: Math.round(d.today.sales * 0.08) },
-    { hour: "11 AM", sales: Math.round(d.today.sales * 0.18) },
-    { hour: "1 PM", sales: Math.round(d.today.sales * 0.15) },
-    { hour: "3 PM", sales: Math.round(d.today.sales * 0.12) },
-    { hour: "5 PM", sales: Math.round(d.today.sales * 0.22) },
-    { hour: "7 PM (Rush)", sales: Math.round(d.today.sales * 0.25) },
-  ] : [
-    { hour: "9 AM", sales: 0 },
-    { hour: "11 AM", sales: 0 },
-    { hour: "1 PM", sales: 0 },
-    { hour: "3 PM", sales: 0 },
-    { hour: "5 PM", sales: 0 },
-    { hour: "7 PM", sales: 0 },
-  ];
-
   const getSafeOrders = useCallback(() => {
     try {
       const raw = localStorage.getItem("dukaan_orders");
@@ -114,6 +97,43 @@ export default function Dashboard() {
       return [];
     }
   }, []);
+
+  // Hourly trend dynamically calculated from actual today's orders
+  const salesHourlyData = useMemo(() => {
+    const slots = [
+      { hour: "8 AM", start: 6, end: 9, sales: 0 },
+      { hour: "10 AM", start: 9, end: 11, sales: 0 },
+      { hour: "12 PM", start: 11, end: 13, sales: 0 },
+      { hour: "2 PM", start: 13, end: 15, sales: 0 },
+      { hour: "4 PM", start: 15, end: 17, sales: 0 },
+      { hour: "6 PM", start: 17, end: 19, sales: 0 },
+      { hour: "8 PM", start: 19, end: 21, sales: 0 },
+      { hour: "10 PM", start: 21, end: 24, sales: 0 },
+    ];
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const orders = getSafeOrders();
+
+    orders.forEach(o => {
+      if (!o || !o.created_at) return;
+      const orderDate = o.created_at.slice(0, 10);
+      if (orderDate === todayStr) {
+        const d = new Date(o.created_at);
+        const hr = d.getHours();
+        const tot = Number(o.total || 0);
+        const slot = slots.find(s => hr >= s.start && hr < s.end) || slots[slots.length - 1];
+        slot.sales += tot;
+      }
+    });
+
+    return slots.map(s => ({ hour: s.hour, sales: Math.round(s.sales) }));
+  }, [d, getSafeOrders]);
+
+  const peakSlot = useMemo(() => {
+    if (!salesHourlyData || salesHourlyData.length === 0) return null;
+    const sorted = [...salesHourlyData].sort((a, b) => b.sales - a.sales);
+    return sorted[0]?.sales > 0 ? sorted[0] : null;
+  }, [salesHourlyData]);
 
   const loadDashboard = useCallback(async ({ silent = false } = {}) => {
     if (!currentShopId) return;
@@ -556,7 +576,7 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center gap-3">
               <span className="flex items-center gap-1 text-xs font-semibold text-brand-indigo/70 bg-brand-sand px-3 py-1 rounded-full border border-brand-mitti">
-                <Zap className="w-3.5 h-3.5 text-amber-500" /> Peak Rush: 6 PM - 8 PM
+                <Zap className="w-3.5 h-3.5 text-amber-500" /> {peakSlot ? `Peak: ${peakSlot.hour} (${money(peakSlot.sales)})` : "Real-Time Sales Flow"}
               </span>
             </div>
           </div>

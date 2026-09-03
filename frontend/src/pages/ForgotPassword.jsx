@@ -26,7 +26,7 @@ export default function ForgotPassword() {
   return (
     <div className="min-h-screen grid place-items-center bg-brand-sand px-4">
       <div className="w-full max-w-sm">
-        <Link to="/" className="font-display text-3xl text-brand-indigo">दुकान · Dukaan</Link>
+        <Link to="/" className="font-display text-3xl font-bold text-brand-indigo">Dukaan</Link>
         {sent ? (
           <div className="mt-8 rounded-xl border border-brand-mitti bg-white p-6 shadow-card text-center" data-testid="forgot-sent">
             <div className="w-12 h-12 mx-auto rounded-full bg-brand-leaf/10 text-brand-leaf grid place-items-center">

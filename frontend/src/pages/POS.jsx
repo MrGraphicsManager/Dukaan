@@ -34,7 +34,7 @@ import {
   Share2,
   Crown
 } from "lucide-react";
-import { getStoredProducts } from "@/lib/defaultProducts";
+import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
 import { useAuth } from "@/lib/AuthContext";
 import { playVoiceSoundbox } from "@/lib/soundbox";
 
@@ -108,11 +108,24 @@ export default function POS() {
 
   // Cart operations
   const addToCart = (p) => {
+    const isUnlimited = p.unlimited_stock === true;
+    const availableStock = Number(p.stock !== undefined ? p.stock : 9999);
+
+    if (!isUnlimited && availableStock <= 0) {
+      toast.error(`"${p.name}" is out of stock!`);
+      return;
+    }
+
     setCart(prev => {
       const idx = prev.findIndex(x => x.product_id === p.id);
       if (idx >= 0) {
+        const currentQty = prev[idx].qty;
+        if (!isUnlimited && currentQty >= availableStock) {
+          toast.warning(`Cannot add more! Only ${availableStock} units available in stock for ${p.name}.`);
+          return prev;
+        }
         const copy = [...prev];
-        copy[idx] = { ...copy[idx], qty: copy[idx].qty + 1 };
+        copy[idx] = { ...copy[idx], qty: currentQty + 1 };
         return copy;
       }
       return [...prev, { 
@@ -120,17 +133,30 @@ export default function POS() {
         name: p.name, 
         price: p.selling_price, 
         qty: 1, 
-        category: p.category 
+        category: p.category,
+        max_stock: isUnlimited ? 99999 : availableStock,
+        unlimited_stock: isUnlimited
       }];
     });
   };
 
   const updateQty = (idx, delta) => {
     setCart(prev => {
+      const item = prev[idx];
+      if (!item) return prev;
       const copy = [...prev];
-      const newQty = copy[idx].qty + delta;
+      const newQty = item.qty + delta;
       if (newQty <= 0) {
         return copy.filter((_, i) => i !== idx);
+      }
+      if (delta > 0) {
+        const prod = products.find(p => p.id === item.product_id);
+        const isUnlimited = prod?.unlimited_stock === true || item.unlimited_stock === true;
+        const maxLimit = isUnlimited ? 99999 : Number(prod?.stock ?? item.max_stock ?? 9999);
+        if (!isUnlimited && newQty > maxLimit) {
+          toast.warning(`Cannot exceed available stock (${maxLimit} units) for ${item.name}!`);
+          return prev;
+        }
       }
       copy[idx] = { ...copy[idx], qty: newQty };
       return copy;
@@ -154,8 +180,42 @@ export default function POS() {
     : Number(discount || 0);
   const total = Math.max(0, subtotal - discountAmount);
 
-  // Selected customer details
-  const selectedCustomerObj = customers.find(c => c.id === customerId);
+  const deductStockAndSync = (cartItems) => {
+    const currentProds = getStoredProducts();
+    const updated = currentProds.map(p => {
+      const item = cartItems.find(ci => ci.product_id === p.id);
+      if (item && !p.unlimited_stock) {
+        const newStock = Math.max(0, Number(p.stock || 0) - Number(item.qty || 0));
+        return { ...p, stock: newStock };
+      }
+      return p;
+    });
+    saveStoredProducts(updated);
+    setProducts(updated);
+  };
+
+  const updateCustomerLedger = (orderData) => {
+    if (!selectedCustomerObj && !customerId) return;
+    try {
+      const stored = JSON.parse(localStorage.getItem("dukaan_customers") || "[]");
+      const cId = customerId || selectedCustomerObj?.id;
+      const updated = stored.map(c => {
+        if (c.id === cId || (orderData.customer_phone && c.phone === orderData.customer_phone)) {
+          const tot = Number(orderData.total || 0);
+          const isUdhaar = orderData.payment_method === "udhaar";
+          return {
+            ...c,
+            total_purchases: Number(c.total_purchases || 0) + tot,
+            total_paid: Number(c.total_paid || 0) + (isUdhaar ? 0 : tot),
+            total_pending: Number(c.total_pending || 0) + (isUdhaar ? tot : 0),
+            updated_at: new Date().toISOString()
+          };
+        }
+        return c;
+      });
+      localStorage.setItem("dukaan_customers", JSON.stringify(updated));
+    } catch {}
+  };
 
   // Bill submission
   const handleCompleteBill = async () => {
@@ -199,6 +259,11 @@ export default function POS() {
       const savedOrders = JSON.parse(localStorage.getItem("dukaan_orders") || "[]");
       localStorage.setItem("dukaan_orders", JSON.stringify([order, ...savedOrders]));
 
+      // Deduct purchased items from stock immediately
+      deductStockAndSync(cart);
+      // Update customer ledger immediately
+      updateCustomerLedger(order);
+
       toast.success(`Bill #${order.order_no} created successfully!`);
 
       // Soundbox voice announcement (Premium only)
@@ -214,9 +279,9 @@ export default function POS() {
       setAutoResetTimer(timer);
 
     } catch (e) {
-      // Offline / demo fallback order creation
+      // Offline / fallback order creation
       const mockOrder = {
-        id: `demo_order_${Date.now()}`,
+        id: `ord_${Date.now()}`,
         order_no: `OD-${Math.floor(1000 + Math.random() * 9000)}`,
         total,
         payment_method: method,
@@ -230,6 +295,11 @@ export default function POS() {
 
       const savedOrders = JSON.parse(localStorage.getItem("dukaan_orders") || "[]");
       localStorage.setItem("dukaan_orders", JSON.stringify([mockOrder, ...savedOrders]));
+
+      // Deduct purchased items from stock immediately
+      deductStockAndSync(cart);
+      // Update customer ledger immediately
+      updateCustomerLedger(mockOrder);
 
       setPayOpen(false);
       setCompletedBill(mockOrder);

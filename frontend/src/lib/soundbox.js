@@ -35,22 +35,11 @@ export function playVoiceSoundbox(amount, method = "upi", lang = "hi") {
     window.speechSynthesis.cancel();
 
     const cleanAmount = Math.round(Number(amount || 0));
-    let text = "";
-
-    if (lang === "gu") {
-      const modeText = method === "upi" ? "UPI" : method === "cash" ? "રોકડ" : "ખાતા";
-      text = `દુકાન: ${modeText} દ્વારા ${cleanAmount} રૂપિયા મળ્યા!`;
-    } else if (lang === "en") {
-      const modeText = method === "upi" ? "UPI" : method === "cash" ? "Cash" : "Khata";
-      text = `Dukaan: Received ${cleanAmount} rupees via ${modeText}!`;
-    } else {
-      // Default Hindi
-      const modeText = method === "upi" ? "UPI" : method === "cash" ? "कैश" : "उधार";
-      text = `दुकान: ${modeText} से ${cleanAmount} रुपये प्राप्त हुए!`;
-    }
+    const modeText = method === "upi" ? "UPI" : method === "cash" ? "Cash" : "Credit";
+    const text = `Dukaan: Received ${cleanAmount} rupees via ${modeText}!`;
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = lang === "gu" ? "gu-IN" : lang === "en" ? "en-IN" : "hi-IN";
+    utterance.lang = "en-IN";
     utterance.rate = 0.95;
     utterance.pitch = 1.05;
 

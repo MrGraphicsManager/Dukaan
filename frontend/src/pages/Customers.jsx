@@ -18,21 +18,59 @@ import {
   MessageSquare, 
   CheckCircle2, 
   Receipt,
-  UserPlus
+  UserPlus,
+  Edit2
 } from "lucide-react";
+
+export const getStoredCustomers = () => {
+  try {
+    const raw = localStorage.getItem("dukaan_customers");
+    if (!raw) {
+      const initial = [
+        { id: "c_1", name: "Ramesh Patel", phone: "9825100000", notes: "Regular buyer, Block B-204", total_purchases: 450, total_paid: 450, total_pending: 0 },
+        { id: "c_2", name: "Suresh Sharma", phone: "9876543210", notes: "Temple Road", total_purchases: 1450, total_paid: 0, total_pending: 1450 }
+      ];
+      localStorage.setItem("dukaan_customers", JSON.stringify(initial));
+      return initial;
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveStoredCustomers = (custs) => {
+  try {
+    localStorage.setItem("dukaan_customers", JSON.stringify(custs));
+  } catch {}
+};
 
 export default function Customers() {
   const nav = useNavigate();
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(() => getStoredCustomers());
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState("all"); // "all", "udhaar", "paid"
-  const [form, setForm] = useState({ open: false, name: "", phone: "", notes: "" });
+  const [form, setForm] = useState({ open: false, id: null, name: "", phone: "", notes: "" });
   const [busy, setBusy] = useState(false);
 
   const load = () => {
+    const local = getStoredCustomers();
     api.get("/customers", { params: { q: q || undefined } })
-      .then(r => setItems(Array.isArray(r.data) ? r.data : []))
-      .catch(() => setItems([]));
+      .then(r => {
+        const server = Array.isArray(r.data) ? r.data : [];
+        const merged = [...server];
+        local.forEach(lc => {
+          if (!merged.some(m => (m.id && m.id === lc.id) || (m.phone && lc.phone && m.phone === lc.phone))) {
+            merged.push(lc);
+          }
+        });
+        saveStoredCustomers(merged);
+        setItems(merged);
+      })
+      .catch(() => {
+        setItems(local);
+      });
   };
 
   useEffect(() => {
@@ -65,31 +103,40 @@ export default function Customers() {
   const save = async () => {
     if (!form.name.trim()) return toast.error("Customer name is required");
     setBusy(true);
+    const newCustomer = {
+      id: form.id || `c_${Date.now()}`,
+      name: form.name.trim(),
+      phone: form.phone.trim(),
+      notes: form.notes.trim(),
+      total_purchases: Number(form.total_purchases || 0),
+      total_paid: Number(form.total_paid || 0),
+      total_pending: Number(form.total_pending || 0),
+      created_at: form.created_at || new Date().toISOString()
+    };
+
     try {
-      await api.post("/customers", { 
-        name: form.name.trim(), 
-        phone: form.phone.trim(), 
-        notes: form.notes.trim() 
-      });
-      toast.success(`Customer "${form.name}" added to directory!`);
-      setForm({ open: false, name: "", phone: "", notes: "" });
-      load();
-    } catch (e) {
-      // Demo optimistic fallback
-      const mock = { 
-        id: `c_${Date.now()}`, 
-        name: form.name.trim(), 
-        phone: form.phone.trim(), 
-        total_purchases: 0, 
-        total_paid: 0, 
-        total_pending: 0 
-      };
-      setItems(prev => [mock, ...prev]);
-      toast.success(`Customer "${form.name}" added!`);
-      setForm({ open: false, name: "", phone: "", notes: "" });
-    } finally {
-      setBusy(false);
+      if (form.id && !form.id.startsWith("c_")) {
+        await api.put(`/customers/${form.id}`, newCustomer);
+      } else {
+        const res = await api.post("/customers", newCustomer);
+        if (res?.data?.id) newCustomer.id = res.data.id;
+      }
+    } catch (_) {}
+
+    const current = getStoredCustomers();
+    const idx = current.findIndex(x => x.id === newCustomer.id || (x.phone && x.phone === newCustomer.phone));
+    let updated;
+    if (idx >= 0) {
+      updated = [...current];
+      updated[idx] = { ...updated[idx], ...newCustomer };
+    } else {
+      updated = [newCustomer, ...current];
     }
+    saveStoredCustomers(updated);
+    setItems(updated);
+    toast.success(form.id ? `Customer "${newCustomer.name}" updated!` : `Customer "${newCustomer.name}" added to directory!`);
+    setForm({ open: false, id: null, name: "", phone: "", notes: "" });
+    setBusy(false);
   };
 
   return (
@@ -255,31 +302,54 @@ export default function Customers() {
                   </div>
                 </div>
 
-                {/* Bottom Actions: WhatsApp Reminder + View Ledger */}
+                {/* Bottom Actions: WhatsApp Reminder + Edit + View Ledger */}
                 <div className="mt-5 pt-3.5 border-t border-brand-mitti/60 flex items-center justify-between gap-2">
                   {hasPending && c.phone ? (
                     <a
                       href={`https://wa.me/91${c.phone}?text=${encodeURIComponent(
-                        `Namaste ${c.name} ji, Dukaan se aapka baki udhaar ${money(c.total_pending)} hai. Kripya samay par chukta karein. Dhanyawaad!`
+                        `Hello ${c.name}, this is a gentle reminder from Dukaan that your pending balance is ${money(c.total_pending)}. Please clear it at your convenience. Thank you!`
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs active:scale-95 transition-all flex items-center gap-1.5"
                     >
                       <MessageSquare className="w-3.5 h-3.5" />
-                      <span>WhatsApp Reminder</span>
+                      <span>WhatsApp</span>
                     </a>
                   ) : (
                     <span className="text-xs text-brand-indigo/50 font-medium">Khata Clean</span>
                   )}
 
-                  <button
-                    onClick={() => nav(`/app/customers/${c.id}`)}
-                    className="text-xs font-bold text-brand-indigo hover:text-brand-terracotta transition-colors flex items-center gap-1"
-                  >
-                    <span>View Ledger</span>
-                    <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setForm({
+                          open: true,
+                          id: c.id,
+                          name: c.name,
+                          phone: c.phone || "",
+                          notes: c.notes || "",
+                          total_purchases: c.total_purchases,
+                          total_paid: c.total_paid,
+                          total_pending: c.total_pending,
+                          created_at: c.created_at
+                        });
+                      }}
+                      className="text-xs font-bold text-brand-indigo/70 hover:text-brand-indigo border border-brand-mitti px-2.5 py-1 rounded-lg hover:border-brand-indigo transition-colors flex items-center gap-1"
+                    >
+                      <Edit2 className="w-3 h-3" />
+                      <span>Edit</span>
+                    </button>
+
+                    <button
+                      onClick={() => nav(`/app/customers/${c.id}`)}
+                      className="text-xs font-bold text-brand-indigo hover:text-brand-terracotta transition-colors flex items-center gap-1"
+                    >
+                      <span>Ledger</span>
+                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </button>
+                  </div>
                 </div>
 
               </div>
@@ -289,14 +359,14 @@ export default function Customers() {
       </div>
 
       {/* =========================================================
-          ADD CUSTOMER MODAL
+          ADD / EDIT CUSTOMER MODAL
       ========================================================= */}
       <Dialog open={form.open} onOpenChange={(o) => setForm({ ...form, open: o })}>
-        <DialogContent className="max-w-md rounded-3xl p-7 border-2 border-brand-mitti">
+        <DialogContent className="max-w-md rounded-3xl p-7 border-2 border-brand-mitti bg-white">
           <DialogHeader>
             <DialogTitle className="font-display text-2xl text-brand-indigo flex items-center gap-2">
               <Users className="w-5 h-5 text-brand-terracotta" />
-              <span>Add Customer to Directory</span>
+              <span>{form.id ? "Edit Customer Details" : "Add Customer to Directory"}</span>
             </DialogTitle>
           </DialogHeader>
 
@@ -318,41 +388,37 @@ export default function Customers() {
                 data-testid="cf-phone"
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="e.g. 9825100000"
-                className="mt-1 h-11 rounded-xl border-brand-mitti text-base font-mono"
+                placeholder="9825100000"
+                maxLength={10}
+                className="mt-1 h-11 rounded-xl border-brand-mitti font-mono"
               />
-              <span className="text-[11px] text-brand-indigo/50 mt-1 block">
-                Required for 1-click WhatsApp payment reminders.
-              </span>
             </div>
 
             <div>
-              <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Address / Shop Landmark / Notes</Label>
+              <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Address / Khata Notes</Label>
               <Input
-                data-testid="cf-notes"
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                placeholder="e.g. House No. 4, Near Temple"
+                placeholder="e.g. Regular buyer, Block B-204"
                 className="mt-1 h-11 rounded-xl border-brand-mitti"
               />
             </div>
           </div>
 
-          <DialogFooter className="mt-5 gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => setForm({ open: false, name: "", phone: "", notes: "" })}
-              className="rounded-full text-brand-indigo/70"
+          <DialogFooter className="mt-4 gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setForm({ open: false, id: null, name: "", phone: "", notes: "" })}
+              className="rounded-xl border-brand-mitti font-bold text-xs"
             >
               Cancel
             </Button>
-            <Button
-              disabled={busy}
-              data-testid="cf-save"
-              onClick={save}
-              className="rounded-full bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold h-11 px-6 shadow-md"
+            <Button 
+              onClick={save} 
+              disabled={busy} 
+              className="rounded-xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-xs"
             >
-              {busy ? "Saving…" : "Save Customer"}
+              {busy ? "Saving..." : form.id ? "Update Customer" : "Save to Directory"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -128,7 +128,7 @@ export default function ThreeDHeroKiosk() {
               <div className="flex items-center gap-2.5">
                 <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping" />
                 <div>
-                  <div className="font-display text-lg tracking-tight leading-none text-white">दुकान POS</div>
+                  <div className="font-display font-bold text-lg tracking-tight leading-none text-white">Dukaan POS</div>
                   <div className="text-[10px] text-white/60 font-mono tracking-wider">COUNTER TERMINAL #01</div>
                 </div>
               </div>
@@ -191,7 +191,7 @@ export default function ThreeDHeroKiosk() {
             <div className="absolute -top-2 left-0 right-0 h-2 bg-repeat-x bg-[radial-gradient(circle_at_bottom,transparent_4px,#fff_4px)] bg-[length:12px_8px]" />
             
             <div className="text-center pb-2 border-b border-dashed border-brand-mitti">
-              <div className="font-display font-bold text-sm">दुकान · OFFICIAL RECEIPT</div>
+              <div className="font-display font-bold text-sm">DUKAAN · OFFICIAL RECEIPT</div>
               <div className="text-[9px] text-brand-indigo/60 font-mono">Invoice #INV-2026-8812</div>
             </div>
 

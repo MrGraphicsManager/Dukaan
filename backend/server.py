@@ -644,6 +644,124 @@ async def admin_stats(admin: dict = Depends(get_admin_user)):
         "pending_subscriptions": await db.subscriptions.count_documents({"status": "pending"}),
     }
 
+class AdminGrantPayload(BaseModel):
+    user_email: str
+    plan: str = "business"
+    days: int = 30
+    note: Optional[str] = "Granted by admin"
+
+@api.post("/admin/subscriptions/grant")
+async def admin_grant_subscription(payload: AdminGrantPayload, admin: dict = Depends(get_admin_user)):
+    email = payload.user_email.strip().lower()
+    user = await db.users.find_one({"email": email})
+    if not user:
+        raise HTTPException(404, f"No user found with email {email}")
+
+    plan_key = payload.plan.lower()
+    if plan_key not in ["starter", "business", "premium"]:
+        raise HTTPException(400, "Invalid plan. Choose starter, business, or premium.")
+
+    days = max(1, min(payload.days, 3650))
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(days=days)
+
+    sub_doc = {
+        "user_id": str(user["_id"]),
+        "user_email": email,
+        "payer_name": user.get("name", "Shop Owner"),
+        "plan": plan_key,
+        "plan_name": f"{plan_key.title()} Plan",
+        "amount": 0,
+        "status": "active",
+        "source": "admin_grant",
+        "review_note": payload.note,
+        "reviewed_by": admin["email"],
+        "created_at": now.isoformat(),
+        "activated_at": now.isoformat(),
+        "expires_at": expires.isoformat(),
+    }
+    inserted = await db.subscriptions.insert_one(sub_doc)
+    sub_doc["_id"] = inserted.inserted_id
+
+    # Update user active subscription
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {
+            "subscription": {
+                "plan": plan_key,
+                "status": "active",
+                "is_trial": False,
+                "expires_at": expires.isoformat(),
+                "activated_at": now.isoformat(),
+                "granted_by": admin["email"]
+            }
+        }}
+    )
+    return clean(sub_doc)
+
+@api.post("/admin/subscriptions/{sid}/revoke")
+async def admin_revoke_subscription(sid: str, admin: dict = Depends(get_admin_user), reason: str = "Refund issued"):
+    if not ObjectId.is_valid(sid):
+        raise HTTPException(400, "bad id")
+    sub = await db.subscriptions.find_one({"_id": ObjectId(sid)})
+    if not sub:
+        raise HTTPException(404, "Subscription not found")
+
+    now = datetime.now(timezone.utc)
+    await db.subscriptions.update_one(
+        {"_id": ObjectId(sid)},
+        {"$set": {
+            "status": "cancelled",
+            "revoked_at": now.isoformat(),
+            "revoke_reason": reason,
+            "reviewed_by": admin["email"]
+        }}
+    )
+
+    # Demote user
+    if sub.get("user_id") and ObjectId.is_valid(sub["user_id"]):
+        await db.users.update_one(
+            {"_id": ObjectId(sub["user_id"])},
+            {"$set": {
+                "subscription": {
+                    "plan": "starter",
+                    "status": "cancelled",
+                    "revoked_at": now.isoformat(),
+                    "revoke_reason": reason
+                }
+            }}
+        )
+    elif sub.get("user_email"):
+        await db.users.update_one(
+            {"email": sub["user_email"]},
+            {"$set": {
+                "subscription": {
+                    "plan": "starter",
+                    "status": "cancelled",
+                    "revoked_at": now.isoformat(),
+                    "revoke_reason": reason
+                }
+            }}
+        )
+
+    return clean(await db.subscriptions.find_one({"_id": ObjectId(sid)}))
+
+@api.get("/admin/users")
+async def admin_list_users(admin: dict = Depends(get_admin_user)):
+    cur = db.users.find({}).sort("created_at", -1)
+    users = await cur.to_list(500)
+    return [
+        {
+            "id": str(u["_id"]),
+            "email": u.get("email"),
+            "name": u.get("name"),
+            "is_admin": u.get("is_admin", False),
+            "subscription": u.get("subscription", {"plan": "starter", "status": "active"}),
+            "created_at": u.get("created_at")
+        }
+        for u in users
+    ]
+
 
 # === DUKAAN_RAZORPAY_RENEWAL_V2 ===
 async def _rzp_call(method, url, **kwargs):

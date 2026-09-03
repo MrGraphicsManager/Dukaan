@@ -196,8 +196,8 @@ const RefundPolicy = () => {
       `}</style>
 
       <header className="refund-policy-header">
-        <a href="/" className="refund-policy-brand">
-          दुकान · <span>Dukaan</span>
+        <a href="/" className="refund-policy-brand font-bold text-2xl">
+          Dukaan
         </a>
       </header>
 

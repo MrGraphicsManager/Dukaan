@@ -168,8 +168,8 @@ const PrivacyPolicy = () => {
       `}</style>
 
       <header className="privacy-policy-header">
-        <a href="/" className="privacy-policy-brand">
-          दुकान · <span>Dukaan</span>
+        <a href="/" className="privacy-policy-brand font-bold text-2xl">
+          Dukaan
         </a>
       </header>
 

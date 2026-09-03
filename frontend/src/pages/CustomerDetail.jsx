@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { api, money } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { 
   ArrowLeft, 
   Phone, 
@@ -14,38 +17,87 @@ import {
   UserRound,
   CheckCircle2,
   AlertTriangle,
-  Clock
+  Clock,
+  Edit2
 } from "lucide-react";
 import { toast } from "sonner";
+import { getStoredCustomers, saveStoredCustomers } from "@/pages/Customers";
 
 export default function CustomerDetail() {
   const { id } = useParams();
   const nav = useNavigate();
   const [c, setC] = useState(null);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ name: "", phone: "", notes: "" });
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
+  const loadData = () => {
+    // 1. First check local storage for real saved customer
+    const localCustomers = getStoredCustomers();
+    const foundLocal = localCustomers.find(x => x.id === id || x._id === id);
+
+    // 2. Fetch from API or fallback
     api.get(`/customers/${id}`)
-      .then(r => setC(r.data))
+      .then(r => {
+        const cust = r.data || foundLocal;
+        if (cust) {
+          setC(cust);
+          setEditForm({ name: cust.name || "", phone: cust.phone || "", notes: cust.notes || "" });
+          loadCustomerOrders(cust);
+        }
+      })
       .catch(() => {
-        // Fallback demo customer data for robust offline testing
-        setC({
-          id: id,
-          name: "Ramesh Bhai Patel",
-          phone: "9825100000",
-          notes: "Regular customer, lives in Block B-204",
-          created_at: "2026-04-12T10:30:00Z",
-          orders: [
-            { id: "ord_101", order_no: "8821", created_at: "2026-09-02T18:42:00Z", total: 450, paid_amount: 450, pending_amount: 0, status: "paid", payment_method: "cash", items: [{ name: "Aashirvaad Atta 5kg", qty: 1, price: 320 }, { name: "Amul Butter 100g", qty: 2, price: 65 }] },
-            { id: "ord_102", order_no: "8814", created_at: "2026-08-28T14:15:00Z", total: 1450, paid_amount: 0, pending_amount: 1450, status: "udhaar", payment_method: "udhaar", items: [{ name: "Fortune Sunlite Oil 1L", qty: 5, price: 145 }, { name: "Tata Salt 1kg", qty: 4, price: 28 }] },
-            { id: "ord_103", order_no: "8790", created_at: "2026-08-15T11:05:00Z", total: 820, paid_amount: 820, pending_amount: 0, status: "paid", payment_method: "upi", items: [{ name: "Basmati Rice 5kg", qty: 1, price: 650 }, { name: "Parle-G Gold", qty: 5, price: 34 }] }
-          ]
-        });
+        if (foundLocal) {
+          setC(foundLocal);
+          setEditForm({ name: foundLocal.name || "", phone: foundLocal.phone || "", notes: foundLocal.notes || "" });
+          loadCustomerOrders(foundLocal);
+        } else {
+          // If ID not found, create a placeholder
+          const fallback = {
+            id,
+            name: "Customer #" + id.slice(-4),
+            phone: "",
+            notes: "",
+            created_at: new Date().toISOString()
+          };
+          setC(fallback);
+          setEditForm({ name: fallback.name, phone: "", notes: "" });
+          loadCustomerOrders(fallback);
+        }
       })
       .finally(() => setLoading(false));
+  };
+
+  const loadCustomerOrders = (customer) => {
+    try {
+      const rawOrders = localStorage.getItem("dukaan_orders");
+      const localOrders = rawOrders ? JSON.parse(rawOrders) : [];
+      const matching = localOrders.filter(o => 
+        (customer.name && o.customer_name?.toLowerCase() === customer.name.toLowerCase()) ||
+        (customer.phone && o.customer_phone === customer.phone) ||
+        (o.customer_id && o.customer_id === customer.id)
+      );
+
+      // Also merge server orders if any were attached
+      const combined = [...(Array.isArray(customer.orders) ? customer.orders : [])];
+      matching.forEach(mo => {
+        if (!combined.some(co => co.id === mo.id || co.order_no === mo.order_no)) {
+          combined.push(mo);
+        }
+      });
+      setOrders(combined);
+    } catch {
+      setOrders(Array.isArray(customer.orders) ? customer.orders : []);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, [id]);
 
-  if (!c) {
+  if (!c && loading) {
     return (
       <div className="min-h-[400px] grid place-items-center text-brand-indigo/60 font-sans">
         Loading customer ledger…
@@ -53,33 +105,95 @@ export default function CustomerDetail() {
     );
   }
 
-  const orders = Array.isArray(c.orders) ? c.orders : [];
+  if (!c) {
+    return (
+      <div className="min-h-[400px] grid place-items-center text-brand-indigo/60 font-sans">
+        <div>
+          <p className="text-center font-bold">Customer not found.</p>
+          <Button onClick={() => nav("/app/customers")} className="mt-4">Back to Customers</Button>
+        </div>
+      </div>
+    );
+  }
+
   const totals = orders.reduce((a, o) => ({
     purchases: a.purchases + Number(o.total || 0),
     paid: a.paid + Number(o.paid_amount || (o.status === "paid" ? o.total : 0)),
     pending: a.pending + Number(o.pending_amount || (o.status === "udhaar" ? o.total : 0)),
-  }), { purchases: 0, paid: 0, pending: 0 });
+  }), { 
+    purchases: Number(c.total_purchases || 0), 
+    paid: Number(c.total_paid || 0), 
+    pending: Number(c.total_pending || 0) 
+  });
 
   const waLink = () => {
     const phone = (c.phone || "").replace(/\D/g, "");
-    const msg = `Namaste ${c.name} ji, Dukaan se aapka ledger statement: Total purchases ${money(totals.purchases)}, Pending udhaar ${money(totals.pending)}. Kripya jald chukta karein. Dhanyawaad!`;
+    const msg = `Hello ${c.name}, here is your account statement from Dukaan: Total purchases ${money(totals.purchases)}, Outstanding balance ${money(totals.pending)}. Thank you!`;
     return `https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`;
+  };
+
+  const handleUpdateCustomer = async (e) => {
+    e.preventDefault();
+    if (!editForm.name.trim()) {
+      toast.error("Customer name is required");
+      return;
+    }
+    setBusy(true);
+    const updatedCustomer = {
+      ...c,
+      name: editForm.name.trim(),
+      phone: editForm.phone.trim(),
+      notes: editForm.notes.trim(),
+      updated_at: new Date().toISOString()
+    };
+
+    try {
+      if (!c.id?.startsWith("c_")) {
+        await api.put(`/customers/${c.id}`, updatedCustomer);
+      }
+    } catch (_) {}
+
+    // Update in local storage
+    const all = getStoredCustomers();
+    const idx = all.findIndex(x => x.id === c.id || (x.phone && x.phone === c.phone));
+    let nextList;
+    if (idx >= 0) {
+      nextList = [...all];
+      nextList[idx] = { ...nextList[idx], ...updatedCustomer };
+    } else {
+      nextList = [updatedCustomer, ...all];
+    }
+    saveStoredCustomers(nextList);
+
+    setC(updatedCustomer);
+    setEditOpen(false);
+    setBusy(false);
+    toast.success(`Customer "${updatedCustomer.name}" details updated!`);
   };
 
   return (
     <div className="space-y-6 animate-fade-up max-w-[1200px] mx-auto pb-16 font-sans selection:bg-brand-terracotta/20">
       
-      {/* Back Button */}
-      <div className="flex items-center justify-between">
+      {/* Back Button & Top Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <Button 
           variant="outline" 
           onClick={() => nav("/app/customers")}
-          className="rounded-full border-2 border-brand-mitti text-brand-indigo font-bold text-xs hover:border-brand-indigo flex items-center gap-1.5 h-10 px-4"
+          className="rounded-full border-2 border-brand-mitti text-brand-indigo font-bold text-xs hover:border-brand-indigo flex items-center gap-1.5 h-10 px-4 w-fit"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Back to Customers
         </Button>
 
         <div className="flex items-center gap-2">
+          <Button 
+            variant="outline"
+            onClick={() => setEditOpen(true)}
+            className="rounded-full border-2 border-brand-mitti text-brand-indigo font-bold text-xs hover:border-brand-indigo h-10 px-4 flex items-center gap-1.5"
+          >
+            <Edit2 className="w-3.5 h-3.5 text-brand-terracotta" />
+            <span>Edit Details</span>
+          </Button>
+
           {c.phone && (
             <a 
               href={waLink()}
@@ -91,11 +205,12 @@ export default function CustomerDetail() {
               <span>WhatsApp Statement</span>
             </a>
           )}
+
           <Button 
             onClick={() => nav("/app/pos")}
             className="rounded-full bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-xs h-10 px-5 shadow-sm active:scale-95 transition-all flex items-center gap-1.5"
           >
-            <Plus className="w-4 h-4" /> New Bill for {c.name.split(" ")[0]}
+            <Plus className="w-4 h-4" /> New Bill
           </Button>
         </div>
       </div>
@@ -122,7 +237,7 @@ export default function CustomerDetail() {
             <h1 className="font-display text-3xl font-bold tracking-tight text-white">{c.name}</h1>
             <div className="text-xs text-white/70 mt-1 flex items-center gap-3 font-mono">
               <span className="flex items-center gap-1">
-                <Phone className="w-3.5 h-3.5 text-white/50" /> {c.phone || "No phone"}
+                <Phone className="w-3.5 h-3.5 text-white/50" /> {c.phone || "No phone registered"}
               </span>
               <span>·</span>
               <span>{c.notes || "Registered customer"}</span>
@@ -131,7 +246,7 @@ export default function CustomerDetail() {
         </div>
 
         <div className="text-left md:text-right">
-          <div className="text-[10px] uppercase font-bold text-white/60">Outstanding Due</div>
+          <div className="text-[10px] uppercase font-bold text-white/60">Outstanding Balance</div>
           <div className="font-display text-4xl font-extrabold text-brand-terracotta mt-0.5">
             {money(totals.pending)}
           </div>
@@ -145,7 +260,7 @@ export default function CustomerDetail() {
           <div className="font-display text-3xl font-extrabold text-brand-indigo mt-2">
             {money(totals.purchases)}
           </div>
-          <div className="text-xs text-brand-indigo/50 mt-1">{orders.length} transactions recorded</div>
+          <div className="text-xs text-brand-indigo/50 mt-1">{orders.length} transaction records</div>
         </div>
 
         <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-xs">
@@ -180,7 +295,7 @@ export default function CustomerDetail() {
         <div className="divide-y divide-brand-mitti">
           {orders.length === 0 ? (
             <div className="p-12 text-center text-brand-indigo/60 text-sm">
-              No orders recorded for this customer yet.
+              No bills recorded for this customer yet. When a bill is created at the POS counter for this customer, it will appear here automatically.
             </div>
           ) : (
             orders.map(o => (
@@ -222,6 +337,71 @@ export default function CustomerDetail() {
           )}
         </div>
       </div>
+
+      {/* =========================================================
+          EDIT CUSTOMER MODAL
+      ========================================================= */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-md bg-white rounded-3xl p-6 border-2 border-brand-mitti">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl font-bold text-brand-indigo flex items-center gap-2">
+              <Edit2 className="w-5 h-5 text-brand-terracotta" />
+              <span>Edit Customer Profile</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdateCustomer} className="space-y-4 mt-3">
+            <div>
+              <Label className="text-xs font-bold text-brand-indigo">Customer Name *</Label>
+              <Input
+                required
+                value={editForm.name}
+                onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                className="mt-1 rounded-xl border-brand-mitti font-bold"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs font-bold text-brand-indigo">Phone Number</Label>
+              <Input
+                maxLength={10}
+                value={editForm.phone}
+                onChange={e => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
+                className="mt-1 rounded-xl border-brand-mitti font-mono"
+                placeholder="10-digit number"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs font-bold text-brand-indigo">Address / Notes</Label>
+              <Input
+                value={editForm.notes}
+                onChange={e => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                className="mt-1 rounded-xl border-brand-mitti"
+                placeholder="e.g. Regular customer, Flat 102"
+              />
+            </div>
+
+            <DialogFooter className="mt-5 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditOpen(false)}
+                className="rounded-xl border-brand-mitti font-bold text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={busy}
+                className="rounded-xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-xs"
+              >
+                {busy ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

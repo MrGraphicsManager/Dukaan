@@ -49,7 +49,19 @@ export default function Reports() {
       api.get("/customers").catch(() => ({ data: [] })),
       api.get("/products").catch(() => ({ data: [] })),
     ]).then(([ordRes, custRes, prodRes]) => {
-      setOrders(Array.isArray(ordRes.data) ? ordRes.data : []);
+      const serverOrders = Array.isArray(ordRes.data) ? ordRes.data : [];
+      let localOrders = [];
+      try {
+        localOrders = JSON.parse(localStorage.getItem("dukaan_orders") || "[]");
+      } catch {}
+      const allOrders = [...serverOrders];
+      localOrders.forEach(lo => {
+        if (!allOrders.some(o => (o.id && o.id === lo.id) || (o.order_no && o.order_no === lo.order_no))) {
+          allOrders.push(lo);
+        }
+      });
+
+      setOrders(allOrders);
       setCustomers(Array.isArray(custRes.data) ? custRes.data : []);
       setProducts(Array.isArray(prodRes.data) ? prodRes.data : []);
     }).finally(() => setLoading(false));
@@ -80,37 +92,50 @@ export default function Reports() {
       else if (o.payment_method === "udhaar") udhaar += tot;
 
       const cust = o.customer_name || "Walk-in";
-      customerMap[cust] = (customerMap[cust] || 0) + tot;
+      if (cust !== "Walk-in" && cust !== "Walk-in Customer") {
+        customerMap[cust] = (customerMap[cust] || 0) + tot;
+      }
 
       (o.items || []).forEach(it => {
-        productMap[it.name] = (productMap[it.name] || 0) + (Number(it.price || 0) * Number(it.qty || 1));
+        if (it?.name) {
+          productMap[it.name] = (productMap[it.name] || 0) + (Number(it.price || 0) * Number(it.qty || 1));
+        }
       });
     });
 
-    const topCustomer = Object.entries(customerMap).sort((a, b) => b[1] - a[1])[0] || ["Ramesh Patel", 14850];
-    const topProduct = Object.entries(productMap).sort((a, b) => b[1] - a[1])[0] || ["Aashirvaad Atta 5kg", 18200];
+    const topCustomer = Object.entries(customerMap).sort((a, b) => b[1] - a[1])[0] || null;
+    const topProduct = Object.entries(productMap).sort((a, b) => b[1] - a[1])[0] || null;
 
     return {
-      sales: sales || 184500,
-      count: filteredOrders.length || 142,
-      avg: filteredOrders.length ? Math.round(sales / filteredOrders.length) : 485,
-      cash: cash || 98200,
-      upi: upi || 72300,
-      udhaar: udhaar || 14000,
+      sales,
+      count: filteredOrders.length,
+      avg: filteredOrders.length ? Math.round(sales / filteredOrders.length) : 0,
+      cash,
+      upi,
+      udhaar,
       topCustomer,
       topProduct,
     };
   }, [filteredOrders]);
 
-  // Monthly breakdown chart data
-  const monthlyChartData = [
-    { month: "Apr", revenue: 14200 },
-    { month: "May", revenue: 19800 },
-    { month: "Jun", revenue: 24500 },
-    { month: "Jul", revenue: 21200 },
-    { month: "Aug", revenue: 28900 },
-    { month: "Sep", revenue: 34500 },
-  ];
+  // Monthly breakdown chart data - 100% computed from actual orders
+  const monthlyChartData = useMemo(() => {
+    const months = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
+    const monthRev = {};
+    months.forEach(m => { monthRev[m] = 0; });
+
+    filteredOrders.forEach(o => {
+      if (!o || !o.created_at) return;
+      const d = new Date(o.created_at);
+      if (isNaN(d.getTime())) return;
+      const mStr = d.toLocaleString("en-US", { month: "short" });
+      if (monthRev[mStr] !== undefined) {
+        monthRev[mStr] += Number(o.total || 0);
+      }
+    });
+
+    return months.map(m => ({ month: m, revenue: Math.round(monthRev[m]) }));
+  }, [filteredOrders]);
 
   const exportSummary = () => {
     const text = [
@@ -124,8 +149,8 @@ export default function Reports() {
       `Cash Revenue: ${money(stats.cash)}`,
       `UPI Digital Revenue: ${money(stats.upi)}`,
       `Udhaar Credit: ${money(stats.udhaar)}`,
-      `Top Customer: ${stats.topCustomer[0]} (${money(stats.topCustomer[1])})`,
-      `Top Moving Product: ${stats.topProduct[0]} (${money(stats.topProduct[1])})`,
+      `Top Customer: ${stats.topCustomer ? `${stats.topCustomer[0]} (${money(stats.topCustomer[1])})` : "None"}`,
+      `Top Moving Product: ${stats.topProduct ? `${stats.topProduct[0]} (${money(stats.topProduct[1])})` : "None"}`,
       `Generated on: ${new Date().toLocaleString()}`,
     ].join("\n");
 
@@ -346,12 +371,14 @@ export default function Reports() {
             </div>
             <div>
               <div className="text-[10px] uppercase font-bold tracking-wider text-brand-indigo/50">Top Valued Customer</div>
-              <div className="font-heading font-extrabold text-lg text-brand-indigo">{stats.topCustomer[0]}</div>
+              <div className="font-heading font-extrabold text-lg text-brand-indigo">
+                {stats.topCustomer ? stats.topCustomer[0] : "No customer bills yet"}
+              </div>
               <div className="text-xs text-brand-indigo/60 font-medium">Lifetime revenue contributor</div>
             </div>
           </div>
           <div className="font-display font-extrabold text-2xl text-brand-indigo">
-            {money(stats.topCustomer[1])}
+            {money(stats.topCustomer ? stats.topCustomer[1] : 0)}
           </div>
         </div>
 
@@ -363,12 +390,14 @@ export default function Reports() {
             </div>
             <div>
               <div className="text-[10px] uppercase font-bold tracking-wider text-brand-indigo/50">Highest Grossing Product</div>
-              <div className="font-heading font-extrabold text-lg text-brand-indigo">{stats.topProduct[0]}</div>
+              <div className="font-heading font-extrabold text-lg text-brand-indigo">
+                {stats.topProduct ? stats.topProduct[0] : "No product sales yet"}
+              </div>
               <div className="text-xs text-brand-indigo/60 font-medium">Top inventory mover</div>
             </div>
           </div>
           <div className="font-display font-extrabold text-2xl text-brand-indigo">
-            {money(stats.topProduct[1])}
+            {money(stats.topProduct ? stats.topProduct[1] : 0)}
           </div>
         </div>
 

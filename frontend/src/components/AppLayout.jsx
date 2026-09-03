@@ -179,10 +179,10 @@ export default function AppLayout() {
           {/* Logo */}
           <div className="flex items-center gap-3">
             <button className="md:hidden" onClick={() => nav("/app")} data-testid="topbar-logo" aria-label="Home">
-              <span className={`font-display text-2xl ${isPremium ? "text-white" : "text-brand-indigo"}`}>दुकान</span>
+              <span className={`font-display text-2xl font-bold ${isPremium ? "text-white" : "text-brand-indigo"}`}>Dukaan</span>
             </button>
             <div className="hidden md:flex items-center gap-2">
-              <span className={`font-display text-2xl ${isPremium ? "text-white" : "text-brand-indigo"}`}>दुकान · Dukaan</span>
+              <span className={`font-display text-2xl font-bold ${isPremium ? "text-white" : "text-brand-indigo"}`}>Dukaan</span>
               {isPremium && <span className="premium-top-label">PREMIUM</span>}
             </div>
           </div>
@@ -268,20 +268,7 @@ export default function AppLayout() {
             </DropdownMenu>
 
 
-            {/* ================================================
-                LANGUAGE SWITCHER
-            ================================================ */}
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button data-testid="lang-switcher" className={`px-3 py-2 rounded-full border text-sm transition-colors ${isPremium ? "premium-control" : "border-brand-mitti bg-white text-brand-indigo hover:border-brand-indigo"}`}>{lang.toUpperCase()}</button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setLang("en")}>English</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLang("hi")}>हिन्दी</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLang("gu")}>ગુજરાતી</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
 
 
             {/* ================================================

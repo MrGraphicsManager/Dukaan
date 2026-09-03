@@ -197,8 +197,8 @@ const Info = () => {
       `}</style>
 
       <header className="info-header">
-        <a href="/" className="info-brand">
-          दुकान · <span>Dukaan</span>
+        <a href="/" className="info-brand font-bold text-2xl">
+          Dukaan
         </a>
       </header>
 

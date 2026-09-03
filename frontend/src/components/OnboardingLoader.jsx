@@ -70,7 +70,7 @@ const OnboardingLoader = ({ onComplete }) => {
         transition={{ duration: 0.6, ease: "easeOut" }}
         className="absolute top-12 flex items-center justify-center"
       >
-        <span className="font-display text-4xl text-brand-indigo tracking-tight">दुकान</span>
+        <span className="font-display text-4xl font-bold text-brand-indigo tracking-tight">Dukaan</span>
       </motion.div>
 
       <div className="w-full max-w-sm px-6 flex flex-col items-center">

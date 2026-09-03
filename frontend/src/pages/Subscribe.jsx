@@ -93,20 +93,20 @@ const PLANS = {
 
 const FAQS = [
   {
-    q: "Free trial ke liye ₹1 kyu kat'ta hai?",
-    a: "RBI aur banking guidelines ke tahat, Razorpay Autopay (UPI / Card e-mandate) verify karne ke liye ₹1 ka authorization charge lagta hai. Isse aapka account verify ho jata hai aur free trial turant shuru ho jata hai. Trial period ke dauran koi monthly charge nahi lagega."
+    q: "Why is there a ₹1 charge for the free trial?",
+    a: "Under RBI banking regulations, a refundable ₹1 authorization charge verifies your UPI or card e-mandate. Your account is verified instantly and the free trial begins immediately. No monthly charges apply during the trial."
   },
   {
-    q: "Kya Annual Plan par koi free trial milta hai?",
-    a: "Nahi, Annual plan par direct 17% discount (2 mahine muft) diya jata hai, isliye annual plan par koi trial nahi hota. Immediate 1 saal ka full subscription activate hota hai. Free trial sirf Monthly plans par available hai."
+    q: "Is there a free trial on Annual Plans?",
+    a: "Annual plans include an upfront 17% discount (2 months free) and activate immediate full 365-day access without a trial period. Free trial is available on the monthly billing cycle."
   },
   {
-    q: "Kya main apna plan baad mein upgrade ya downgrade kar sakta hoon?",
-    a: "Haan, aap kisi bhi samay Settings ya Billing page par jakar apne plan ko instant upgrade ya switch kar sakte hain."
+    q: "Can I upgrade or change my plan later?",
+    a: "Yes, you can upgrade your plan at any time. Any remaining days from your current plan are automatically added to your new subscription without loss."
   },
   {
-    q: "Payment ke kaun-kaun se options available hain?",
-    a: "Aap UPI (Google Pay, PhonePe, Paytm, BHIM), Debit Card, Credit Card, aur Netbanking ke zariye Razorpay secure gateway se aasaani se pay kar sakte hain."
+    q: "Which payment options are supported?",
+    a: "We support UPI (Google Pay, PhonePe, Paytm, BHIM), all major Credit/Debit cards, and Netbanking via Razorpay secure checkout."
   }
 ];
 
@@ -134,6 +134,14 @@ export default function Subscribe() {
     owner_name: activeShop?.owner_name || user?.name || "",
     name: activeShop?.name || "",
   }), [activeShop, user]);
+
+  const userPlan = user?.subscription?.plan;
+  const hasUsedTrial = Boolean(
+    user?.subscription?.is_trial || 
+    user?.subscription?.trial_used || 
+    user?.trial_used ||
+    (user?.subscription?.status === "active" && userPlan && !user?.subscription?.is_trial)
+  );
 
   useEffect(() => { 
     if (selected !== "premium") setPremiumReady(false); 
@@ -201,6 +209,17 @@ export default function Subscribe() {
      FREE TRIAL WITH RAZORPAY AUTOPAY (₹1 CHARGE / MANDATE)
   ========================================================= */
   const startAutopayTrial = async () => {
+    if (!user) {
+      toast.info("Please create a shop account before starting your free trial.");
+      nav(`/register?redirect=/subscribe?plan=${selected}`);
+      return;
+    }
+
+    if (hasUsedTrial) {
+      toast.error("You have already used your 1-time free trial. Please select a plan to pay and subscribe.");
+      return;
+    }
+
     if (isAnnual) {
       toast.error("Annual plans have direct 17% discount and do not have a free trial.");
       return;
@@ -311,6 +330,11 @@ export default function Subscribe() {
      DIRECT PAYMENT (ANNUAL PLAN OR REGULAR IMMEDIATE PAY)
   ========================================================= */
   const pay = async () => {
+    if (!user) {
+      toast.info("Please sign in or create an account to subscribe.");
+      nav(`/register?redirect=/subscribe?plan=${selected}`);
+      return;
+    }
     setBusy(true);
     const amountToCharge = isAnnual ? plan.annual : plan.monthly;
 
@@ -400,7 +424,7 @@ export default function Subscribe() {
         <div className="mx-auto max-w-7xl px-5 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 text-brand-indigo">
             <Store className="w-6 h-6 text-brand-terracotta" />
-            <span className="font-display text-2xl font-bold tracking-tight">दुकान · Dukaan</span>
+            <span className="font-display text-2xl font-bold tracking-tight">Dukaan</span>
           </Link>
 
           <div className="flex items-center gap-3">
@@ -481,6 +505,7 @@ export default function Subscribe() {
           {Object.entries(PLANS).map(([key, value], index) => {
             const isSelected = selected === key;
             const isFeatured = value.featured;
+            const isCurrentActivePlan = user?.subscription?.status === "active" && userPlan === key;
             const displayPrice = isAnnual ? Math.round(value.annual / 12) : value.monthly;
 
             return (
@@ -500,13 +525,17 @@ export default function Subscribe() {
                 }`}
               >
                 {/* Badges */}
-                {isFeatured && (
+                {isCurrentActivePlan ? (
+                  <span className="absolute -top-3.5 left-6 inline-flex items-center gap-1 rounded-full px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider bg-emerald-600 text-white shadow-md">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Current Plan
+                  </span>
+                ) : isFeatured ? (
                   <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 rounded-full px-4 py-1 text-xs font-extrabold uppercase tracking-wider bg-brand-terracotta text-white shadow-md">
                     <Sparkles className="w-3.5 h-3.5" /> Most Popular
                   </span>
-                )}
+                ) : null}
 
-                {key === "premium" && (
+                {key === "premium" && !isCurrentActivePlan && (
                   <span className="absolute -top-3.5 right-6 inline-flex items-center gap-1 rounded-full px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider bg-amber-500 text-white shadow-sm">
                     <Crown className="w-3.5 h-3.5" /> Multi-Shop
                   </span>
@@ -547,6 +576,16 @@ export default function Subscribe() {
                       </div>
                       <div className="text-[11px] text-amber-800/80 mt-1 font-medium">
                         Instant 1-Year Full Access · No Trial Required
+                      </div>
+                    </div>
+                  ) : hasUsedTrial ? (
+                    <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 text-blue-900 mb-6">
+                      <div className="font-heading font-extrabold text-sm flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-blue-600" />
+                        <span>Paid Subscription</span>
+                      </div>
+                      <div className="text-[11px] text-blue-800/80 mt-0.5 font-medium">
+                        Standard monthly subscription · Instant renewal.
                       </div>
                     </div>
                   ) : (
@@ -596,7 +635,13 @@ export default function Subscribe() {
                         : "bg-brand-sand hover:bg-brand-mitti text-brand-indigo border border-brand-mitti"
                     }`}
                   >
-                    {isSelected ? `Selected (${value.name})` : `Choose ${value.name}`}
+                    {isCurrentActivePlan 
+                      ? `Current Plan (${value.name})` 
+                      : user?.subscription?.status === "active" 
+                        ? `Upgrade to ${value.name}` 
+                        : isSelected 
+                          ? `Selected (${value.name})` 
+                          : `Choose ${value.name}`}
                   </Button>
                 </div>
               </motion.div>
@@ -669,7 +714,11 @@ export default function Subscribe() {
                   <span className="text-brand-indigo/70 font-semibold">Free Trial Status:</span>
                   {isAnnual ? (
                     <span className="font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md">
-                      No Trial (Direct 17% Discount)
+                      Annual (Direct 17% Discount)
+                    </span>
+                  ) : hasUsedTrial ? (
+                    <span className="font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded-md">
+                      Paid Plan Upgrade (Trial Already Used)
                     </span>
                   ) : (
                     <span className="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
@@ -681,13 +730,17 @@ export default function Subscribe() {
                 <div className="flex justify-between items-center pt-2 border-t border-brand-mitti">
                   <span className="text-brand-indigo/70 font-semibold">Due Today:</span>
                   <span className="font-display font-extrabold text-2xl text-brand-indigo">
-                    {isAnnual ? `₹${plan.annual}.00` : "₹1.00"}
+                    {isAnnual ? `₹${plan.annual}.00` : hasUsedTrial ? `₹${plan.monthly}.00` : "₹1.00"}
                   </span>
                 </div>
 
                 <div className="text-[11px] text-brand-indigo/60 pt-1">
                   {isAnnual ? (
                     <span>Covers full 12 months. Renews annually. Cancel anytime from Billing.</span>
+                  ) : hasUsedTrial ? (
+                    <span>
+                      Instant activation for 30 days. Renews monthly at ₹{plan.monthly}/month.
+                    </span>
                   ) : (
                     <span>
                       <b>₹1 will be charged via Razorpay Autopay</b> to verify UPI/card mandate. Monthly subscription of ₹{plan.monthly}/month will auto-charge only after {plan.trial_days} days.
@@ -707,6 +760,16 @@ export default function Subscribe() {
                   >
                     <CreditCard className="w-4 h-4" />
                     <span>{busy ? "Opening Razorpay…" : `Pay ₹${plan.annual} for 1 Year Access`}</span>
+                  </Button>
+                ) : hasUsedTrial ? (
+                  // TRIAL ALREADY CLAIMED: STRICTLY PAID UPGRADE
+                  <Button 
+                    disabled={busy} 
+                    onClick={pay} 
+                    className="w-full h-14 rounded-2xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-extrabold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    <span>{busy ? "Opening Razorpay…" : `Pay ₹${plan.monthly}/month & Activate Plan`}</span>
                   </Button>
                 ) : (
                   // MONTHLY PLAN: ₹1 AUTOPAY MANDATE FOR FREE TRIAL
