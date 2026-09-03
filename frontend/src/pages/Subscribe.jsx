@@ -211,7 +211,7 @@ export default function Subscribe() {
       await loadRazorpay();
 
       const rzpOptions = {
-        key: "rzp_test_placeholder",
+        key: process.env.REACT_APP_RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_live_TXA6Jov2U7Eakz",
         amount: 100, // 100 paise = ₹1.00
         currency: "INR",
         name: "Dukaan Autopay",
@@ -293,7 +293,7 @@ export default function Subscribe() {
     try {
       await loadRazorpay();
       const rzpOptions = { 
-        key: "rzp_test_placeholder", 
+        key: process.env.REACT_APP_RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_live_TXA6Jov2U7Eakz", 
         amount: amountToCharge * 100, 
         currency: "INR", 
         name: "Dukaan", 
