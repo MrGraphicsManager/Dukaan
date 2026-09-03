@@ -29,12 +29,17 @@ import {
   Tag,
   ShoppingBag,
   Zap,
-  Volume2
+  Volume2,
+  VolumeX,
+  Share2
 } from "lucide-react";
 import { getStoredProducts } from "@/lib/defaultProducts";
+import { useAuth } from "@/lib/AuthContext";
+import { playVoiceSoundbox } from "@/lib/soundbox";
 
 export default function POS() {
   const nav = useNavigate();
+  const { lang } = useAuth();
   const [products, setProducts] = useState(() => getStoredProducts());
   const [q, setQ] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -45,14 +50,18 @@ export default function POS() {
   const [customers, setCustomers] = useState([]);
   const [shop, setShop] = useState(null);
   
+  // Soundbox audio state
+  const [soundboxEnabled, setSoundboxEnabled] = useState(true);
+
   // Payment modal state
   const [payOpen, setPayOpen] = useState(false);
   const [method, setMethod] = useState("cash");
   const [amountReceived, setAmountReceived] = useState("");
   const [busy, setBusy] = useState(false);
   
-  // Completed bill dialog state
+  // Completed bill & WhatsApp state
   const [completedBill, setCompletedBill] = useState(null);
+  const [waPhone, setWaPhone] = useState("");
   const [autoResetTimer, setAutoResetTimer] = useState(null);
 
   // New Customer modal state
@@ -168,33 +177,36 @@ export default function POS() {
       const res = await api.post("/orders", payload);
       const order = res.data;
 
-      setPayOpen(false);
-      setCompletedBill({
+      const billData = {
         order_no: order.order_no || `OD-${Date.now().toString().slice(-4)}`,
         id: order.id,
         total,
         payment_method: method,
         items: cart,
+        customer_name: selectedCustomerObj?.name || "Walk-in Customer",
+        customer_phone: selectedCustomerObj?.phone || "",
         change: method === "cash" && Number(amountReceived) > total ? Number(amountReceived) - total : 0,
-      });
+      };
+
+      setPayOpen(false);
+      setCompletedBill(billData);
+      setWaPhone(selectedCustomerObj?.phone || "");
 
       const savedOrders = JSON.parse(localStorage.getItem("dukaan_orders") || "[]");
       localStorage.setItem("dukaan_orders", JSON.stringify([order, ...savedOrders]));
 
       toast.success(`Bill #${order.order_no} created successfully!`);
 
-      // Sound feedback simulation
-      if ("speechSynthesis" in window) {
-        const u = new SpeechSynthesisUtterance("Bill ready");
-        u.rate = 1.2;
-        window.speechSynthesis.speak(u);
+      // Soundbox voice announcement
+      if (soundboxEnabled) {
+        playVoiceSoundbox(total, method, lang);
       }
 
-      // Auto-reset after 3 seconds for next customer
+      // Auto-reset after 6 seconds for next customer
       const timer = setTimeout(() => {
         setCompletedBill(null);
         clearCart();
-      }, 3000);
+      }, 6000);
       setAutoResetTimer(timer);
 
     } catch (e) {
@@ -217,16 +229,43 @@ export default function POS() {
 
       setPayOpen(false);
       setCompletedBill(mockOrder);
+      setWaPhone(selectedCustomerObj?.phone || "");
       toast.success(`Bill #${mockOrder.order_no} created!`);
+
+      // Soundbox voice announcement
+      if (soundboxEnabled) {
+        playVoiceSoundbox(mockOrder.total, method, lang);
+      }
 
       const timer = setTimeout(() => {
         setCompletedBill(null);
         clearCart();
-      }, 3000);
+      }, 6000);
       setAutoResetTimer(timer);
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleSendWhatsAppBill = (billToShare) => {
+    const b = billToShare || completedBill;
+    if (!b) return;
+    const phone = (waPhone || b.customer_phone || "").replace(/\D/g, "");
+    const shopName = shop?.name || "Apni Dukaan";
+    const itemsText = (b.items || []).map(it => `• ${it.name} x ${it.qty} = ₹${Number(it.price || it.selling_price || 0) * Number(it.qty || 1)}`).join("\n");
+    const msg = `🧾 *${shopName}* — Digital Cash Memo\n` +
+      `Bill #${b.order_no}\n` +
+      `------------------------------\n` +
+      `${itemsText}\n` +
+      `------------------------------\n` +
+      `*Grand Total: ₹${b.total}*\n` +
+      `Paid Via: ${b.payment_method?.toUpperCase()}\n` +
+      `Date: ${new Date().toLocaleDateString("en-IN")}\n\n` +
+      `Dhanyawaad! Kripya dobara aaiye. 🙏`;
+
+    const url = `https://wa.me/${phone ? `91${phone}` : ""}?text=${encodeURIComponent(msg)}`;
+    window.open(url, "_blank");
+    toast.success("Opening WhatsApp...");
   };
 
   const handleManualReset = () => {
@@ -272,6 +311,22 @@ export default function POS() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setSoundboxEnabled(p => !p);
+              toast.info(`Soundbox Audio is now ${!soundboxEnabled ? "ON (Active)" : "OFF (Muted)"}`);
+            }}
+            className={`rounded-full border-2 text-xs font-bold px-3.5 h-10 flex items-center gap-1.5 transition-all ${
+              soundboxEnabled 
+                ? "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100" 
+                : "border-brand-mitti bg-white text-brand-indigo/60 hover:bg-brand-sand"
+            }`}
+            title="Toggle Voice Soundbox Announcement"
+          >
+            {soundboxEnabled ? <Volume2 className="w-4 h-4 text-emerald-600 animate-pulse" /> : <VolumeX className="w-4 h-4 text-brand-indigo/40" />}
+            <span className="hidden sm:inline">Soundbox: {soundboxEnabled ? "ON" : "OFF"}</span>
+          </Button>
           <Button
             variant="outline"
             onClick={() => nav("/app/counter")}
@@ -771,12 +826,42 @@ export default function POS() {
             )}
           </div>
 
+          {/* WhatsApp Digital Bill Sender */}
+          <div className="mb-5 p-3.5 rounded-2xl bg-emerald-50 border-2 border-emerald-200 text-left space-y-2">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Share2 className="w-3.5 h-3.5 text-emerald-700" />
+                <span>1-Tap WhatsApp Digital Bill</span>
+              </span>
+              <span className="text-[10px] bg-emerald-200/70 text-emerald-800 px-1.5 py-0.5 rounded font-bold">Paperless</span>
+            </div>
+            <div className="flex gap-2">
+              <Input
+                type="tel"
+                placeholder="Customer Mobile (e.g. 9876543210)"
+                value={waPhone}
+                onChange={(e) => {
+                  if (autoResetTimer) clearTimeout(autoResetTimer);
+                  setWaPhone(e.target.value);
+                }}
+                className="h-10 text-xs rounded-xl bg-white border-emerald-300 font-mono"
+              />
+              <Button
+                onClick={() => handleSendWhatsAppBill()}
+                className="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shrink-0 flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+              >
+                <span>Send Bill</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </div>
+
           <div className="space-y-2.5">
             <Button
               onClick={() => {
                 if (completedBill?.id) nav(`/app/orders/${completedBill.id}`);
               }}
-              className="w-full h-12 rounded-full bg-brand-indigo hover:bg-brand-indigo/90 text-white font-bold text-sm flex items-center justify-center gap-2"
+              className="w-full h-12 rounded-full bg-brand-indigo hover:bg-brand-indigo/90 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm"
             >
               <Printer className="w-4 h-4" /> View Printable Invoice
             </Button>
@@ -792,7 +877,7 @@ export default function POS() {
 
           <div className="mt-4 text-[11px] text-brand-indigo/60 flex items-center justify-center gap-1">
             <Sparkles className="w-3.5 h-3.5 text-brand-terracotta" />
-            <span>Preparing next bill automatically in 3 seconds...</span>
+            <span>Ready for next customer · Auto-refreshing in a moment</span>
           </div>
         </DialogContent>
       </Dialog>

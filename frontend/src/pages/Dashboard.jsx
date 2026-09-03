@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { t } from "@/lib/i18n";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import RenewalBanner from "@/components/RenewalBanner";
 import {
   Receipt,
@@ -33,7 +34,9 @@ import {
   Printer,
   ChevronRight,
   Zap,
-  Target
+  Target,
+  Moon,
+  Share2
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -58,6 +61,31 @@ export default function Dashboard() {
   const [now, setNow] = useState(new Date());
   const [dailyTarget, setDailyTarget] = useState(25000);
   const [soundboxPlaying, setSoundboxPlaying] = useState(false);
+  const [eodOpen, setEodOpen] = useState(false);
+
+  const handleShareEodWhatsApp = () => {
+    const todayStr = new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+    const shopName = premium?.name || user?.name || "Apni Dukaan";
+    const topItems = (d?.top_products || []).slice(0, 3).map((it, idx) => `${idx + 1}. ${it.name} (${it.qty} pcs - ₹${it.rev})`).join("\n");
+    
+    const msg = `📊 *${shopName} — Daily Closing Hisab (EOD)*\n` +
+      `📅 Date: ${todayStr}\n` +
+      `------------------------------------\n` +
+      `🧾 Total Bills Created: *${d?.today?.orders || 0}*\n` +
+      `💰 Total Sales Today: *${money(d?.today?.sales || 0)}*\n` +
+      `💵 Cash Collected: *${money(d?.today?.cash || 0)}*\n` +
+      `📲 UPI Payments: *${money(d?.today?.upi || 0)}*\n` +
+      `📒 Pending Udhaar: *${money(d?.total_pending || 0)}*\n` +
+      `------------------------------------\n` +
+      `🔥 *Top Selling Items Today:*\n${topItems || "No items recorded today"}\n` +
+      `------------------------------------\n` +
+      `✅ Daily register closed & balances verified.\n` +
+      `Dukaan Assistant · officialdukaan.in`;
+
+    const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+    window.open(url, "_blank");
+    toast.success("Opening WhatsApp with Daily Hisab summary...");
+  };
 
   // Hourly trend dynamically calculated from actual today's sales
   const salesHourlyData = (d?.today?.sales > 0) ? [
@@ -349,6 +377,14 @@ export default function Dashboard() {
                   <span>Counter</span>
                 </Button>
               </div>
+              <Button
+                variant="outline"
+                onClick={() => setEodOpen(true)}
+                className="w-full h-9 rounded-xl border-amber-400/40 text-amber-300 hover:bg-amber-400/15 bg-white/5 text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs"
+              >
+                <Moon className="w-3.5 h-3.5 text-amber-300" />
+                <span>🌙 Daily EOD Closing Hisab</span>
+              </Button>
             </div>
           </div>
         </div>
@@ -899,6 +935,88 @@ export default function Dashboard() {
           Launch Counter Mode (F1-F6) →
         </Button>
       </div>
+
+      {/* =========================================================
+          DAILY EOD CLOSING HISAB MODAL (END OF DAY REPORT)
+      ========================================================= */}
+      <Dialog open={eodOpen} onOpenChange={setEodOpen}>
+        <DialogContent className="max-w-md rounded-3xl p-7 border-2 border-brand-mitti text-brand-indigo font-sans">
+          <DialogHeader>
+            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 grid place-items-center mb-2 mx-auto">
+              <Moon className="w-6 h-6 text-amber-700" />
+            </div>
+            <DialogTitle className="font-display text-2xl text-center font-bold text-brand-indigo">
+              Daily EOD Closing Hisab
+            </DialogTitle>
+            <p className="text-xs text-center text-brand-indigo/60">
+              End-of-day store closing summary for {now.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-3 py-3">
+            {/* Sales & Bills Grid */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3.5 rounded-2xl bg-brand-sand border border-brand-mitti">
+                <div className="text-[10px] uppercase font-bold text-brand-indigo/60">Total Sale</div>
+                <div className="font-display text-xl font-bold text-brand-indigo mt-0.5">{money(d?.today?.sales || 0)}</div>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-brand-sand border border-brand-mitti">
+                <div className="text-[10px] uppercase font-bold text-brand-indigo/60">Total Bills</div>
+                <div className="font-display text-xl font-bold text-brand-indigo mt-0.5">{d?.today?.orders || 0} bills</div>
+              </div>
+            </div>
+
+            {/* Cash, UPI, Udhaar Breakdown */}
+            <div className="p-4 rounded-2xl bg-white border border-brand-mitti space-y-2 text-xs">
+              <div className="text-[10px] uppercase font-extrabold text-brand-indigo/50 tracking-wider">Payment Breakdown</div>
+              <div className="flex justify-between items-center text-emerald-800 font-semibold">
+                <span className="flex items-center gap-1.5">💵 Cash Collected:</span>
+                <span className="font-bold text-sm">{money(d?.today?.cash || 0)}</span>
+              </div>
+              <div className="flex justify-between items-center text-blue-800 font-semibold">
+                <span className="flex items-center gap-1.5">📲 UPI Payments:</span>
+                <span className="font-bold text-sm">{money(d?.today?.upi || 0)}</span>
+              </div>
+              <div className="flex justify-between items-center text-brand-terracotta font-semibold pt-1 border-t border-brand-mitti/60">
+                <span className="flex items-center gap-1.5">📒 New Udhaar Due:</span>
+                <span className="font-bold text-sm">{money(d?.total_pending || 0)}</span>
+              </div>
+            </div>
+
+            {/* Top Items List */}
+            <div className="p-3.5 rounded-2xl bg-brand-sand/60 border border-brand-mitti text-xs space-y-1.5">
+              <div className="text-[10px] uppercase font-bold text-brand-indigo/60">Top Movers Today</div>
+              {(d?.top_products && d.top_products.length > 0) ? (
+                d.top_products.slice(0, 3).map((item, idx) => (
+                  <div key={idx} className="flex justify-between font-medium text-brand-indigo/80">
+                    <span>{idx + 1}. {item.name}</span>
+                    <span className="font-bold font-mono">{item.qty} pcs ({money(item.rev)})</span>
+                  </div>
+                ))
+              ) : (
+                <div className="text-[11px] text-brand-indigo/50 italic">No sales recorded yet today</div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter className="mt-2 flex-col sm:flex-col gap-2">
+            <Button
+              onClick={handleShareEodWhatsApp}
+              className="w-full h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
+            >
+              <Share2 className="w-4 h-4" />
+              <span>Share Hisab on WhatsApp (Owner / Partner)</span>
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setEodOpen(false)}
+              className="w-full h-10 rounded-2xl text-brand-indigo/60 text-xs"
+            >
+              Close Summary
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
