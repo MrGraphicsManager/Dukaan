@@ -3,26 +3,25 @@ import { api, formatApiError } from "./api";
 
 const AuthCtx = createContext(null);
 
-const DEMO_USER = {
-  id: "demo_user_1",
-  name: "Dukaan Owner",
+const DEFAULT_USER = {
+  id: "user_owner",
+  name: "Shop Owner",
   email: "owner@officialdukaan.in",
-  is_admin: true,
-  subscription: { plan: "premium", status: "active" },
-  default_shop_id: "demo_shop_1",
+  is_admin: false,
+  subscription: { plan: "starter", status: "active" },
+  default_shop_id: "shop_main",
 };
 
-const DEMO_SHOP = {
-  id: "demo_shop_1",
+const DEFAULT_SHOP = {
+  id: "shop_main",
   name: "Apni Dukaan",
-  owner_name: "Dukaan Owner",
+  owner_name: "Shop Owner",
   phone: "9876543210",
   address: "Main Market, India",
-  upi_id: "demo@upi",
+  upi_id: "",
   store_category: "Kirana & General Store",
-  gst_status: "verified",
-  gst_enabled: true,
-  gst_rate: 5,
+  gst_status: "pending",
+  gst_enabled: false,
   financial_year: "2026-27",
   store_active: true,
 };
@@ -36,8 +35,8 @@ export function AuthProvider({ children }) {
       return null;
     }
   });
-  const [shops, setShops] = useState([DEMO_SHOP]);
-  const [currentShopId, setCurrentShopId] = useState(localStorage.getItem("dukaan_shop_id") || DEMO_SHOP.id);
+  const [shops, setShops] = useState([DEFAULT_SHOP]);
+  const [currentShopId, setCurrentShopId] = useState(localStorage.getItem("dukaan_shop_id") || DEFAULT_SHOP.id);
   const [lang, setLang] = useState(localStorage.getItem("dukaan_lang") || "en");
 
   const setActiveShop = useCallback((id) => {
@@ -56,12 +55,12 @@ export function AuthProvider({ children }) {
         const next = validStored?.id || fallbackId || data[0]?.id || null;
         setActiveShop(next);
       } else {
-        setShops([DEMO_SHOP]);
-        setActiveShop(DEMO_SHOP.id);
+        setShops([DEFAULT_SHOP]);
+        setActiveShop(DEFAULT_SHOP.id);
       }
     } catch (e) {
-      setShops([DEMO_SHOP]);
-      setActiveShop(DEMO_SHOP.id);
+      setShops([DEFAULT_SHOP]);
+      setActiveShop(DEFAULT_SHOP.id);
     }
   }, [setActiveShop]);
 
@@ -82,8 +81,8 @@ export function AuthProvider({ children }) {
         try {
           const current = JSON.parse(stored);
           setUser(current);
-          setShops([DEMO_SHOP]);
-          setActiveShop(DEMO_SHOP.id);
+          setShops([DEFAULT_SHOP]);
+          setActiveShop(DEFAULT_SHOP.id);
           return current;
         } catch {
           // corrupt stored data — stay logged out
@@ -104,15 +103,23 @@ export function AuthProvider({ children }) {
         localStorage.setItem("dukaan_access_token", data.access_token);
       }
       const u = await refresh();
-      localStorage.setItem("dukaan_user", JSON.stringify(u || DEMO_USER));
+      localStorage.setItem("dukaan_user", JSON.stringify(u || DEFAULT_USER));
       return { ok: true };
     } catch (e) {
-      // Offline / local bypass: allow login directly
-      const loggedUser = { ...DEMO_USER, email: email || DEMO_USER.email };
+      // Offline / local fallback
+      const stored = localStorage.getItem("dukaan_user");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setUser(parsed);
+          return { ok: true };
+        } catch {}
+      }
+      const loggedUser = { ...DEFAULT_USER, email: email || DEFAULT_USER.email };
       setUser(loggedUser);
       localStorage.setItem("dukaan_user", JSON.stringify(loggedUser));
-      setShops([DEMO_SHOP]);
-      setActiveShop(DEMO_SHOP.id);
+      setShops([DEFAULT_SHOP]);
+      setActiveShop(DEFAULT_SHOP.id);
       return { ok: true };
     }
   };
@@ -124,7 +131,7 @@ export function AuthProvider({ children }) {
         localStorage.setItem("dukaan_access_token", data.access_token);
       }
       const u = await refresh();
-      localStorage.setItem("dukaan_user", JSON.stringify(u || DEMO_USER));
+      localStorage.setItem("dukaan_user", JSON.stringify(u || DEFAULT_USER));
       return { ok: true };
     } catch (e) {
       // Offline / local bypass: register fresh account

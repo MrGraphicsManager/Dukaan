@@ -55,19 +55,6 @@ export default function Login() {
     }
   };
 
-  const handleDemoLogin = async () => {
-    setBusy(true);
-    setErr("");
-    const res = await login("owner@officialdukaan.in", "demo123");
-    setBusy(false);
-    if (res.ok) {
-      toast.success("Logged in as Demo Shop Owner!");
-      setShowLoader(true);
-    } else {
-      toast.error("Demo login failed");
-    }
-  };
-
   if (showLoader) {
     return <OnboardingLoader onComplete={() => nav("/app")} />;
   }
@@ -318,26 +305,6 @@ export default function Login() {
                   >
                     <span>{busy ? "Authenticating..." : "Log in to Dukaan"}</span>
                     <ArrowRight className="w-4 h-4" />
-                  </Button>
-
-                  {/* Divider */}
-                  <div className="relative flex items-center justify-center my-4">
-                    <div className="border-t border-brand-mitti w-full" />
-                    <span className="bg-white px-3 text-[10px] uppercase font-bold text-brand-indigo/40 absolute tracking-widest">
-                      instant review
-                    </span>
-                  </div>
-
-                  {/* 1-Click Demo Login Button */}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={busy}
-                    onClick={handleDemoLogin}
-                    className="w-full h-12 rounded-full border-2 border-brand-mitti text-brand-indigo font-bold text-xs hover:border-brand-indigo hover:bg-brand-sand/40 flex items-center justify-center gap-2 active:scale-95 transition-all shadow-2xs"
-                  >
-                    <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
-                    <span>Demo 1-Click Login (Shop Owner)</span>
                   </Button>
 
                 </form>

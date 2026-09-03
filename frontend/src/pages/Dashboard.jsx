@@ -292,7 +292,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-7 animate-fade-up max-w-[1400px] mx-auto pb-16 selection:bg-brand-terracotta/20 font-sans">
-      <RenewalBanner />
 
       {/* =========================================================
           ELEMENT 1: NEW REDESIGNED BUSINESS PULSE & TARGET HERO

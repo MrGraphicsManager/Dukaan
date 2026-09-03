@@ -31,7 +31,8 @@ import {
   Zap,
   Volume2,
   VolumeX,
-  Share2
+  Share2,
+  Crown
 } from "lucide-react";
 import { getStoredProducts } from "@/lib/defaultProducts";
 import { useAuth } from "@/lib/AuthContext";
@@ -39,7 +40,10 @@ import { playVoiceSoundbox } from "@/lib/soundbox";
 
 export default function POS() {
   const nav = useNavigate();
-  const { lang } = useAuth();
+  const { lang, user } = useAuth();
+  const userPlan = user?.subscription?.plan || "starter";
+  const isPremium = userPlan === "premium" || user?.is_admin;
+
   const [products, setProducts] = useState(() => getStoredProducts());
   const [q, setQ] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -50,8 +54,8 @@ export default function POS() {
   const [customers, setCustomers] = useState([]);
   const [shop, setShop] = useState(null);
   
-  // Soundbox audio state
-  const [soundboxEnabled, setSoundboxEnabled] = useState(true);
+  // Soundbox audio state (Premium only)
+  const [soundboxEnabled, setSoundboxEnabled] = useState(isPremium);
 
   // Payment modal state
   const [payOpen, setPayOpen] = useState(false);
@@ -197,8 +201,8 @@ export default function POS() {
 
       toast.success(`Bill #${order.order_no} created successfully!`);
 
-      // Soundbox voice announcement
-      if (soundboxEnabled) {
+      // Soundbox voice announcement (Premium only)
+      if (soundboxEnabled && isPremium) {
         playVoiceSoundbox(total, method, lang);
       }
 
@@ -232,8 +236,8 @@ export default function POS() {
       setWaPhone(selectedCustomerObj?.phone || "");
       toast.success(`Bill #${mockOrder.order_no} created!`);
 
-      // Soundbox voice announcement
-      if (soundboxEnabled) {
+      // Soundbox voice announcement (Premium only)
+      if (soundboxEnabled && isPremium) {
         playVoiceSoundbox(mockOrder.total, method, lang);
       }
 
@@ -314,18 +318,32 @@ export default function POS() {
           <Button
             variant="outline"
             onClick={() => {
-              setSoundboxEnabled(p => !p);
-              toast.info(`Soundbox Audio is now ${!soundboxEnabled ? "ON (Active)" : "OFF (Muted)"}`);
+              if (!isPremium) {
+                toast.info("Voice Soundbox is a Premium feature. Upgrade to Premium for real-time UPI voice announcements!");
+                return;
+              }
+              setSoundboxEnabled(v => !v);
             }}
             className={`rounded-full border-2 text-xs font-bold px-3.5 h-10 flex items-center gap-1.5 transition-all ${
-              soundboxEnabled 
-                ? "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100" 
-                : "border-brand-mitti bg-white text-brand-indigo/60 hover:bg-brand-sand"
+              !isPremium
+                ? "border-amber-200 bg-amber-50/60 text-amber-800 hover:bg-amber-100/60"
+                : soundboxEnabled 
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100" 
+                  : "border-brand-mitti bg-white text-brand-indigo/60 hover:bg-brand-sand"
             }`}
-            title="Toggle Voice Soundbox Announcement"
+            title={isPremium ? "Toggle Voice Soundbox Announcement" : "Voice Soundbox (Premium Plan Feature)"}
           >
-            {soundboxEnabled ? <Volume2 className="w-4 h-4 text-emerald-600 animate-pulse" /> : <VolumeX className="w-4 h-4 text-brand-indigo/40" />}
-            <span className="hidden sm:inline">Soundbox: {soundboxEnabled ? "ON" : "OFF"}</span>
+            {!isPremium ? (
+              <>
+                <Crown className="w-3.5 h-3.5 text-amber-600" />
+                <span className="hidden sm:inline">Soundbox (PRO)</span>
+              </>
+            ) : (
+              <>
+                {soundboxEnabled ? <Volume2 className="w-4 h-4 text-emerald-600 animate-pulse" /> : <VolumeX className="w-4 h-4 text-brand-indigo/40" />}
+                <span className="hidden sm:inline">Soundbox: {soundboxEnabled ? "ON" : "OFF"}</span>
+              </>
+            )}
           </Button>
           <Button
             variant="outline"

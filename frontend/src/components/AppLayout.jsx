@@ -7,6 +7,7 @@ import { PLAN_TIER, ROUTE_PLAN } from "@/components/SubGate";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import RenewalBanner from "@/components/RenewalBanner";
 
 const NAV = [
   { to: "/app", key: "dashboard", Icon: LayoutDashboard, end: true },
@@ -148,7 +149,8 @@ export default function AppLayout() {
   const isPremium = subscription?.plan === "premium" || user?.subscription?.plan === "premium";
   const tierMap = PLAN_TIER || { starter: 1, business: 2, premium: 3 };
   const routeMap = ROUTE_PLAN || {};
-  const currentTier = user?.is_admin ? 999 : (tierMap[subscription?.plan || user?.subscription?.plan] || 3);
+  const activePlan = subscription?.plan || user?.subscription?.plan || "starter";
+  const currentTier = user?.is_admin ? 999 : (tierMap[activePlan] || 1);
   const isLocked = (to) => {
     if (to === "/app/counter") return true; // Temporarily locked per user request
     const need = routeMap[to];
@@ -358,6 +360,7 @@ export default function AppLayout() {
 
         {/* Main content */}
         <main className={`flex-1 min-w-0 px-3 sm:px-4 md:px-8 py-4 sm:py-6 ${isPremium ? "premium-main pb-28 md:pb-6" : "pb-28 md:pb-6"}`}>
+          <RenewalBanner />
           <Outlet/>
         </main>
       </div>

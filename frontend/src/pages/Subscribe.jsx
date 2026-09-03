@@ -232,24 +232,40 @@ export default function Subscribe() {
             }); 
           } catch (_) {}
 
+          let newExpiry = new Date();
+          newExpiry.setDate(newExpiry.getDate() + (plan.trial_days || 7));
+
           try {
             const rawUser = localStorage.getItem("dukaan_user");
             const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
-            parsed.subscription = { plan: selected, status: "active", is_trial: true };
+            
+            // Queue renewal: If current subscription still has active days, append to existing expiry
+            let baseTime = Date.now();
+            if (parsed.subscription?.expires_at) {
+              const curExp = new Date(parsed.subscription.expires_at).getTime();
+              if (!isNaN(curExp) && curExp > baseTime) baseTime = curExp;
+            }
+            newExpiry = new Date(baseTime + ((plan.trial_days || 7) * 86400000));
+
+            parsed.subscription = { 
+              plan: selected, 
+              status: "trial", 
+              is_trial: true, 
+              expires_at: newExpiry.toISOString(),
+              activated_at: new Date().toISOString()
+            };
             localStorage.setItem("dukaan_user", JSON.stringify(parsed));
             if (refresh) refresh();
           } catch {}
 
-          const expires = new Date();
-          expires.setDate(expires.getDate() + plan.trial_days);
           setDone({ 
             status: "trial", 
             trial_days: plan.trial_days, 
             amount_paid: 1,
             autopay_active: true,
-            expires_at: expires.toISOString() 
+            expires_at: newExpiry.toISOString() 
           });
-          toast.success(`₹1 Mandate Verified! ${plan.trial_days}-Day Free Trial is now active.`);
+          toast.success(`₹1 Mandate Verified! Active until ${newExpiry.toLocaleDateString("en-IN")}`);
         },
         modal: {
           ondismiss: () => {
@@ -318,15 +334,33 @@ export default function Subscribe() {
               annual: isAnnual
             }); 
           } catch (_) {}
+          let newExpiry = new Date();
+          const durationDays = isAnnual ? 365 : 30;
+
           try {
             const rawUser = localStorage.getItem("dukaan_user");
             const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
-            parsed.subscription = { plan: selected, status: "active", is_annual: isAnnual };
+            
+            // Queue renewal: append to current active expiry so no days are lost
+            let baseTime = Date.now();
+            if (parsed.subscription?.expires_at) {
+              const curExp = new Date(parsed.subscription.expires_at).getTime();
+              if (!isNaN(curExp) && curExp > baseTime) baseTime = curExp;
+            }
+            newExpiry = new Date(baseTime + (durationDays * 86400000));
+
+            parsed.subscription = { 
+              plan: selected, 
+              status: "active", 
+              is_annual: isAnnual,
+              expires_at: newExpiry.toISOString(),
+              activated_at: new Date().toISOString()
+            };
             localStorage.setItem("dukaan_user", JSON.stringify(parsed));
             if (refresh) refresh();
           } catch {}
 
-          setDone({ status: "active", plan: selected, annual: isAnnual }); 
+          setDone({ status: "active", plan: selected, annual: isAnnual, expires_at: newExpiry.toISOString() }); 
         },
         modal: {
           ondismiss: () => {
@@ -339,12 +373,12 @@ export default function Subscribe() {
         const r = new window.Razorpay(rzpOptions);
         r.open();
       } else {
-        setDone({ status: "active", plan: selected, annual: isAnnual });
-        toast.success(`${plan.name} ${isAnnual ? "Annual" : "Monthly"} Plan Activated!`);
+        setDone({ status: "active", plan: selected, annual: isAnnual, expires_at: new Date(Date.now() + ((isAnnual ? 365 : 30) * 86400000)).toISOString() });
+        toast.success(`${plan.name} Plan Activated!`);
       }
     } catch (e) { 
-      setDone({ status: "active", plan: selected, annual: isAnnual });
-      toast.success(`${plan.name} ${isAnnual ? "Annual" : "Monthly"} Plan Activated!`);
+      setDone({ status: "active", plan: selected, annual: isAnnual, expires_at: new Date(Date.now() + ((isAnnual ? 365 : 30) * 86400000)).toISOString() });
+      toast.success(`${plan.name} Plan Activated!`);
     } finally { 
       setBusy(false); 
     }

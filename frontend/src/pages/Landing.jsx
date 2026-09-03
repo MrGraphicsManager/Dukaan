@@ -19,7 +19,10 @@ import {
   Layers,
   Smartphone,
   CheckCircle2,
-  Heart
+  Heart,
+  Monitor,
+  Download,
+  Laptop
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import InstallAppButton from "@/components/InstallAppButton";
@@ -148,7 +151,10 @@ export default function Landing() {
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-brand-indigo/80">
             <a href="#features" className="hover:text-brand-terracotta transition-colors">Features</a>
-            <a href="#how-it-works" className="hover:text-brand-terracotta transition-colors">How it works</a>
+            <a href="#download" className="text-brand-terracotta font-bold hover:underline flex items-center gap-1 transition-colors">
+              <Download className="w-3.5 h-3.5" />
+              <span>Download Apps</span>
+            </a>
             <a href="#counter-mode" className="hover:text-brand-terracotta transition-colors flex items-center gap-1">
               <span>Counter Mode</span>
               <span className="bg-brand-terracotta/10 text-brand-terracotta text-[10px] font-bold px-1.5 py-0.5 rounded-full">3D</span>
@@ -221,22 +227,20 @@ export default function Landing() {
           <div className="mt-8 flex flex-wrap gap-4 items-center">
             <Button 
               size="lg" 
-              onClick={() => nav("/app")} 
+              onClick={() => nav("/register")} 
               className="h-14 px-8 text-lg rounded-full bg-brand-terracotta text-white hover:bg-brand-terracotta/90 active:scale-95 transition-all shadow-glow flex items-center gap-2"
             >
               <span>Start Free Now</span>
               <ArrowRight className="w-5 h-5" />
             </Button>
 
-            <Button 
-              size="lg" 
-              variant="outline"
-              onClick={() => nav("/app/pos")} 
-              className="h-14 px-7 text-base rounded-full border-2 border-brand-mitti hover:border-brand-indigo bg-white text-brand-indigo active:scale-95 transition-all shadow-sm flex items-center gap-2"
+            <a 
+              href="#download"
+              className="h-14 px-7 text-base rounded-full border-2 border-brand-indigo/30 hover:border-brand-indigo bg-white text-brand-indigo font-bold active:scale-95 transition-all shadow-sm flex items-center gap-2"
             >
-              <Receipt className="w-4 h-4 text-brand-terracotta" />
-              <span>Live POS Demo</span>
-            </Button>
+              <Download className="w-4 h-4 text-brand-terracotta" />
+              <span>Get PC (.exe) & APK</span>
+            </a>
           </div>
 
           {/* Trust points */}
@@ -375,6 +379,114 @@ export default function Landing() {
             </Card3D>
           ))}
         </motion.div>
+      </Reveal>
+
+      {/* =========================================================
+          DOWNLOAD SECTION (WINDOWS PC .EXE & ANDROID .APK)
+      ========================================================= */}
+      <Reveal className="relative z-10 mx-auto max-w-6xl px-5 py-20 border-t border-brand-mitti" id="download">
+        <div className="text-center max-w-2xl mx-auto mb-14">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-brand-mitti bg-white text-xs font-bold uppercase tracking-widest text-brand-terracotta mb-4 shadow-2xs">
+            <Download className="w-3.5 h-3.5" />
+            Native Desktop & Mobile Apps
+          </div>
+          <h2 className="font-display text-4xl sm:text-5xl text-brand-indigo">
+            Download Dukaan for Your Counter & Mobile
+          </h2>
+          <p className="mt-4 text-base sm:text-lg text-brand-indigo/70">
+            No browser required. Launch straight into billing with 100% offline device storage.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-8 items-stretch max-w-4xl mx-auto">
+          {/* Windows PC Software Card */}
+          <div className="rounded-3xl p-8 border-2 border-brand-mitti bg-white shadow-lift flex flex-col justify-between hover:border-brand-indigo transition-all">
+            <div>
+              <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 grid place-items-center mb-5">
+                <Laptop className="w-8 h-8" />
+              </div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-blue-600 mb-1">Desktop Software</div>
+              <h3 className="font-display text-2xl font-bold text-brand-indigo">Windows PC (.exe)</h3>
+              <p className="mt-2 text-sm text-brand-indigo/70 leading-relaxed">
+                Counter billing software for Windows 10 & 11. Fullscreen kiosk mode (F11), barcode scanner support, and direct thermal receipt printing.
+              </p>
+
+              <div className="mt-6 space-y-2 text-xs font-semibold text-brand-indigo/80">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Direct launch into POS (No landing page)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Works 100% offline once registered</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Single-file executable + Portable zip</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-brand-mitti">
+              <a
+                href="https://github.com/MrGraphicsManager/Dukaan/actions"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full h-12 rounded-2xl bg-brand-indigo hover:bg-brand-indigo/90 text-white font-bold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download Windows Software (.exe)</span>
+              </a>
+              <div className="mt-2 text-center text-[10px] text-brand-indigo/50">
+                Windows 10 / 11 64-bit · Installer & Portable
+              </div>
+            </div>
+          </div>
+
+          {/* Android Mobile App Card */}
+          <div className="rounded-3xl p-8 border-2 border-brand-mitti bg-white shadow-lift flex flex-col justify-between hover:border-brand-terracotta transition-all">
+            <div>
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 grid place-items-center mb-5">
+                <Smartphone className="w-8 h-8" />
+              </div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 mb-1">Android Mobile App</div>
+              <h3 className="font-display text-2xl font-bold text-brand-indigo">Android App (.apk)</h3>
+              <p className="mt-2 text-sm text-brand-indigo/70 leading-relaxed">
+                Take your Dukaan billing and customer khata ledger in your pocket. Touch-friendly mobile interface with 1-tap WhatsApp digital bills.
+              </p>
+
+              <div className="mt-6 space-y-2 text-xs font-semibold text-brand-indigo/80">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Direct launch into Shop Dashboard</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>1-Tap WhatsApp customer bill sender</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Safe-area native bottom dock navigation</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-brand-mitti">
+              <a
+                href="https://github.com/MrGraphicsManager/Dukaan/actions/runs/33747305367"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full h-12 rounded-2xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download Android APK (5.7 MB)</span>
+              </a>
+              <div className="mt-2 text-center text-[10px] text-brand-indigo/50">
+                Android 8.0+ · Direct APK install
+              </div>
+            </div>
+          </div>
+        </div>
       </Reveal>
 
       {/* =========================================================
