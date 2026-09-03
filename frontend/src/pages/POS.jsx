@@ -75,7 +75,32 @@ export default function POS() {
     api.get("/products")
       .then(r => setProducts(Array.isArray(r.data) && r.data.length > 0 ? r.data : getStoredProducts()))
       .catch(() => setProducts(getStoredProducts()));
-    api.get("/customers").then(r => setCustomers(Array.isArray(r.data) ? r.data : []));
+
+    let localCusts = [];
+    try {
+      localCusts = JSON.parse(localStorage.getItem("dukaan_customers") || "[]");
+      if (!Array.isArray(localCusts) || localCusts.length === 0) {
+        localCusts = [
+          { id: "c_1", name: "Ramesh Patel", phone: "9825100000", notes: "Regular buyer, Block B-204", total_purchases: 450, total_paid: 450, total_pending: 0 },
+          { id: "c_2", name: "Suresh Sharma", phone: "9876543210", notes: "Temple Road", total_purchases: 1450, total_paid: 0, total_pending: 1450 }
+        ];
+        localStorage.setItem("dukaan_customers", JSON.stringify(localCusts));
+      }
+    } catch {}
+
+    api.get("/customers")
+      .then(r => {
+        const serverCusts = Array.isArray(r.data) ? r.data : [];
+        const merged = [...serverCusts];
+        localCusts.forEach(lc => {
+          if (!merged.some(m => (m.id && m.id === lc.id) || (m.phone && lc.phone && m.phone === lc.phone))) {
+            merged.push(lc);
+          }
+        });
+        setCustomers(merged.length > 0 ? merged : localCusts);
+      })
+      .catch(() => setCustomers(localCusts));
+
     api.get("/shops").then(r => {
       const shopId = localStorage.getItem("dukaan_shop_id");
       const list = Array.isArray(r.data) ? r.data : [];
@@ -171,6 +196,40 @@ export default function POS() {
     setCart([]);
     setDiscount(0);
     setCustomerId("");
+  };
+
+  const createCustomer = async () => {
+    if (!newCustomer.name.trim()) {
+      toast.error("Customer name is required");
+      return;
+    }
+    const newC = {
+      id: `c_${Date.now()}`,
+      name: newCustomer.name.trim(),
+      phone: newCustomer.phone.trim(),
+      notes: "Added from POS",
+      total_purchases: 0,
+      total_paid: 0,
+      total_pending: 0,
+      created_at: new Date().toISOString()
+    };
+
+    try {
+      const res = await api.post("/customers", newC);
+      if (res?.data?.id) newC.id = res.data.id;
+    } catch (_) {}
+
+    let stored = [];
+    try {
+      stored = JSON.parse(localStorage.getItem("dukaan_customers") || "[]");
+    } catch {}
+    const updated = [newC, ...stored];
+    localStorage.setItem("dukaan_customers", JSON.stringify(updated));
+
+    setCustomers(prev => [newC, ...prev]);
+    setCustomerId(newC.id);
+    setNewCustomer({ open: false, name: "", phone: "" });
+    toast.success(`Customer "${newC.name}" added and selected!`);
   };
 
   // Pricing math
@@ -338,7 +397,7 @@ export default function POS() {
       `*Grand Total: ₹${b.total}*\n` +
       `Paid Via: ${b.payment_method?.toUpperCase()}\n` +
       `Date: ${new Date().toLocaleDateString("en-IN")}\n\n` +
-      `Dhanyawaad! Kripya dobara aaiye. 🙏`;
+      `Thank you for shopping with us! Please visit again. 🙏`;
 
     const url = `https://wa.me/${phone ? `91${phone}` : ""}?text=${encodeURIComponent(msg)}`;
     window.open(url, "_blank");
@@ -349,23 +408,6 @@ export default function POS() {
     if (autoResetTimer) clearTimeout(autoResetTimer);
     setCompletedBill(null);
     clearCart();
-  };
-
-  const createCustomer = async () => {
-    if (!newCustomer.name) return;
-    try {
-      const { data } = await api.post("/customers", { name: newCustomer.name, phone: newCustomer.phone });
-      setCustomers(prev => [...prev, data]);
-      setCustomerId(data.id);
-      setNewCustomer({ open: false, name: "", phone: "" });
-      toast.success("Customer added to directory");
-    } catch {
-      const demoC = { id: `c_${Date.now()}`, name: newCustomer.name, phone: newCustomer.phone };
-      setCustomers(prev => [...prev, demoC]);
-      setCustomerId(demoC.id);
-      setNewCustomer({ open: false, name: "", phone: "" });
-      toast.success("Customer added");
-    }
   };
 
   return (
@@ -854,12 +896,48 @@ export default function POS() {
                 <span>This bill of <b>{money(total)}</b> will be added to the customer's pending Udhaar Khata.</span>
               </div>
               {!customerId || customerId === "none" ? (
-                <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-bold">
-                  Please select or add a Customer above to save as Udhaar.
+                <div className="p-4 rounded-xl bg-orange-50/70 border border-orange-200 text-xs text-brand-indigo space-y-2.5">
+                  <span className="font-bold text-brand-indigo block">Select Customer for Udhaar:</span>
+                  <Select value={customerId} onValueChange={setCustomerId}>
+                    <SelectTrigger className="bg-white border-brand-mitti rounded-xl h-10 text-xs font-medium">
+                      <SelectValue placeholder="Choose registered customer..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {customers.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name} {c.phone && `· ${c.phone}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <button
+                    type="button"
+                    onClick={() => setNewCustomer({ open: true, name: "", phone: "" })}
+                    className="text-xs font-bold text-brand-terracotta hover:underline flex items-center gap-1 pt-1"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" /> + Create New Customer
+                  </button>
                 </div>
               ) : (
-                <div className="text-xs text-brand-indigo/70">
-                  Customer: <b>{selectedCustomerObj?.name}</b>
+                <div className="p-3.5 rounded-2xl bg-brand-sand border border-brand-mitti text-xs space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-brand-indigo/60">Debtor:</span>
+                    <span className="font-bold text-brand-indigo text-sm">{selectedCustomerObj?.name}</span>
+                  </div>
+                  {selectedCustomerObj?.phone && (
+                    <div className="flex justify-between items-center text-brand-indigo/70 font-mono">
+                      <span>Phone:</span>
+                      <span>{selectedCustomerObj.phone}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-1 border-t border-brand-mitti/60">
+                    <span className="text-brand-indigo/60">Current Outstanding:</span>
+                    <span className="font-bold text-brand-terracotta">{money(selectedCustomerObj?.total_pending || 0)}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-1 border-t border-brand-mitti/60 text-emerald-800 font-bold">
+                    <span>New Total After This Bill:</span>
+                    <span>{money(Number(selectedCustomerObj?.total_pending || 0) + total)}</span>
+                  </div>
                 </div>
               )}
             </div>

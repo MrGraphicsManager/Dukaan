@@ -1297,23 +1297,39 @@ async def list_udhaar(shop: dict = Depends(get_shop_plan("business"))):
     rows=await db.orders.aggregate(pipeline).to_list(1000); result=[]
     for r in rows:
         cid=r["_id"]
-        if not cid or not ObjectId.is_valid(cid): continue
-        c=await db.customers.find_one({"_id":ObjectId(cid)})
-        if c: result.append({"customer_id":cid,"customer_name":c.get("name",""),"customer_phone":c.get("phone",""),"pending":r["pending"],"count":r["count"],"last_order_at":r["last_order_at"]})
+        if not cid: continue
+        c = None
+        if ObjectId.is_valid(cid):
+            c = await db.customers.find_one({"_id": ObjectId(cid)})
+        if not c:
+            c = await db.customers.find_one({"id": str(cid)})
+        cust_name = c.get("name", f"Customer #{str(cid)[-4:]}") if c else f"Customer #{str(cid)[-4:]}"
+        cust_phone = c.get("phone", "") if c else ""
+        result.append({
+            "customer_id": str(cid),
+            "customer_name": cust_name,
+            "customer_phone": cust_phone,
+            "pending": float(r["pending"]),
+            "count": int(r["count"]),
+            "last_order_at": r.get("last_order_at", "")
+        })
     result.sort(key=lambda x:x["pending"],reverse=True); return result
 
 @api.post("/udhaar/pay")
 async def udhaar_pay(body: UdhaarPaymentIn, shop: dict = Depends(get_shop_plan("business"))):
-    if not ObjectId.is_valid(body.customer_id): raise HTTPException(400,"bad customer id")
-    remaining=float(body.amount)
-    if remaining<=0: raise HTTPException(400,"invalid amount")
-    cur=db.orders.find({"shop_id":shop["id"],"customer_id":body.customer_id,"pending_amount":{"$gt":0}}).sort("created_at",1)
+    remaining = float(body.amount)
+    if remaining <= 0: raise HTTPException(400, "invalid amount")
+    cur = db.orders.find({"shop_id": shop["id"], "customer_id": str(body.customer_id), "pending_amount": {"$gt": 0}}).sort("created_at", 1)
     async for o in cur:
-        if remaining<=0: break
-        pay=min(remaining,float(o["pending_amount"])); new_pending=float(o["pending_amount"])-pay; new_paid=float(o.get("paid_amount",0))+pay; new_status="paid" if new_pending==0 else "udhaar"
-        await db.orders.update_one({"_id":o["_id"]},{"$set":{"pending_amount":new_pending,"paid_amount":new_paid,"status":new_status}}); remaining-=pay
-    await db.udhaar_payments.insert_one({"shop_id":shop["id"],"customer_id":body.customer_id,"amount":float(body.amount),"note":body.note or "","created_at":now_iso()})
-    return {"ok":True,"unallocated":remaining}
+        if remaining <= 0: break
+        pay = min(remaining, float(o["pending_amount"]))
+        new_pending = float(o["pending_amount"]) - pay
+        new_paid = float(o.get("paid_amount", 0)) + pay
+        new_status = "paid" if new_pending == 0 else "udhaar"
+        await db.orders.update_one({"_id": o["_id"]}, {"$set": {"pending_amount": new_pending, "paid_amount": new_paid, "status": new_status}})
+        remaining -= pay
+    await db.udhaar_payments.insert_one({"shop_id": shop["id"], "customer_id": str(body.customer_id), "amount": float(body.amount), "note": body.note or "", "created_at": now_iso()})
+    return {"ok": True, "unallocated": remaining}
 
 
 def _today_bounds():
