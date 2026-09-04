@@ -29,7 +29,7 @@ from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depend
 from fastapi.responses import StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from pydantic import BaseModel, Field, BeforeValidator, EmailStr, ConfigDict
+from pydantic import BaseModel, Field, BeforeValidator, EmailStr, ConfigDict, field_validator
 from reportlab.lib.pagesizes import A5
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -52,7 +52,7 @@ EMAIL_BASE_URL = "https://integrations.emergentagent.com"
 EMAIL_KEY = os.environ.get("EMERGENT_EMAIL_KEY", "")
 EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "Dukaan")
 OWNER_NOTIFY_EMAIL = os.environ.get("OWNER_NOTIFY_EMAIL", "").strip()
-FRONTEND_URL_ENV = os.environ.get("FRONTEND_URL", "").rstrip("/")
+FRONTEND_URL_ENV = os.environ.get("FRONTEND_URL", "https://officialdukaan.in").strip().rstrip("/")
 RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "").strip()
 RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "").strip()
 RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "").strip()
@@ -258,10 +258,30 @@ def clean(doc: dict) -> dict:
 # =========================================================
 # Schemas
 # =========================================================
+# Schemas & Validation
+# =========================================================
+SPECIAL_PASSWORD_CHARS = set("!@#$%^&*(),.?\":{}|<>-=_+[]\\/`~")
+
+def validate_strong_password(pw: str) -> str:
+    if len(pw) < 8:
+        raise ValueError("Password must be at least 8 characters long")
+    if not any(c.isupper() for c in pw):
+        raise ValueError("Password must contain at least one capital letter (A-Z)")
+    if not any(c.isdigit() for c in pw):
+        raise ValueError("Password must contain at least one number (0-9)")
+    if not any(c in SPECIAL_PASSWORD_CHARS for c in pw):
+        raise ValueError("Password must contain at least one special symbol (!@#$%^&*...)")
+    return pw
+
 class RegisterIn(BaseModel):
     name: str
     email: EmailStr
-    password: str = Field(min_length=6)
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def check_password(cls, v: str) -> str:
+        return validate_strong_password(v)
 
 class LoginIn(BaseModel):
     email: EmailStr
@@ -461,29 +481,228 @@ async def register(body: RegisterIn, response: Response):
     email = body.email.lower().strip()
     existing = await db.users.find_one({"email": email})
     if existing:
-        raise HTTPException(409, "Email already registered")
+        raise HTTPException(409, "An account with this email already exists. Please sign in.")
     now = now_iso()
-    doc = {"name": body.name.strip(), "email": email, "password_hash": hash_password(body.password), "created_at": now, "is_admin": False}
+
+    verification_code = str(secrets.randbelow(900000) + 100000)
+    verification_token = pysecrets.token_urlsafe(32)
+    verification_expires = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
+
+    doc = {
+        "name": body.name.strip(),
+        "email": email,
+        "password_hash": hash_password(body.password),
+        "created_at": now,
+        "is_admin": False,
+        "is_verified": False,
+        "verification_code": verification_code,
+        "verification_token": verification_token,
+        "verification_expires_at": verification_expires
+    }
     res = await db.users.insert_one(doc)
     uid = str(res.inserted_id)
-    
-    shop_doc = {'name': body.name.strip() + "'s Shop", 'owner_id': uid, 'owner_name': body.name.strip(), 'phone': '', 'address': '', 'upi_id': '', 'upi_qr_data_url': '', 'logo_data_url': '', 'invoice_footer': 'Thank you for shopping with us!', 'min_stock_default': 5, 'contact_email': email, 'store_category': '', 'gst_number': '', 'gst_status': 'not_submitted', 'gst_enabled': False, 'gst_rate': 0, 'financial_year': '2026-27', 'store_active': True, 'created_at': now}
+
+    shop_doc = {
+        'name': body.name.strip() + "'s Shop",
+        'owner_id': uid,
+        'owner_name': body.name.strip(),
+        'phone': '',
+        'address': '',
+        'upi_id': '',
+        'upi_qr_data_url': '',
+        'logo_data_url': '',
+        'invoice_footer': 'Thank you for shopping with us!',
+        'min_stock_default': 5,
+        'contact_email': email,
+        'store_category': '',
+        'gst_number': '',
+        'gst_status': 'not_submitted',
+        'gst_enabled': False,
+        'gst_rate': 0,
+        'financial_year': '2026-27',
+        'store_active': True,
+        'created_at': now
+    }
     shop_res = await db.shops.insert_one(shop_doc)
-    
-    token = create_access_token(uid, email)
-    _set_cookie(response, token)
-    return {"ok": True, "access_token": token, "token_type": "bearer", "user": {"id": uid, "name": doc["name"], "email": email, "is_admin": False}, "shop_id": str(shop_res.inserted_id)}
+
+    # Send verification email
+    verify_link = f"{FRONTEND_URL_ENV}/verify-email?token={verification_token}&email={email}"
+    html = f"""<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E8E5DF; border-radius: 16px; background-color: #FAF6F0;">
+    <h2 style="color: #1B1464; margin-bottom: 8px;">Welcome to Dukaan!</h2>
+    <p style="color: #4A4A4A; font-size: 14px; line-height: 1.5;">Thank you for registering. Please verify your email address to activate your account and select your subscription plan.</p>
+    <div style="margin: 24px 0; text-align: center;">
+        <div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #D4623B; background: #FFFFFF; padding: 14px 28px; border-radius: 12px; border: 2px dashed #D4623B; display: inline-block;">{verification_code}</div>
+    </div>
+    <div style="text-align: center; margin: 24px 0;">
+        <a href="{verify_link}" style="background-color: #D4623B; color: #FFFFFF; padding: 12px 28px; text-decoration: none; border-radius: 9999px; font-weight: bold; display: inline-block; font-size: 14px;">Verify Email Address</a>
+    </div>
+    <p style="color: #888888; font-size: 12px; text-align: center; margin-top: 16px;">This verification code and link will expire in 24 hours.</p>
+</div>"""
+    try:
+        await send_email(to=email, subject="Verify your Dukaan account", html=html)
+    except Exception as e:
+        logger.warning(f"Failed to send verification email: {e}")
+
+    return {
+        "ok": True,
+        "need_verification": True,
+        "email": email,
+        "verification_code": verification_code,
+        "verification_token": verification_token,
+        "message": "Account created! A verification code has been sent to your email.",
+        "user": {
+            "id": uid,
+            "name": doc["name"],
+            "email": email,
+            "is_admin": False,
+            "is_verified": False
+        },
+        "shop_id": str(shop_res.inserted_id)
+    }
+
+@api.post("/auth/verify-email")
+async def verify_email(body: dict, response: Response):
+    email = body.get("email", "").lower().strip()
+    code = str(body.get("code", "")).strip()
+    token = str(body.get("token", "")).strip()
+
+    if not email or (not code and not token):
+        raise HTTPException(400, "Email and verification code or link are required.")
+
+    user = await db.users.find_one({"email": email})
+    if not user:
+        raise HTTPException(404, "No account found with this email.")
+
+    if user.get("is_verified"):
+        uid = str(user["_id"])
+        jwt_token = create_access_token(uid, email)
+        _set_cookie(response, jwt_token)
+        return {
+            "ok": True,
+            "message": "Email is already verified.",
+            "access_token": jwt_token,
+            "token_type": "bearer",
+            "user": {
+                "id": uid,
+                "name": user.get("name", ""),
+                "email": email,
+                "is_admin": bool(user.get("is_admin")),
+                "is_verified": True
+            }
+        }
+
+    is_valid = False
+    if code and str(user.get("verification_code", "")).strip() == code:
+        is_valid = True
+    elif token and str(user.get("verification_token", "")).strip() == token:
+        is_valid = True
+
+    if not is_valid:
+        raise HTTPException(400, "Invalid or expired verification code. Please check and try again.")
+
+    uid = str(user["_id"])
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"is_verified": True, "verification_code": None, "verification_token": None}}
+    )
+
+    jwt_token = create_access_token(uid, email)
+    _set_cookie(response, jwt_token)
+    return {
+        "ok": True,
+        "message": "Email verified successfully!",
+        "access_token": jwt_token,
+        "token_type": "bearer",
+        "user": {
+            "id": uid,
+            "name": user.get("name", ""),
+            "email": email,
+            "is_admin": bool(user.get("is_admin")),
+            "is_verified": True
+        }
+    }
+
+@api.post("/auth/resend-verification")
+async def resend_verification(body: dict):
+    email = body.get("email", "").lower().strip()
+    user = await db.users.find_one({"email": email})
+    if not user:
+        raise HTTPException(404, "No account found with this email.")
+    if user.get("is_verified"):
+        return {"ok": True, "message": "Account is already verified."}
+
+    verification_code = str(secrets.randbelow(900000) + 100000)
+    verification_token = pysecrets.token_urlsafe(32)
+    verification_expires = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
+
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {
+            "verification_code": verification_code,
+            "verification_token": verification_token,
+            "verification_expires_at": verification_expires
+        }}
+    )
+
+    verify_link = f"{FRONTEND_URL_ENV}/verify-email?token={verification_token}&email={email}"
+    html = f"""<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E8E5DF; border-radius: 16px; background-color: #FAF6F0;">
+    <h2 style="color: #1B1464; margin-bottom: 8px;">Dukaan Email Verification</h2>
+    <p style="color: #4A4A4A; font-size: 14px;">Here is your fresh verification code:</p>
+    <div style="margin: 24px 0; text-align: center;">
+        <div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #D4623B; background: #FFFFFF; padding: 14px 28px; border-radius: 12px; border: 2px dashed #D4623B; display: inline-block;">{verification_code}</div>
+    </div>
+    <div style="text-align: center; margin: 24px 0;">
+        <a href="{verify_link}" style="background-color: #D4623B; color: #FFFFFF; padding: 12px 28px; text-decoration: none; border-radius: 9999px; font-weight: bold; display: inline-block; font-size: 14px;">Verify Email Address</a>
+    </div>
+    <p style="color: #888888; font-size: 12px; text-align: center;">Expires in 24 hours.</p>
+</div>"""
+    try:
+        await send_email(to=email, subject="Your new Dukaan verification code", html=html)
+    except Exception as e:
+        logger.warning(f"Failed to resend verification email: {e}")
+
+    return {
+        "ok": True, 
+        "verification_code": verification_code,
+        "verification_token": verification_token,
+        "message": "Verification code resent successfully."
+    }
 
 @api.post("/auth/login")
 async def login(body: LoginIn, response: Response):
     email = body.email.lower().strip()
     user = await db.users.find_one({"email": email})
-    if not user or not verify_password(body.password, user.get("password_hash", "")):
-        raise HTTPException(401, "Invalid email or password")
+    if not user:
+        raise HTTPException(404, "No account found with this email. Please create an account.")
+    if not verify_password(body.password, user.get("password_hash", "")):
+        raise HTTPException(401, "Incorrect password. Please try again.")
+
+    is_verified = bool(user.get("is_verified", True))
+    if not is_verified and not user.get("is_admin"):
+        raise HTTPException(
+            403, 
+            detail={
+                "message": "Please verify your email address to activate your account.",
+                "need_verification": True,
+                "email": email
+            }
+        )
+
     uid = str(user["_id"])
     token = create_access_token(uid, email)
     _set_cookie(response, token)
-    return {"ok": True, "access_token": token, "token_type": "bearer", "user": {"id": uid, "name": user.get("name", ""), "email": email, "is_admin": bool(user.get("is_admin"))}}
+    return {
+        "ok": True,
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": uid,
+            "name": user.get("name", ""),
+            "email": email,
+            "is_admin": bool(user.get("is_admin")),
+            "is_verified": is_verified
+        }
+    }
 
 @api.post("/auth/logout")
 async def logout(response: Response):
@@ -493,38 +712,93 @@ async def logout(response: Response):
 @api.post("/auth/forgot-password")
 async def forgot_password(body: dict):
     email = body.get("email", "").lower().strip()
+    if not email:
+        raise HTTPException(400, "Email address is required.")
     user = await db.users.find_one({"email": email})
-    if user:
-        token = pysecrets.token_urlsafe(32)
-        await db.password_resets.insert_one({
-            "token": token,
-            "user_id": str(user["_id"]),
-            "expires_at": datetime.now(timezone.utc) + timedelta(hours=1)
-        })
-        link = f"{FRONTEND_URL_ENV}/reset-password?token={token}"
-        html = f'<p>Click <a href="{link}">here</a> to reset your password. Link expires in 1 hour.</p>'
-        try:
-            await send_email(to=email, subject="Reset your Dukaan password", html=html)
-        except Exception:
-            pass
-    return {"ok": True}
+    if not user:
+        raise HTTPException(404, "No registered account found with this email address.")
+
+    reset_code = str(secrets.randbelow(900000) + 100000)
+    token = pysecrets.token_urlsafe(32)
+    expires = datetime.now(timezone.utc) + timedelta(hours=1)
+    
+    await db.password_resets.delete_many({"user_id": str(user["_id"])})
+    await db.password_resets.insert_one({
+        "token": token,
+        "code": reset_code,
+        "email": email,
+        "user_id": str(user["_id"]),
+        "expires_at": expires
+    })
+    
+    link = f"{FRONTEND_URL_ENV}/reset-password?token={token}&email={email}"
+    html = f"""<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E8E5DF; border-radius: 16px; background-color: #FAF6F0;">
+    <h2 style="color: #1B1464; margin-bottom: 8px;">Reset Your Dukaan Password</h2>
+    <p style="color: #4A4A4A; font-size: 14px; line-height: 1.5;">We received a request to reset your password. Use the 6-digit code below or click the button:</p>
+    <div style="margin: 24px 0; text-align: center;">
+        <div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #D4623B; background: #FFFFFF; padding: 14px 28px; border-radius: 12px; border: 2px dashed #D4623B; display: inline-block;">{reset_code}</div>
+    </div>
+    <div style="text-align: center; margin: 24px 0;">
+        <a href="{link}" style="background-color: #D4623B; color: #FFFFFF; padding: 12px 28px; text-decoration: none; border-radius: 9999px; font-weight: bold; display: inline-block; font-size: 14px;">Reset Password</a>
+    </div>
+    <p style="color: #888888; font-size: 12px; text-align: center; margin-top: 16px;">This link and code are valid for 1 hour. If you did not request this, please disregard.</p>
+</div>"""
+    try:
+        await send_email(to=email, subject="Reset your Dukaan password", html=html)
+    except Exception as e:
+        logger.warning(f"Failed to send reset email: {e}")
+
+    return {
+        "ok": True,
+        "token": token,
+        "code": reset_code,
+        "email": email,
+        "message": "Password reset instructions sent to your email."
+    }
 
 @api.post("/auth/reset-password")
 async def reset_password(body: dict):
     token = body.get("token")
-    new_password = body.get("new_password")
-    if not token or not new_password:
-        raise HTTPException(400, "Missing token or password")
-    reset_doc = await db.password_resets.find_one({"token": token})
-    if not reset_doc or reset_doc["expires_at"].replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
-        raise HTTPException(400, "Invalid or expired token")
-    
+    code = body.get("code")
+    email = body.get("email", "").lower().strip()
+    new_password = body.get("new_password", "")
+
+    if not new_password:
+        raise HTTPException(400, "New password is required.")
+    try:
+        validate_strong_password(new_password)
+    except ValueError as err:
+        raise HTTPException(400, str(err))
+
+    query = {}
+    if token:
+        query["token"] = token
+    elif code and email:
+        query["code"] = str(code).strip()
+        query["email"] = email
+    else:
+        raise HTTPException(400, "Missing reset token or verification code.")
+
+    reset_doc = await db.password_resets.find_one(query)
+    if not reset_doc:
+        raise HTTPException(400, "Invalid or expired reset code or token.")
+
+    exp = reset_doc.get("expires_at")
+    if isinstance(exp, str):
+        exp_dt = datetime.fromisoformat(exp.replace("Z", "+00:00"))
+    else:
+        exp_dt = exp.replace(tzinfo=timezone.utc) if exp.tzinfo is None else exp
+
+    if exp_dt < datetime.now(timezone.utc):
+        raise HTTPException(400, "Password reset link or code has expired. Please request a new one.")
+
+    user_id = reset_doc["user_id"]
     await db.users.update_one(
-        {"_id": ObjectId(reset_doc["user_id"])},
+        {"_id": ObjectId(user_id)},
         {"$set": {"password_hash": hash_password(new_password)}}
     )
-    await db.password_resets.delete_one({"_id": reset_doc["_id"]})
-    return {"ok": True}
+    await db.password_resets.delete_many({"user_id": user_id})
+    return {"ok": True, "message": "Password reset successfully. You can now log in."}
 
 @api.get("/auth/me")
 async def me(user: dict = Depends(get_current_user)):

@@ -34,27 +34,30 @@ export default function Register() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
+  const hasMinLength = password.length >= 8;
+  const hasUpper = /[A-Z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSymbol = /[!@#$%^&*(),.?":{}|<>\-_+=\[\]\\/`~]/.test(password);
+  const isPasswordValid = hasMinLength && hasUpper && hasNumber && hasSymbol;
+
   const submit = async (e) => {
     e.preventDefault();
     setErr(""); 
+
+    if (!isPasswordValid) {
+      setErr("Password must be at least 8 characters and include a capital letter, a number, and a symbol.");
+      toast.error("Please satisfy all password security requirements.");
+      return;
+    }
+
     setBusy(true);
     const res = await register(name, email, password);
     setBusy(false);
     if (res.ok) {
-      toast.success("Shop account created successfully!");
-      nav("/subscribe");
+      toast.success("Account created! Please verify your email.");
+      nav(`/verify-email?email=${encodeURIComponent(email)}`);
     } else {
       setErr(res.error || "Failed to create account. Please try again.");
-    }
-  };
-
-  const handleQuickDemo = async () => {
-    setBusy(true);
-    const res = await register("Apna Kirana Store", "newshop@dukaan.in", "demo12345");
-    setBusy(false);
-    if (res.ok) {
-      toast.success("Fresh Demo Shop created!");
-      nav("/app");
     }
   };
 
@@ -110,19 +113,20 @@ export default function Register() {
                 <div className="mb-7">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-sand border border-brand-mitti text-[11px] font-bold text-brand-indigo mb-2">
                     <Sparkles className="w-3.5 h-3.5 text-brand-terracotta" />
-                    <span>Instant Shop Setup</span>
+                    <span>Secure Registration</span>
                   </div>
                   <h2 className="font-display text-3xl font-bold text-brand-indigo tracking-tight">
                     Open Your Shop
                   </h2>
                   <p className="text-xs text-brand-indigo/60 font-medium mt-1">
-                    Free to start. No credit card required. Ready in 30 seconds.
+                    Create your merchant account to get started with Dukaan Retail OS.
                   </p>
                 </div>
 
                 {/* Error Banner */}
                 {err && (
-                  <div className="mb-5 p-3 rounded-2xl bg-red-50 border border-red-200 text-xs font-bold text-red-700 flex items-center gap-2">
+                  <div className="mb-5 p-3.5 rounded-2xl bg-red-50 border border-red-200 text-xs text-red-700 font-semibold flex items-center gap-2 animate-shake">
+                    <span className="w-2 h-2 rounded-full bg-red-600 shrink-0" />
                     <span>{err}</span>
                   </div>
                 )}
@@ -142,7 +146,7 @@ export default function Register() {
                         required
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder="Ramesh Bhai (Apna Kirana)"
+                        placeholder="Ramesh Patel (Apna Supermarket)"
                         className="pl-11 pr-4 h-12 rounded-2xl border-2 border-brand-mitti focus-visible:border-brand-terracotta bg-brand-sand/40 text-sm font-medium text-brand-indigo"
                       />
                     </div>
@@ -169,14 +173,13 @@ export default function Register() {
                   {/* Password Field */}
                   <div className="space-y-1.5">
                     <Label className="text-xs font-bold uppercase tracking-wider text-brand-indigo/70">
-                      Create Password (min 6 characters)
+                      Create Password
                     </Label>
                     <div className="relative">
                       <Lock className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-brand-indigo/40" />
                       <Input
                         type={showPassword ? "text" : "password"}
                         required
-                        minLength={6}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
@@ -190,36 +193,41 @@ export default function Register() {
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
+
+                    {/* Password Rules Checklist */}
+                    <div className="pt-2 p-3 bg-brand-sand/60 rounded-2xl border border-brand-mitti/80 space-y-1.5 text-[11px]">
+                      <div className="font-bold text-brand-indigo/70 text-[10px] uppercase tracking-wider mb-1">
+                        Password Requirements:
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <div className={`flex items-center gap-1.5 font-medium ${hasMinLength ? "text-emerald-700 font-bold" : "text-brand-indigo/50"}`}>
+                          <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${hasMinLength ? "text-emerald-600" : "text-brand-indigo/30"}`} />
+                          <span>8+ Characters</span>
+                        </div>
+                        <div className={`flex items-center gap-1.5 font-medium ${hasUpper ? "text-emerald-700 font-bold" : "text-brand-indigo/50"}`}>
+                          <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${hasUpper ? "text-emerald-600" : "text-brand-indigo/30"}`} />
+                          <span>1 Capital Letter (A-Z)</span>
+                        </div>
+                        <div className={`flex items-center gap-1.5 font-medium ${hasNumber ? "text-emerald-700 font-bold" : "text-brand-indigo/50"}`}>
+                          <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${hasNumber ? "text-emerald-600" : "text-brand-indigo/30"}`} />
+                          <span>1 Number (0-9)</span>
+                        </div>
+                        <div className={`flex items-center gap-1.5 font-medium ${hasSymbol ? "text-emerald-700 font-bold" : "text-brand-indigo/50"}`}>
+                          <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${hasSymbol ? "text-emerald-600" : "text-brand-indigo/30"}`} />
+                          <span>1 Special Symbol (!@#$)</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* 3D Main Submit Button */}
+                  {/* Submit Button */}
                   <Button
                     type="submit"
-                    disabled={busy}
-                    className="w-full h-13 rounded-full bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-sm shadow-glow active:scale-95 transition-all flex items-center justify-center gap-2 mt-3"
+                    disabled={busy || !isPasswordValid}
+                    className="w-full h-13 rounded-full bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-sm shadow-glow active:scale-95 transition-all flex items-center justify-center gap-2 mt-4"
                   >
-                    <span>{busy ? "Setting up Shop..." : "Create My Free Shop"}</span>
+                    <span>{busy ? "Registering Shop..." : "Create Account & Verify Email"}</span>
                     <ArrowRight className="w-4 h-4" />
-                  </Button>
-
-                  {/* Divider */}
-                  <div className="relative flex items-center justify-center my-4">
-                    <div className="border-t border-brand-mitti w-full" />
-                    <span className="bg-white px-3 text-[10px] uppercase font-bold text-brand-indigo/40 absolute tracking-widest">
-                      instant test
-                    </span>
-                  </div>
-
-                  {/* 1-Click Quick Register Button */}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={busy}
-                    onClick={handleQuickDemo}
-                    className="w-full h-12 rounded-full border-2 border-brand-mitti text-brand-indigo font-bold text-xs hover:border-brand-indigo hover:bg-brand-sand/40 flex items-center justify-center gap-2 active:scale-95 transition-all shadow-2xs"
-                  >
-                    <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
-                    <span>1-Click Instant Demo Setup</span>
                   </Button>
 
                 </form>

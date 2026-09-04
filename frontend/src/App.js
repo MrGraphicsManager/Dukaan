@@ -14,6 +14,7 @@ import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import VerifyEmail from "@/pages/VerifyEmail";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 
@@ -50,6 +51,17 @@ function Protected({ children }) {
 
   if (!user) {
     return <Navigate to={`/login?next=${encodeURIComponent(loc.pathname)}`} replace />;
+  }
+
+  // If email is not verified, redirect to email verification
+  if (user.is_verified === false && !user.is_admin) {
+    return <Navigate to={`/verify-email?email=${encodeURIComponent(user.email || "")}`} replace />;
+  }
+
+  // If user has no active subscription and is not admin, redirect to subscribe
+  const hasActiveSub = user.is_admin || (user.subscription && user.subscription.status === "active");
+  if (!hasActiveSub && !loc.pathname.startsWith("/app/billing") && !loc.pathname.startsWith("/app/settings")) {
+    return <Navigate to="/subscribe" replace />;
   }
 
   return children;
@@ -129,6 +141,11 @@ function LaunchController() {
       <Route
         path="/register"
         element={<Register />}
+      />
+
+      <Route
+        path="/verify-email"
+        element={<VerifyEmail />}
       />
 
       <Route

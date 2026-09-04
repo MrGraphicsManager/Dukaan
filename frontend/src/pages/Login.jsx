@@ -34,11 +34,13 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [needVerify, setNeedVerify] = useState(false);
   const [showLoader, setShowLoader] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
     setErr(""); 
+    setNeedVerify(false);
     setBusy(true);
     const res = await login(email, password);
     setBusy(false);
@@ -51,12 +53,33 @@ export default function Login() {
       toast.success("Welcome back to Dukaan!");
       setShowLoader(true);
     } else {
-      setErr(res.error || "Invalid email or password. Please try again.");
+      if (res.needVerification) {
+        setNeedVerify(true);
+        setErr(res.error || "Please verify your email address to continue.");
+        toast.warning("Please verify your email first.");
+      } else {
+        setErr(res.error || "Invalid email or password. Please try again.");
+      }
     }
   };
 
   if (showLoader) {
-    return <OnboardingLoader onComplete={() => nav("/app")} />;
+    return (
+      <OnboardingLoader 
+        onComplete={() => {
+          let currentUser = null;
+          try {
+            currentUser = JSON.parse(localStorage.getItem("dukaan_user") || "{}");
+          } catch {}
+          const hasActiveSub = currentUser?.is_admin || (currentUser?.subscription && currentUser?.subscription.status === "active");
+          if (!hasActiveSub) {
+            nav("/subscribe");
+          } else {
+            nav("/app");
+          }
+        }} 
+      />
+    );
   }
 
   return (
@@ -225,8 +248,31 @@ export default function Login() {
 
                 {/* Error Banner */}
                 {err && (
-                  <div className="mb-5 p-3 rounded-2xl bg-red-50 border border-red-200 text-xs font-bold text-red-700 flex items-center gap-2">
-                    <span>{err}</span>
+                  <div className="mb-5 p-3.5 rounded-2xl bg-red-50 border border-red-200 text-xs text-red-700 font-semibold space-y-1.5 animate-shake">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-red-600 shrink-0" />
+                      <span>{err}</span>
+                    </div>
+                    {needVerify && (
+                      <div className="pt-1 pl-4">
+                        <Link 
+                          to={`/verify-email?email=${encodeURIComponent(email)}`} 
+                          className="text-xs font-bold text-brand-terracotta underline hover:text-brand-terracotta/80 block"
+                        >
+                          Click here to enter your verification code →
+                        </Link>
+                      </div>
+                    )}
+                    {err.toLowerCase().includes("no account found") && (
+                      <div className="pt-1 pl-4">
+                        <Link 
+                          to="/register" 
+                          className="text-xs font-bold text-brand-terracotta underline hover:text-brand-terracotta/80 block"
+                        >
+                          Create a new account now →
+                        </Link>
+                      </div>
+                    )}
                   </div>
                 )}
 
