@@ -236,13 +236,14 @@ exports.handler = async (event, context) => {
     if (path === "/auth/login" && event.httpMethod === "POST") {
       const email = (body.email || "").trim().toLowerCase();
       const password = body.password || "";
+      const name = (body.name || "").trim() || email.split("@")[0];
       if (!email || !password) {
         return { statusCode: 400, headers, body: JSON.stringify({ detail: "Email and password are required." }) };
       }
       const isAdmin = email === "admin@officialdukaan.in" || email === "admin@dukaan.app";
       const user = {
         id: `usr_${Date.now()}`,
-        name: email.split("@")[0],
+        name,
         email,
         is_verified: true,
         is_admin: isAdmin,
@@ -258,6 +259,48 @@ exports.handler = async (event, context) => {
           token_type: "bearer",
           user
         })
+      };
+    }
+
+    // 2B. RESET PASSWORD
+    if (path === "/auth/reset-password" && event.httpMethod === "POST") {
+      const { email, new_password } = body;
+      if (!new_password || new_password.length < 8) {
+        return { statusCode: 400, headers, body: JSON.stringify({ detail: "Password must be at least 8 characters." }) };
+      }
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ ok: true, message: "Password reset successfully! You can now log in." })
+      };
+    }
+
+    // 2C. CHANGE PASSWORD
+    if (path === "/auth/change-password" && event.httpMethod === "POST") {
+      const { new_password } = body;
+      if (!new_password || new_password.length < 8) {
+        return { statusCode: 400, headers, body: JSON.stringify({ detail: "Password must be at least 8 characters." }) };
+      }
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ ok: true, message: "Password updated successfully!" })
+      };
+    }
+
+    // 2D. UPDATE PROFILE
+    if ((path === "/auth/update-profile" || path === "/auth/profile") && (event.httpMethod === "POST" || event.httpMethod === "PUT")) {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      let user = parseToken(authHeader) || {};
+      if (body.name) user.name = body.name.trim();
+      if (body.phone) user.phone = body.phone.trim();
+      if (body.avatar !== undefined) user.avatar = body.avatar;
+
+      const new_token = makeToken(user);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ ok: true, user, access_token: new_token })
       };
     }
 
@@ -592,6 +635,66 @@ exports.handler = async (event, context) => {
         statusCode: 200,
         headers,
         body: JSON.stringify({ ok: true, message: "Subscription action executed successfully" })
+      };
+    }
+
+    // 11. SHOPS MANAGEMENT
+    if (path === "/shops" && event.httpMethod === "GET") {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const uName = user?.name || "My";
+      const defaultShop = {
+        id: "shop_main",
+        name: `${uName}'s Store`,
+        owner_name: uName,
+        phone: user?.phone || "",
+        address: "India",
+        upi_id: "",
+        store_category: "General Store",
+        gst_status: "pending",
+        gst_enabled: false,
+        financial_year: "2026-27",
+        store_active: true
+      };
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify([defaultShop])
+      };
+    }
+
+    if (path === "/shops" && event.httpMethod === "POST") {
+      const newShop = {
+        id: `shop_${Date.now()}`,
+        ...body,
+        store_active: true
+      };
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(newShop)
+      };
+    }
+
+    if (path.startsWith("/shops/") && (event.httpMethod === "PUT" || event.httpMethod === "POST")) {
+      const shopId = path.replace("/shops/", "");
+      const updatedShop = {
+        id: shopId,
+        ...body
+      };
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(updatedShop)
+      };
+    }
+
+    if (path.startsWith("/shops/") && event.httpMethod === "GET") {
+      const shopId = path.replace("/shops/", "");
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ id: shopId, name: "Apni Dukaan" })
       };
     }
 

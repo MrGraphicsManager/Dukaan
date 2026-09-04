@@ -301,16 +301,50 @@ export default function AppLayout() {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button data-testid="user-menu" className={`w-9 h-9 rounded-full grid place-items-center font-heading font-semibold ${isPremium ? "premium-avatar" : "bg-brand-indigo text-white"}`}>{(user?.name || user?.email || "U")[0].toUpperCase()}</button>
+                <button data-testid="user-menu" className={`w-9 h-9 rounded-full overflow-hidden grid place-items-center font-heading font-semibold transition-all border ${isPremium ? "premium-avatar border-amber-400 shadow-sm" : "bg-brand-indigo text-white border-brand-indigo/30"}`}>
+                  {user?.avatar ? (
+                    <img src={user.avatar} alt={user?.name || "Avatar"} className="w-full h-full object-cover" />
+                  ) : (
+                    (user?.name || user?.email || "U")[0].toUpperCase()
+                  )}
+                </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel className="truncate">{user?.email}</DropdownMenuLabel>
+              <DropdownMenuContent align="end" className="w-64 p-2">
+                <div className="px-3 py-2 bg-brand-sand/60 rounded-xl mb-1">
+                  <div className="font-heading font-bold text-sm text-brand-indigo truncate">
+                    {user?.name || "Merchant"}
+                  </div>
+                  <div className="text-xs text-brand-indigo/60 truncate">
+                    {user?.email || "owner@dukaan.in"}
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-brand-indigo text-white">
+                      {user?.subscription?.plan || "Starter"} Plan
+                    </span>
+                    {user?.subscription?.is_trial && (
+                      <span className="px-1.5 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-100 text-emerald-800">
+                        Trial
+                      </span>
+                    )}
+                  </div>
+                </div>
                 <DropdownMenuSeparator/>
-                <DropdownMenuItem onClick={() => nav("/app/settings")}>Settings</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => nav("/app/billing")}>Billing & Plan</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => nav("/subscribe")}>Upgrade / Buy Plan</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => nav("/app/settings?tab=account")} className="cursor-pointer py-2 text-xs font-semibold">
+                  <Cog className="w-4 h-4 mr-2 text-brand-terracotta" /> My Account & Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => nav("/app/settings?tab=shop")} className="cursor-pointer py-2 text-xs font-semibold">
+                  <Store className="w-4 h-4 mr-2 text-brand-indigo" /> Shop & Branches
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => nav("/app/billing")} className="cursor-pointer py-2 text-xs font-semibold">
+                  <CreditCard className="w-4 h-4 mr-2 text-blue-600" /> Billing & Plan
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => nav("/subscribe")} className="cursor-pointer py-2 text-xs font-semibold">
+                  <ShieldCheck className="w-4 h-4 mr-2 text-amber-500" /> Upgrade / Change Plan
+                </DropdownMenuItem>
                 <DropdownMenuSeparator/>
-                <DropdownMenuItem onClick={async () => { await logout(); nav("/"); }} data-testid="logout-btn"><LogOut className="w-4 h-4 mr-2"/> {t(lang,"logout")}</DropdownMenuItem>
+                <DropdownMenuItem onClick={async () => { await logout(); nav("/"); }} data-testid="logout-btn" className="cursor-pointer py-2 text-xs font-semibold text-red-600 hover:text-red-700">
+                  <LogOut className="w-4 h-4 mr-2"/> {t(lang,"logout")}
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 

@@ -26,7 +26,16 @@ export function AuthProvider({ children }) {
       return null;
     }
   });
-  const [shops, setShops] = useState([DEFAULT_SHOP]);
+  const [shops, setShops] = useState(() => {
+    try {
+      const stored = localStorage.getItem("dukaan_shops");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [DEFAULT_SHOP];
+  });
   const [currentShopId, setCurrentShopId] = useState(localStorage.getItem("dukaan_shop_id") || DEFAULT_SHOP.id);
   const [lang, setLang] = useState(localStorage.getItem("dukaan_lang") || "en");
 
@@ -36,47 +45,73 @@ export function AuthProvider({ children }) {
     else localStorage.removeItem("dukaan_shop_id");
   }, []);
 
+  const updateShop = useCallback((shopData) => {
+    setShops((prev) => {
+      const list = Array.isArray(prev) ? prev : [DEFAULT_SHOP];
+      const targetId = shopData.id || currentShopId || DEFAULT_SHOP.id;
+      const idx = list.findIndex(s => s.id === targetId);
+      let next;
+      if (idx >= 0) {
+        next = [...list];
+        next[idx] = { ...next[idx], ...shopData };
+      } else {
+        next = [...list, { ...shopData, id: targetId }];
+      }
+      try {
+        localStorage.setItem("dukaan_shops", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, [currentShopId]);
+
   const loadShops = useCallback(async (fallbackId) => {
+    let localShops = [];
+    try {
+      const raw = localStorage.getItem("dukaan_shops");
+      if (raw) localShops = JSON.parse(raw);
+    } catch {}
+
     try {
       const { data } = await api.get("/shops");
       if (Array.isArray(data) && data.length > 0) {
-        setShops(data);
+        const merged = data.map(ds => {
+          const loc = localShops.find(ls => ls.id === ds.id);
+          return loc ? { ...ds, ...loc } : ds;
+        });
+        setShops(merged);
+        localStorage.setItem("dukaan_shops", JSON.stringify(merged));
         const stored = localStorage.getItem("dukaan_shop_id");
-        const validStored = data.find((s) => s.id === stored);
-        const next = validStored?.id || fallbackId || data[0]?.id || null;
+        const validStored = merged.find((s) => s.id === stored);
+        const next = validStored?.id || fallbackId || merged[0]?.id || null;
         setActiveShop(next);
-      } else {
-        const existingShopId = localStorage.getItem("dukaan_shop_id") || DEFAULT_SHOP.id;
-        const storedUser = localStorage.getItem("dukaan_user");
-        let uName = "My";
-        if (storedUser) {
-          try { uName = JSON.parse(storedUser).name || "My"; } catch {}
-        }
-        const userShop = {
-          ...DEFAULT_SHOP,
-          id: existingShopId,
-          name: `${uName}'s Store`,
-          owner_name: uName
-        };
-        setShops([userShop]);
-        setActiveShop(userShop.id);
+        return;
       }
-    } catch (e) {
-      const existingShopId = localStorage.getItem("dukaan_shop_id") || DEFAULT_SHOP.id;
-      const storedUser = localStorage.getItem("dukaan_user");
-      let uName = "My";
-      if (storedUser) {
-        try { uName = JSON.parse(storedUser).name || "My"; } catch {}
-      }
-      const userShop = {
-        ...DEFAULT_SHOP,
-        id: existingShopId,
-        name: `${uName}'s Store`,
-        owner_name: uName
-      };
-      setShops([userShop]);
-      setActiveShop(userShop.id);
+    } catch (e) {}
+
+    // Fallback: If local shops exist, use them
+    if (Array.isArray(localShops) && localShops.length > 0) {
+      setShops(localShops);
+      const stored = localStorage.getItem("dukaan_shop_id");
+      const valid = localShops.find(s => s.id === stored);
+      setActiveShop(valid ? valid.id : localShops[0].id);
+      return;
     }
+
+    const existingShopId = localStorage.getItem("dukaan_shop_id") || DEFAULT_SHOP.id;
+    const storedUser = localStorage.getItem("dukaan_user");
+    let uName = "My";
+    if (storedUser) {
+      try { uName = JSON.parse(storedUser).name || "My"; } catch {}
+    }
+    const userShop = {
+      ...DEFAULT_SHOP,
+      id: existingShopId,
+      name: `${uName}'s Store`,
+      owner_name: uName
+    };
+    setShops([userShop]);
+    localStorage.setItem("dukaan_shops", JSON.stringify([userShop]));
+    setActiveShop(userShop.id);
   }, [setActiveShop]);
 
   const updateUser = useCallback((updater) => {
@@ -163,17 +198,45 @@ export function AuthProvider({ children }) {
     if (!cleanEmail) return { ok: false, error: "Please enter your email address." };
     if (!password) return { ok: false, error: "Please enter your password." };
 
+    let regUsers = [];
     try {
-      const { data } = await api.post("/auth/login", { email: cleanEmail, password });
+      regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
+    } catch {}
+
+    const localFound = regUsers.find(u => u.email && u.email.toLowerCase() === cleanEmail);
+    if (localFound) {
+      if (localFound.password && localFound.password !== password) {
+        return { ok: false, error: "Incorrect password. Please try again." };
+      }
+      if (localFound.is_verified === false && !localFound.is_admin) {
+        return {
+          ok: false,
+          error: "Please verify your email address before signing in.",
+          needVerification: true,
+          email: cleanEmail
+        };
+      }
+    }
+
+    try {
+      const { data } = await api.post("/auth/login", { 
+        email: cleanEmail, 
+        password,
+        name: localFound?.name || undefined 
+      });
       if (data?.access_token) {
         localStorage.setItem("dukaan_access_token", data.access_token);
       }
       const u = await refresh();
-      const finalUser = u || data?.user;
-      if (finalUser) {
-        setUser(finalUser);
-        localStorage.setItem("dukaan_user", JSON.stringify(finalUser));
-      }
+      const finalUser = {
+        ...(localFound || {}),
+        ...(data?.user || {}),
+        ...(u || {}),
+        name: localFound?.name || data?.user?.name || cleanEmail.split("@")[0],
+        subscription: localFound?.subscription || data?.user?.subscription || u?.subscription || null
+      };
+      setUser(finalUser);
+      localStorage.setItem("dukaan_user", JSON.stringify(finalUser));
       return { ok: true, user: finalUser };
     } catch (err) {
       const status = err.response?.status;
@@ -202,34 +265,13 @@ export function AuthProvider({ children }) {
         };
       }
 
-      // Offline / client-side check against registered users
-      let regUsers = [];
-      try {
-        regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
-      } catch {}
-
-      const found = regUsers.find(u => u.email.toLowerCase() === cleanEmail);
-      if (!found) {
+      if (!localFound) {
         return { ok: false, error: "No account found with this email. Please create an account." };
       }
 
-      if (found.password && found.password !== password) {
-        return { ok: false, error: "Incorrect password. Please try again." };
-      }
-
-      if (found.is_verified === false) {
-        return {
-          ok: false,
-          error: "Please verify your email address before signing in.",
-          needVerification: true,
-          email: cleanEmail
-        };
-      }
-
-      // Valid credentials
-      setUser(found);
-      localStorage.setItem("dukaan_user", JSON.stringify(found));
-      return { ok: true, user: found };
+      setUser(localFound);
+      localStorage.setItem("dukaan_user", JSON.stringify(localFound));
+      return { ok: true, user: localFound };
     }
   };
 
@@ -448,25 +490,91 @@ export function AuthProvider({ children }) {
     setUser(socialUser);
     localStorage.setItem("dukaan_user", JSON.stringify(socialUser));
 
-    // 4. Setup merchant store for this specific Google user
+    // 4. Setup merchant store for this specific Google user, reusing existing configuration if available
     const merchantShopId = `shop_${cleanEmail.replace(/[^a-zA-Z0-9]/g, "_")}`;
-    const merchantShop = {
-      id: merchantShopId,
-      name: `${cleanName}'s Store`,
-      owner_name: cleanName,
-      phone: "",
-      address: "India",
-      upi_id: "",
-      store_category: "General Store",
-      gst_status: "pending",
-      gst_enabled: false,
-      financial_year: "2026-27",
-      store_active: true,
-    };
+    let savedShops = [];
+    try {
+      savedShops = JSON.parse(localStorage.getItem("dukaan_shops") || "[]");
+    } catch {}
+
+    let merchantShop = savedShops.find(s => s.id === merchantShopId || s.owner_email === cleanEmail);
+    if (!merchantShop) {
+      merchantShop = {
+        id: merchantShopId,
+        owner_email: cleanEmail,
+        name: `${cleanName}'s Store`,
+        owner_name: cleanName,
+        phone: "",
+        address: "India",
+        upi_id: "",
+        store_category: "General Store",
+        gst_status: "pending",
+        gst_enabled: false,
+        financial_year: "2026-27",
+        store_active: true,
+      };
+      savedShops.push(merchantShop);
+      localStorage.setItem("dukaan_shops", JSON.stringify(savedShops));
+    }
     setShops([merchantShop]);
     setActiveShop(merchantShop.id);
 
     return { ok: true, user: socialUser };
+  };
+
+  const updateProfile = async ({ name, phone, avatar }) => {
+    const updatedFields = {};
+    if (name !== undefined) updatedFields.name = name.trim();
+    if (phone !== undefined) updatedFields.phone = phone.trim();
+    if (avatar !== undefined) updatedFields.avatar = avatar;
+
+    updateUser(updatedFields);
+
+    try {
+      await api.post("/auth/update-profile", updatedFields);
+    } catch (e) {
+      console.warn("Backend update-profile offline fallback:", e);
+    }
+
+    return { ok: true, user: { ...(user || {}), ...updatedFields } };
+  };
+
+  const changePassword = async (currentPassword, newPassword) => {
+    if (!newPassword || newPassword.length < 8) {
+      return { ok: false, error: "New password must be at least 8 characters long." };
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      return { ok: false, error: "New password must contain at least one capital letter (A-Z)." };
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      return { ok: false, error: "New password must contain at least one number (0-9)." };
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>\-_+=\[\]\\/`~]/.test(newPassword)) {
+      return { ok: false, error: "New password must contain at least one special symbol (!@#$%...)." };
+    }
+
+    const cleanEmail = (user?.email || "").toLowerCase();
+    let regUsers = [];
+    try {
+      regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
+    } catch {}
+
+    const idx = regUsers.findIndex(u => u.email && u.email.toLowerCase() === cleanEmail);
+    if (idx >= 0) {
+      if (regUsers[idx].password && regUsers[idx].password !== currentPassword) {
+        return { ok: false, error: "Current password is incorrect." };
+      }
+      regUsers[idx].password = newPassword;
+      localStorage.setItem("dukaan_registered_users", JSON.stringify(regUsers));
+    }
+
+    try {
+      await api.post("/auth/change-password", { current_password: currentPassword, new_password: newPassword });
+    } catch (e) {
+      console.warn("Backend change-password offline fallback:", e);
+    }
+
+    return { ok: true, message: "Password updated successfully!" };
   };
 
   const loginWithGoogle = (payload) => loginWithSocial({ ...payload, provider: "google" });
@@ -483,9 +591,9 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthCtx.Provider value={{
-      user, shops, currentShopId, setActiveShop, loadShops,
+      user, shops, currentShopId, setActiveShop, loadShops, updateShop,
       login, register, verifyEmail, resendVerification, logout, refresh, lang, setLang: changeLang,
-      loginWithGoogle, loginWithApple, updateUser
+      loginWithGoogle, loginWithApple, updateUser, updateProfile, changePassword
     }}>
       {children}
     </AuthCtx.Provider>
