@@ -55,7 +55,10 @@ import {
   Trash2,
   Sliders,
   Send,
-  Zap
+  Zap,
+  Bell,
+  Play,
+  X
 } from "lucide-react";
 
 /* =========================================================
