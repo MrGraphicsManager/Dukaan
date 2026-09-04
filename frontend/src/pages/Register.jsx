@@ -112,15 +112,19 @@ export default function Register() {
                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-600 via-sky-400 to-indigo-600" />
 
                 {/* Form Header */}
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <img src="/logo.png" alt="Dukaan" className="h-9 w-auto object-contain" />
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[11px] font-bold text-blue-700">
-                      <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Free Account</span>
-                    </div>
+                <div className="text-center mb-6">
+                  <Link to="/" className="inline-block mb-3 transition-transform hover:scale-105">
+                    <img 
+                      src="/logo.png" 
+                      alt="Dukaan" 
+                      className="h-12 sm:h-14 w-auto object-contain mx-auto drop-shadow-xs" 
+                    />
+                  </Link>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[11px] font-bold text-blue-700 mb-2">
+                    <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Free Merchant Account</span>
                   </div>
-                  <h2 className="font-display text-3xl font-bold text-slate-900 tracking-tight">
+                  <h2 className="font-display text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
                     Open Your Shop
                   </h2>
                   <p className="text-xs text-slate-500 font-medium mt-1">
