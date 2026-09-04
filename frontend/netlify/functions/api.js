@@ -25,38 +25,14 @@ let globalPlatformConfig = {
   kill_switch_at: null,
   receipt_branding_enabled: true,
   payment_alert_chime: true,
-  soundbox_devices: [
-    { id: "SND_9082", serial: "DUK-SB-88219", model: "4G 3W Audio Soundbox", shop_name: "Priyen Kirana", battery: "92%", status: "online", sim: "Jio IoT" },
-    { id: "SND_9083", serial: "DUK-SB-88220", model: "4G 3W Audio Soundbox", shop_name: "Sharma Supermarket", battery: "74%", status: "online", sim: "Airtel" },
-    { id: "SND_9084", serial: "DUK-SB-88221", model: "Dukaan NFC QR Standee V2", shop_name: "Balaji Traders", battery: "AC Powered", status: "dispatched", sim: "N/A" }
-  ],
-  custom_domains: [
-    { id: "cd_1", user_email: "priyenyug@gmail.com", shop_name: "Yug Super Mart", domain: "shop.yugmart.in", status: "active", ssl: "active", created_at: new Date(Date.now() - 5 * 86400000).toISOString() }
-  ]
+  soundbox_devices: [],
+  custom_domains: []
 };
 
-let promoCodes = [
-  { code: "DIWALI50", discount_percent: 50, max_discount: 1500, min_amount: 999, usage_count: 14, active: true, expires_at: "2026-12-31" },
-  { code: "WELCOME20", discount_percent: 20, max_discount: 600, min_amount: 499, usage_count: 38, active: true, expires_at: "2026-12-31" },
-  { code: "STARTUP100", discount_percent: 100, max_discount: 499, min_amount: 499, usage_count: 9, active: true, expires_at: "2026-12-31" },
-  { code: "SUPERSTORE", discount_percent: 30, max_discount: 1000, min_amount: 999, usage_count: 5, active: true, expires_at: "2026-12-31" }
-];
-
-let supportTickets = [
-  { id: "TCK_1001", merchant_name: "Priyen Yug", merchant_email: "priyenyug@gmail.com", phone: "9876543210", subject: "Thermal printer margin adjustment in 58mm", priority: "high", status: "in_progress", message: "Need help aligning the right margin on Sunmi thermal printer for grocery receipts.", created_at: new Date(Date.now() - 2 * 86400000).toISOString() },
-  { id: "TCK_1002", merchant_name: "Rajesh Sharma", merchant_email: "merchant@kirana.store", phone: "9123456780", subject: "Bulk barcode scanner Bluetooth delay", priority: "medium", status: "open", message: "Honeywell wireless scanner takes 2 seconds to register on counter mode.", created_at: new Date(Date.now() - 1 * 86400000).toISOString() }
-];
-
-let merchantFeedbacks = [
-  { id: "fb_1", merchant_name: "Priyen Yug", shop_name: "Yug Super Mart", rating: 5, comment: "Dukaan has transformed our daily billing. Counter mode with keyboard shortcuts is blazing fast!", created_at: new Date(Date.now() - 6 * 86400000).toISOString() },
-  { id: "fb_2", merchant_name: "Rajesh Sharma", shop_name: "Sharma Daily Needs", rating: 5, comment: "WhatsApp bills save us ₹1,200 per month on thermal paper rolls. Highly recommended!", created_at: new Date(Date.now() - 4 * 86400000).toISOString() },
-  { id: "fb_3", merchant_name: "Amit Patel", shop_name: "Patel Provision Store", rating: 4, comment: "Great UI, easy for my staff to learn in 5 minutes.", created_at: new Date(Date.now() - 2 * 86400000).toISOString() }
-];
-
-let referralCodes = [
-  { id: "ref_1", referrer_email: "priyenyug@gmail.com", referrer_name: "Priyen Yug", code: "DUK-YUG77", total_referred: 3, pending_bonus_days: 30, status: "approved" },
-  { id: "ref_2", referrer_email: "merchant@kirana.store", referrer_name: "Rajesh Sharma", code: "DUK-RAJ22", total_referred: 1, pending_bonus_days: 30, status: "pending" }
-];
+let promoCodes = [];
+let supportTickets = [];
+let merchantFeedbacks = [];
+let referralCodes = [];
 
 // Core SMTPS socket sender with RFC 822 Base64 Transfer Encoding (100% GoDaddy / Secureserver compliant)
 function sendMailSocket({ host, port, user, pass, to, subject, html }) {
@@ -652,39 +628,15 @@ exports.handler = async (event, context) => {
         headers,
         body: JSON.stringify([
           {
-            id: "sub_contact_admin",
+            id: "sub_master_admin",
             user_email: ADMIN_EMAIL,
-            payer_name: "Dukaan Master Admin",
+            payer_name: "Master Administrator",
             plan: "premium",
             status: "active",
-            amount: 2990,
-            source: "admin_grant",
-            created_at: new Date(Date.now() - 30 * 86400000).toISOString(),
-            expires_at: new Date(Date.now() + 335 * 86400000).toISOString()
-          },
-          {
-            id: "sub_sample_1",
-            user_email: "priyenyug@gmail.com",
-            payer_name: "Priyen Yug (Dukaan Kirana)",
-            plan: "premium",
-            status: "active",
-            amount: 2990,
-            payment_id: "pay_rzp_live_99482",
-            source: "razorpay",
-            created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
-            expires_at: new Date(Date.now() + 360 * 86400000).toISOString()
-          },
-          {
-            id: "sub_sample_2",
-            user_email: "merchant@kirana.store",
-            payer_name: "Rajesh Sharma",
-            plan: "business",
-            status: "trial",
-            amount: 1,
-            payment_id: "pay_trial_mandate_441",
-            source: "autopay_trial",
-            created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
-            expires_at: new Date(Date.now() + 58 * 86400000).toISOString()
+            amount: 0,
+            source: "system_master",
+            created_at: new Date().toISOString(),
+            expires_at: new Date(Date.now() + 365 * 10 * 86400000).toISOString()
           }
         ])
       };
@@ -695,15 +647,15 @@ exports.handler = async (event, context) => {
         statusCode: 200,
         headers,
         body: JSON.stringify({
-          users: 28,
-          shops: 31,
-          active_subscriptions: 16,
-          pending_subscriptions: 1,
-          total_revenue: 35880,
-          active_trials: 9,
-          starter_count: 4,
-          business_count: 12,
-          premium_count: 12
+          users: 1,
+          shops: 1,
+          active_subscriptions: 1,
+          pending_subscriptions: 0,
+          total_revenue: 0,
+          active_trials: 0,
+          starter_count: 0,
+          business_count: 0,
+          premium_count: 1
         })
       };
     }
@@ -719,26 +671,8 @@ exports.handler = async (event, context) => {
             email: ADMIN_EMAIL,
             is_admin: true,
             is_verified: true,
-            subscription: { plan: "premium", status: "active", expires_at: new Date(Date.now() + 365 * 86400000).toISOString() },
-            created_at: new Date(Date.now() - 60 * 86400000).toISOString()
-          },
-          {
-            id: "usr_priyen_yug",
-            name: "Priyen Yug",
-            email: "priyenyug@gmail.com",
-            is_admin: false,
-            is_verified: true,
-            subscription: { plan: "premium", status: "active", expires_at: new Date(Date.now() + 360 * 86400000).toISOString() },
-            created_at: new Date(Date.now() - 10 * 86400000).toISOString()
-          },
-          {
-            id: "usr_rajesh_sharma",
-            name: "Rajesh Sharma",
-            email: "merchant@kirana.store",
-            is_admin: false,
-            is_verified: true,
-            subscription: { plan: "business", status: "trial", expires_at: new Date(Date.now() + 58 * 86400000).toISOString() },
-            created_at: new Date(Date.now() - 3 * 86400000).toISOString()
+            subscription: { plan: "premium", status: "active", expires_at: new Date(Date.now() + 365 * 10 * 86400000).toISOString() },
+            created_at: new Date().toISOString()
           }
         ])
       };
@@ -748,36 +682,7 @@ exports.handler = async (event, context) => {
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify([
-          {
-            id: "gst_req_101",
-            user_email: "priyenyug@gmail.com",
-            shop_name: "Yug Super Mart",
-            owner_name: "Priyen Yug",
-            gst_number: "24AAAAA0000A1Z5",
-            status: "approved",
-            submitted_at: new Date(Date.now() - 4 * 86400000).toISOString()
-          }
-        ])
-      };
-    }
-
-    if (path.startsWith("/admin/subscriptions") && event.httpMethod === "POST") {
-      const grantEmail = body.user_email || body.email;
-      const plan = body.plan || "business";
-      const days = Number(body.days) || 30;
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ 
-          ok: true, 
-          message: `Subscription for ${grantEmail || "user"} successfully updated to ${plan.toUpperCase()}`,
-          subscription: {
-            plan,
-            status: "active",
-            expires_at: new Date(Date.now() + days * 86400000).toISOString()
-          }
-        })
+        body: JSON.stringify([])
       };
     }
 
@@ -907,66 +812,12 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // 15. PROMO CODES MANAGER
+    // 15. PROMO CODES (Disabled)
     if (path === "/promo-codes" && event.httpMethod === "GET") {
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify(promoCodes)
-      };
+      return { statusCode: 200, headers, body: JSON.stringify([]) };
     }
-
-    if (path === "/promo-codes" && event.httpMethod === "POST") {
-      const codeUpper = (body.code || "").trim().toUpperCase();
-      if (!codeUpper) {
-        return { statusCode: 400, headers, body: JSON.stringify({ detail: "Promo code name is required." }) };
-      }
-      const existingIdx = promoCodes.findIndex(p => p.code === codeUpper);
-      const newPromo = {
-        code: codeUpper,
-        discount_percent: Number(body.discount_percent) || 20,
-        max_discount: Number(body.max_discount) || 500,
-        min_amount: Number(body.min_amount) || 0,
-        usage_count: existingIdx >= 0 ? promoCodes[existingIdx].usage_count : 0,
-        active: body.active !== undefined ? !!body.active : true,
-        expires_at: body.expires_at || "2026-12-31"
-      };
-      if (existingIdx >= 0) {
-        promoCodes[existingIdx] = newPromo;
-      } else {
-        promoCodes.unshift(newPromo);
-      }
-      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, promo: newPromo, promoCodes }) };
-    }
-
-    if (path.startsWith("/promo-codes/") && event.httpMethod === "DELETE") {
-      const codeToDelete = decodeURIComponent(path.replace("/promo-codes/", "")).trim().toUpperCase();
-      promoCodes = promoCodes.filter(p => p.code !== codeToDelete);
-      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, deleted: codeToDelete, promoCodes }) };
-    }
-
     if (path === "/promo-codes/validate" && event.httpMethod === "POST") {
-      const codeUpper = (body.code || "").trim().toUpperCase();
-      const amount = Number(body.amount) || 0;
-      const promo = promoCodes.find(p => p.code === codeUpper && p.active);
-      if (!promo) {
-        return { statusCode: 400, headers, body: JSON.stringify({ valid: false, detail: "Invalid or expired promo code." }) };
-      }
-      if (amount < promo.min_amount) {
-        return { statusCode: 400, headers, body: JSON.stringify({ valid: false, detail: `Minimum order amount for this code is ₹${promo.min_amount}.` }) };
-      }
-      const discount = Math.min((amount * promo.discount_percent) / 100, promo.max_discount);
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-          valid: true,
-          code: promo.code,
-          discount_percent: promo.discount_percent,
-          discount_amount: Math.round(discount),
-          final_amount: Math.max(0, Math.round(amount - discount))
-        })
-      };
+      return { statusCode: 400, headers, body: JSON.stringify({ valid: false, detail: "Coupon codes have been disabled." }) };
     }
 
     // 16. IN-APP CUSTOMER SUPPORT DESK
