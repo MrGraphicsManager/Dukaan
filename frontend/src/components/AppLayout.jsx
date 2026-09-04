@@ -122,22 +122,33 @@ export default function AppLayout() {
   const { user, shops, currentShopId, setActiveShop, logout, lang, setLang } = useAuth();
   const nav = useNavigate();
   const activeShop = (shops || []).find(s => s?.id === currentShopId) || shops?.[0] || { name: "Apni Dukaan" };
-  const [subscription, setSubscription] = useState(null);
+  const [subscription, setSubscription] = useState(() => {
+    let localSub = user?.subscription || null;
+    if (!localSub) {
+      try {
+        const u = JSON.parse(localStorage.getItem("dukaan_user") || "{}");
+        localSub = u?.subscription || null;
+      } catch {}
+    }
+    return localSub;
+  });
   const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
   const { notifications, unreadCount, fetchNotifications, markRead, markAllRead } = useNotifications();
 
-  // Always read the current subscription from the backend. AuthContext may have
-  // an older user object after a Premium purchase, which previously caused the
-  // standard desktop sidebar to remain visible for Premium users.
+  // Read the current subscription from the backend if available; otherwise keep local state
   useEffect(() => {
     let alive = true;
     setSubscriptionLoaded(false);
     api.get("/subscriptions/me")
-      .then(r => { if (alive) setSubscription(r.data?.active || null); })
-      .catch(() => { if (alive) setSubscription(null); })
+      .then(r => { 
+        if (alive && r.data?.active) {
+          setSubscription(r.data.active); 
+        }
+      })
+      .catch(() => {})
       .finally(() => { if (alive) setSubscriptionLoaded(true); });
     return () => { alive = false; };
-  }, [user?.id, currentShopId]);
+  }, [user?.id, user?.subscription, currentShopId]);
 
   // Fetch notifications on mount and every 60 seconds
   useEffect(() => {

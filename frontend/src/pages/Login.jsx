@@ -72,7 +72,16 @@ export default function Login() {
           try {
             currentUser = JSON.parse(localStorage.getItem("dukaan_user") || "{}");
           } catch {}
-          const hasActiveSub = currentUser?.is_admin || (currentUser?.subscription && currentUser?.subscription.status === "active");
+          const isSubActive = (sub) => {
+            if (!sub) return false;
+            const st = (sub.status || "").toLowerCase();
+            const valid = st === "active" || st === "trial" || sub.is_trial === true;
+            if (!valid) return false;
+            if (!sub.expires_at) return true;
+            const exp = new Date(sub.expires_at).getTime();
+            return !isNaN(exp) && exp > Date.now();
+          };
+          const hasActiveSub = Boolean(currentUser?.is_admin || isSubActive(currentUser?.subscription));
           if (!hasActiveSub) {
             nav("/subscribe");
           } else {

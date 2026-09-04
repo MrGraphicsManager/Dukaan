@@ -56,7 +56,16 @@ export default function Dashboard() {
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [sub, setSub] = useState(null);
+  const [sub, setSub] = useState(() => {
+    let localSub = user?.subscription || null;
+    if (!localSub) {
+      try {
+        const u = JSON.parse(localStorage.getItem("dukaan_user") || "{}");
+        localSub = u?.subscription || null;
+      } catch {}
+    }
+    return localSub;
+  });
   const [premium, setPremium] = useState(null);
   const [now, setNow] = useState(new Date());
   const [dailyTarget, setDailyTarget] = useState(25000);
@@ -247,8 +256,19 @@ export default function Dashboard() {
   }, [currentShopId, getSafeOrders]);
 
   useEffect(() => {
-    api.get("/subscriptions/me").then(r => setSub(r.data?.active || null)).catch(() => setSub(null));
-  }, [currentShopId]);
+    let localSub = user?.subscription || null;
+    if (!localSub) {
+      try {
+        const u = JSON.parse(localStorage.getItem("dukaan_user") || "{}");
+        localSub = u?.subscription || null;
+      } catch {}
+    }
+    if (localSub) setSub(localSub);
+
+    api.get("/subscriptions/me")
+      .then(r => { if (r.data?.active) setSub(r.data.active); })
+      .catch(() => {});
+  }, [currentShopId, user?.subscription]);
 
   useEffect(() => {
     if (sub?.plan !== "premium") { setPremium(null); return; }

@@ -64,16 +64,33 @@ const TIER_PLANS = [
 export default function Billing() {
   const nav = useNavigate();
   const { user, refresh } = useAuth();
-  const [sub, setSub] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [sub, setSub] = useState(() => {
+    let localSub = user?.subscription || null;
+    if (!localSub) {
+      try {
+        const u = JSON.parse(localStorage.getItem("dukaan_user") || "{}");
+        localSub = u?.subscription || null;
+      } catch {}
+    }
+    return localSub;
+  });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    let localSub = user?.subscription || null;
+    if (!localSub) {
+      try {
+        const u = JSON.parse(localStorage.getItem("dukaan_user") || "{}");
+        localSub = u?.subscription || null;
+      } catch {}
+    }
+    if (localSub) setSub(localSub);
+
     api.get("/subscriptions/me")
-      .then(r => setSub(r.data?.active || null))
-      .catch(() => setSub(null))
+      .then(r => { if (r.data?.active) setSub(r.data.active); })
+      .catch(() => {})
       .finally(() => setLoading(false));
-    refresh();
-  }, [refresh]);
+  }, [user?.subscription]);
 
   const currentPlanId = sub?.plan || user?.subscription?.plan || "business";
 

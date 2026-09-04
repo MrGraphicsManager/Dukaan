@@ -147,9 +147,24 @@ export default function GoogleAuthCallback() {
         });
 
         if (loginRes.ok) {
-          toast.success('Welcome, ' + name + '! Successfully signed in via Google.');
           const userObj = loginRes.user;
-          const hasSub = userObj?.is_admin || (userObj?.subscription && userObj?.subscription.status === 'active');
+          let sub = userObj?.subscription;
+          if (!sub) {
+            try {
+              const localUser = JSON.parse(localStorage.getItem("dukaan_user") || "{}");
+              sub = localUser.subscription;
+            } catch {}
+          }
+          const isSubActive = (s) => {
+            if (!s) return false;
+            const st = (s.status || "").toLowerCase();
+            const valid = st === "active" || st === "trial" || s.is_trial === true;
+            if (!valid) return false;
+            if (!s.expires_at) return true;
+            const exp = new Date(s.expires_at).getTime();
+            return !isNaN(exp) && exp > Date.now();
+          };
+          const hasSub = Boolean(userObj?.is_admin || isSubActive(sub));
           nav(hasSub ? '/app' : '/subscribe');
         } else {
           toast.error(loginRes.error || 'Failed to complete Google authentication.');

@@ -46,6 +46,7 @@ export function AuthProvider({ children }) {
         const next = validStored?.id || fallbackId || data[0]?.id || null;
         setActiveShop(next);
       } else {
+        const existingShopId = localStorage.getItem("dukaan_shop_id") || DEFAULT_SHOP.id;
         const storedUser = localStorage.getItem("dukaan_user");
         let uName = "My";
         if (storedUser) {
@@ -53,7 +54,7 @@ export function AuthProvider({ children }) {
         }
         const userShop = {
           ...DEFAULT_SHOP,
-          id: `shop_${Date.now()}`,
+          id: existingShopId,
           name: `${uName}'s Store`,
           owner_name: uName
         };
@@ -61,6 +62,7 @@ export function AuthProvider({ children }) {
         setActiveShop(userShop.id);
       }
     } catch (e) {
+      const existingShopId = localStorage.getItem("dukaan_shop_id") || DEFAULT_SHOP.id;
       const storedUser = localStorage.getItem("dukaan_user");
       let uName = "My";
       if (storedUser) {
@@ -68,7 +70,7 @@ export function AuthProvider({ children }) {
       }
       const userShop = {
         ...DEFAULT_SHOP,
-        id: `shop_${Date.now()}`,
+        id: existingShopId,
         name: `${uName}'s Store`,
         owner_name: uName
       };
@@ -77,14 +79,62 @@ export function AuthProvider({ children }) {
     }
   }, [setActiveShop]);
 
+  const updateUser = useCallback((updater) => {
+    setUser((prev) => {
+      const current = prev || {};
+      const next = typeof updater === "function" ? updater(current) : { ...current, ...updater };
+      try {
+        localStorage.setItem("dukaan_user", JSON.stringify(next));
+        
+        // Also update token so serverless functions see latest state
+        try {
+          const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(next))));
+          localStorage.setItem("dukaan_access_token", "duk_" + b64);
+        } catch {}
+
+        // Persist to registered users directory
+        if (next.email) {
+          const regRaw = localStorage.getItem("dukaan_registered_users") || "[]";
+          let regUsers = JSON.parse(regRaw);
+          const idx = regUsers.findIndex((u) => u.email && u.email.toLowerCase() === next.email.toLowerCase());
+          if (idx >= 0) {
+            regUsers[idx] = { ...regUsers[idx], ...next };
+          } else {
+            regUsers.push(next);
+          }
+          localStorage.setItem("dukaan_registered_users", JSON.stringify(regUsers));
+        }
+      } catch (e) {
+        console.warn("Failed to persist user update:", e);
+      }
+      return next;
+    });
+  }, []);
+
   const refresh = useCallback(async () => {
     try {
       const { data } = await api.get("/auth/me");
       if (data && data.email) {
-        setUser(data);
-        localStorage.setItem("dukaan_user", JSON.stringify(data));
-        await loadShops(data.default_shop_id);
-        return data;
+        // Retain local subscription if backend doesn't return one or if local one has valid active days
+        const stored = localStorage.getItem("dukaan_user");
+        let localSub = null;
+        let localIsPremium = false;
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            localSub = parsed.subscription;
+            localIsPremium = Boolean(parsed.is_premium);
+          } catch {}
+        }
+        const finalUser = {
+          ...data,
+          subscription: data.subscription || localSub || null,
+          is_premium: data.is_premium || localIsPremium || (data.subscription?.plan === "premium") || (localSub?.plan === "premium")
+        };
+        setUser(finalUser);
+        localStorage.setItem("dukaan_user", JSON.stringify(finalUser));
+        await loadShops(finalUser.default_shop_id);
+        return finalUser;
       }
     } catch {
       // If there's a stored user, keep using it (offline mode)
@@ -435,7 +485,7 @@ export function AuthProvider({ children }) {
     <AuthCtx.Provider value={{
       user, shops, currentShopId, setActiveShop, loadShops,
       login, register, verifyEmail, resendVerification, logout, refresh, lang, setLang: changeLang,
-      loginWithGoogle, loginWithApple
+      loginWithGoogle, loginWithApple, updateUser
     }}>
       {children}
     </AuthCtx.Provider>

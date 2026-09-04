@@ -81,9 +81,25 @@ export default function SocialAuthButtons({ mode = "login", onSuccess }) {
       });
 
       if (res.ok) {
-        toast.success(`Welcome to Dukaan, ${res.user?.name || generatedName}! Signed in via Apple.`);
+        let sub = res.user?.subscription;
+        if (!sub) {
+          try {
+            const localUser = JSON.parse(localStorage.getItem("dukaan_user") || "{}");
+            sub = localUser.subscription;
+          } catch {}
+        }
+        const isSubActive = (s) => {
+          if (!s) return false;
+          const st = (s.status || "").toLowerCase();
+          const valid = st === "active" || st === "trial" || s.is_trial === true;
+          if (!valid) return false;
+          if (!s.expires_at) return true;
+          const exp = new Date(s.expires_at).getTime();
+          return !isNaN(exp) && exp > Date.now();
+        };
+        const hasSub = Boolean(res.user?.is_admin || isSubActive(sub));
         if (onSuccess) onSuccess(res.user);
-        else nav(res.user?.subscription ? "/app" : "/subscribe");
+        else nav(hasSub ? "/app" : "/subscribe");
       } else {
         toast.error(res.error || "Failed to sign in with Apple.");
       }

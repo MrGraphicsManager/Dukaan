@@ -113,7 +113,7 @@ const FAQS = [
 export default function Subscribe() {
   const [params] = useSearchParams();
   const nav = useNavigate();
-  const { user, shops, currentShopId, loadShops, setActiveShop, refresh } = useAuth();
+  const { user, shops, currentShopId, loadShops, setActiveShop, refresh, updateUser } = useAuth();
   const [selected, setSelected] = useState(params.get("plan") || "business");
   const [billingCycle, setBillingCycle] = useState("monthly"); // "monthly" or "annual"
   const [busy, setBusy] = useState(false);
@@ -245,43 +245,46 @@ export default function Subscribe() {
         },
         theme: { color: "#1B1464" },
         handler: async (response) => {
+          let baseTime = Date.now();
+          const rawUser = localStorage.getItem("dukaan_user");
+          const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
+          
+          if (parsed.subscription?.expires_at) {
+            const curExp = new Date(parsed.subscription.expires_at).getTime();
+            if (!isNaN(curExp) && curExp > baseTime) baseTime = curExp;
+          }
+          const newExpiry = new Date(baseTime + ((plan.trial_days || 7) * 86400000));
+
+          const newSub = { 
+            plan: selected, 
+            status: "active", 
+            is_trial: true, 
+            trial_days: plan.trial_days || 7,
+            expires_at: newExpiry.toISOString(),
+            activated_at: new Date().toISOString()
+          };
+
+          parsed.subscription = newSub;
+          if (selected === "premium") {
+            parsed.is_premium = true;
+          }
+          localStorage.setItem("dukaan_user", JSON.stringify(parsed));
+          if (updateUser) {
+            updateUser(parsed);
+          }
+
           try {
-            await api.post("/subscriptions/trial", { 
+            const apiRes = await api.post("/subscriptions/trial", { 
               plan: selected,
               razorpay_payment_id: response.razorpay_payment_id,
               mandate_verified: true,
-              amount: 1
+              amount: 1,
+              expires_at: newExpiry.toISOString()
             }); 
+            if (apiRes.data?.access_token) {
+              localStorage.setItem("dukaan_access_token", apiRes.data.access_token);
+            }
           } catch (_) {}
-
-          let newExpiry = new Date();
-          newExpiry.setDate(newExpiry.getDate() + (plan.trial_days || 7));
-
-          try {
-            const rawUser = localStorage.getItem("dukaan_user");
-            const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
-            
-            // Queue renewal: If current subscription still has active days, append to existing expiry
-            let baseTime = Date.now();
-            if (parsed.subscription?.expires_at) {
-              const curExp = new Date(parsed.subscription.expires_at).getTime();
-              if (!isNaN(curExp) && curExp > baseTime) baseTime = curExp;
-            }
-            newExpiry = new Date(baseTime + ((plan.trial_days || 7) * 86400000));
-
-            parsed.subscription = { 
-              plan: selected, 
-              status: "trial", 
-              is_trial: true, 
-              expires_at: newExpiry.toISOString(),
-              activated_at: new Date().toISOString()
-            };
-            if (selected === "premium") {
-              parsed.is_premium = true;
-            }
-            localStorage.setItem("dukaan_user", JSON.stringify(parsed));
-            if (refresh) refresh();
-          } catch {}
 
           setDone({ 
             status: "trial", 
@@ -304,8 +307,22 @@ export default function Subscribe() {
         r.open();
       } else {
         // Fallback simulation
-        const expires = new Date();
-        expires.setDate(expires.getDate() + plan.trial_days);
+        const expires = new Date(Date.now() + (plan.trial_days || 7) * 86400000);
+        const rawUser = localStorage.getItem("dukaan_user");
+        const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
+        const fallbackSub = {
+          plan: selected,
+          status: "active",
+          is_trial: true,
+          trial_days: plan.trial_days || 7,
+          expires_at: expires.toISOString(),
+          activated_at: new Date().toISOString()
+        };
+        parsed.subscription = fallbackSub;
+        if (selected === "premium") parsed.is_premium = true;
+        localStorage.setItem("dukaan_user", JSON.stringify(parsed));
+        if (updateUser) updateUser(parsed);
+
         setDone({ 
           status: "trial", 
           trial_days: plan.trial_days, 
@@ -317,8 +334,22 @@ export default function Subscribe() {
       }
     } catch (e) {
       // Offline fallback simulation
-      const expires = new Date();
-      expires.setDate(expires.getDate() + plan.trial_days);
+      const expires = new Date(Date.now() + (plan.trial_days || 7) * 86400000);
+      const rawUser = localStorage.getItem("dukaan_user");
+      const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
+      const fallbackSub = {
+        plan: selected,
+        status: "active",
+        is_trial: true,
+        trial_days: plan.trial_days || 7,
+        expires_at: expires.toISOString(),
+        activated_at: new Date().toISOString()
+      };
+      parsed.subscription = fallbackSub;
+      if (selected === "premium") parsed.is_premium = true;
+      localStorage.setItem("dukaan_user", JSON.stringify(parsed));
+      if (updateUser) updateUser(parsed);
+
       setDone({ 
         status: "trial", 
         trial_days: plan.trial_days, 
@@ -355,45 +386,52 @@ export default function Subscribe() {
         prefill: { name: user?.name || "Dukaan Owner", email: user?.email || "owner@dukaan.in" }, 
         theme: { color: "#1B1464" }, 
         handler: async (value) => {
+          let newExpiry = new Date();
+          const durationDays = isAnnual ? 365 : 30;
+
+          let baseTime = Date.now();
+          const rawUser = localStorage.getItem("dukaan_user");
+          const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
+          
+          if (parsed.subscription?.expires_at) {
+            const curExp = new Date(parsed.subscription.expires_at).getTime();
+            if (!isNaN(curExp) && curExp > baseTime) baseTime = curExp;
+          }
+          newExpiry = new Date(baseTime + (durationDays * 86400000));
+
+          const newSub = { 
+            plan: selected, 
+            status: "active", 
+            is_annual: isAnnual,
+            expires_at: newExpiry.toISOString(),
+            activated_at: new Date().toISOString()
+          };
+
+          parsed.subscription = newSub;
+          if (selected === "premium") {
+            parsed.is_premium = true;
+          }
+          localStorage.setItem("dukaan_user", JSON.stringify(parsed));
+          if (updateUser) {
+            updateUser(parsed);
+          }
+
           try { 
-            await api.post("/subscriptions/razorpay/verify", { 
+            const apiRes = await api.post("/subscriptions/razorpay/verify", { 
               razorpay_order_id: value.razorpay_order_id, 
               razorpay_payment_id: value.razorpay_payment_id, 
               razorpay_signature: value.razorpay_signature,
               plan: selected,
-              annual: isAnnual
+              annual: isAnnual,
+              expires_at: newExpiry.toISOString()
             }); 
+            if (apiRes.data?.access_token) {
+              localStorage.setItem("dukaan_access_token", apiRes.data.access_token);
+            }
           } catch (_) {}
-          let newExpiry = new Date();
-          const durationDays = isAnnual ? 365 : 30;
-
-          try {
-            const rawUser = localStorage.getItem("dukaan_user");
-            const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
-            
-            // Queue renewal: append to current active expiry so no days are lost
-            let baseTime = Date.now();
-            if (parsed.subscription?.expires_at) {
-              const curExp = new Date(parsed.subscription.expires_at).getTime();
-              if (!isNaN(curExp) && curExp > baseTime) baseTime = curExp;
-            }
-            newExpiry = new Date(baseTime + (durationDays * 86400000));
-
-            parsed.subscription = { 
-              plan: selected, 
-              status: "active", 
-              is_annual: isAnnual,
-              expires_at: newExpiry.toISOString(),
-              activated_at: new Date().toISOString()
-            };
-            if (selected === "premium") {
-              parsed.is_premium = true;
-            }
-            localStorage.setItem("dukaan_user", JSON.stringify(parsed));
-            if (refresh) refresh();
-          } catch {}
 
           setDone({ status: "active", plan: selected, annual: isAnnual, expires_at: newExpiry.toISOString() }); 
+          toast.success(`${plan.name} Plan Activated!`);
         },
         modal: {
           ondismiss: () => {
@@ -406,27 +444,39 @@ export default function Subscribe() {
         const r = new window.Razorpay(rzpOptions);
         r.open();
       } else {
-        try {
-          const rawUser = localStorage.getItem("dukaan_user");
-          const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
-          parsed.subscription = { plan: selected, status: "active", is_annual: isAnnual, expires_at: new Date(Date.now() + ((isAnnual ? 365 : 30) * 86400000)).toISOString() };
-          if (selected === "premium") parsed.is_premium = true;
-          localStorage.setItem("dukaan_user", JSON.stringify(parsed));
-          if (refresh) refresh();
-        } catch {}
-        setDone({ status: "active", plan: selected, annual: isAnnual, expires_at: new Date(Date.now() + ((isAnnual ? 365 : 30) * 86400000)).toISOString() });
+        const rawUser = localStorage.getItem("dukaan_user");
+        const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
+        const newExpiry = new Date(Date.now() + ((isAnnual ? 365 : 30) * 86400000));
+        parsed.subscription = { 
+          plan: selected, 
+          status: "active", 
+          is_annual: isAnnual, 
+          expires_at: newExpiry.toISOString(),
+          activated_at: new Date().toISOString()
+        };
+        if (selected === "premium") parsed.is_premium = true;
+        localStorage.setItem("dukaan_user", JSON.stringify(parsed));
+        if (updateUser) updateUser(parsed);
+
+        setDone({ status: "active", plan: selected, annual: isAnnual, expires_at: newExpiry.toISOString() });
         toast.success(`${plan.name} Plan Activated!`);
       }
     } catch (e) { 
-      try {
-        const rawUser = localStorage.getItem("dukaan_user");
-        const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
-        parsed.subscription = { plan: selected, status: "active", is_annual: isAnnual, expires_at: new Date(Date.now() + ((isAnnual ? 365 : 30) * 86400000)).toISOString() };
-        if (selected === "premium") parsed.is_premium = true;
-        localStorage.setItem("dukaan_user", JSON.stringify(parsed));
-        if (refresh) refresh();
-      } catch {}
-      setDone({ status: "active", plan: selected, annual: isAnnual, expires_at: new Date(Date.now() + ((isAnnual ? 365 : 30) * 86400000)).toISOString() });
+      const rawUser = localStorage.getItem("dukaan_user");
+      const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
+      const newExpiry = new Date(Date.now() + ((isAnnual ? 365 : 30) * 86400000));
+      parsed.subscription = { 
+        plan: selected, 
+        status: "active", 
+        is_annual: isAnnual, 
+        expires_at: newExpiry.toISOString(),
+        activated_at: new Date().toISOString()
+      };
+      if (selected === "premium") parsed.is_premium = true;
+      localStorage.setItem("dukaan_user", JSON.stringify(parsed));
+      if (updateUser) updateUser(parsed);
+
+      setDone({ status: "active", plan: selected, annual: isAnnual, expires_at: newExpiry.toISOString() });
       toast.success(`${plan.name} Plan Activated!`);
     } finally { 
       setBusy(false); 
@@ -468,6 +518,32 @@ export default function Subscribe() {
       ========================================================= */}
       <main className="mx-auto max-w-7xl px-5 py-10 md:py-14">
         
+        {/* Active Subscription Notice Banner */}
+        {user?.subscription && (user.subscription.status === "active" || user.subscription.status === "trial" || user.subscription.is_trial) && (
+          <div className="mb-8 p-4 max-w-2xl mx-auto rounded-2xl bg-emerald-50 border-2 border-emerald-300 text-emerald-950 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3 text-left">
+              <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="font-bold text-sm">
+                  Active Plan: <span className="uppercase">{user.subscription.plan || "Business"}</span> {user.subscription.is_trial ? "(Free Trial)" : ""}
+                </div>
+                <div className="text-xs text-emerald-800">
+                  {user.subscription.expires_at ? `Valid until ${new Date(user.subscription.expires_at).toLocaleDateString("en-IN")}` : "Subscription is currently active"}
+                </div>
+              </div>
+            </div>
+            <Button
+              onClick={() => nav("/app")}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl px-5 h-10 shadow-sm shrink-0 flex items-center gap-2"
+            >
+              <span>Go to Dashboard</span>
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
+
         {/* Header Heading */}
         <motion.div 
           initial={{ opacity: 0, y: 16 }} 

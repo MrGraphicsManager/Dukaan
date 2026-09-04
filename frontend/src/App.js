@@ -46,6 +46,16 @@ import Info from "./pages/Info.jsx";
    PROTECTED ROUTES
 ========================================================= */
 
+export const isSubActive = (sub) => {
+  if (!sub) return false;
+  const status = (sub.status || "").toLowerCase();
+  const isActiveOrTrial = status === "active" || status === "trial" || sub.is_trial === true;
+  if (!isActiveOrTrial) return false;
+  if (!sub.expires_at) return true;
+  const expTime = new Date(sub.expires_at).getTime();
+  return !isNaN(expTime) && expTime > Date.now();
+};
+
 function Protected({ children }) {
   const { user } = useAuth();
   const loc = useLocation();
@@ -59,8 +69,17 @@ function Protected({ children }) {
     return <Navigate to={`/verify-email?email=${encodeURIComponent(user.email || "")}`} replace />;
   }
 
+  // Check subscription: from user state or fallback to localStorage
+  let sub = user.subscription;
+  if (!sub) {
+    try {
+      const stored = JSON.parse(localStorage.getItem("dukaan_user") || "{}");
+      if (stored?.subscription) sub = stored.subscription;
+    } catch {}
+  }
+
   // If user has no active subscription and is not admin, redirect to subscribe
-  const hasActiveSub = user.is_admin || (user.subscription && user.subscription.status === "active");
+  const hasActiveSub = Boolean(user.is_admin || isSubActive(sub));
   if (!hasActiveSub && !loc.pathname.startsWith("/app/billing") && !loc.pathname.startsWith("/app/settings")) {
     return <Navigate to="/subscribe" replace />;
   }
