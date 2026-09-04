@@ -54,8 +54,8 @@ export default function Register() {
     const res = await register(name, email, password);
     setBusy(false);
     if (res.ok) {
-      toast.success("Account created! Please verify your email.");
-      nav(`/verify-email?email=${encodeURIComponent(email)}&code=${encodeURIComponent(res.code || "")}`);
+      toast.success("Account created! Please check your email for the verification code.");
+      nav(`/verify-email?email=${encodeURIComponent(email)}`);
     } else {
       setErr(res.error || "Failed to create account. Please try again.");
     }
