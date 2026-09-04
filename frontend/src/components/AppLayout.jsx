@@ -179,13 +179,13 @@ export default function AppLayout() {
           {/* Logo */}
           <div className="flex items-center gap-3">
             <button className="md:hidden flex items-center gap-2" onClick={() => nav("/app")} data-testid="topbar-logo" aria-label="Home">
-              <img src="/logo.png" alt="Dukaan" className="h-7 w-auto object-contain brightness-0 invert-0" />
+              <img src="/logo.png" alt="Dukaan" className="h-8 w-auto object-contain" />
             </button>
-            <div className="hidden md:flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-2.5">
               <img 
                 src="/logo.png" 
                 alt="Dukaan" 
-                className="h-8 w-auto object-contain cursor-pointer transition-transform hover:scale-105" 
+                className="h-9 w-auto object-contain cursor-pointer transition-transform hover:scale-105" 
                 onClick={() => nav("/app")} 
               />
               {isPremium && <span className="premium-top-label">PREMIUM</span>}

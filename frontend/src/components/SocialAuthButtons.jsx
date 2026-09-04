@@ -57,10 +57,10 @@ export default function SocialAuthButtons({ mode = "login", onSuccess }) {
         return;
       }
 
-      // Default seamless 1-click Google OAuth prompt
+      // Seamless 1-click Google / Apple prompt
       setActiveProvider("google");
-      setCustomEmail("pcagraphics@gmail.com");
-      setCustomName("PCA Graphics");
+      setCustomEmail("");
+      setCustomName("");
       setShowPrompt(true);
     } catch (e) {
       toast.error("Google sign-in error. Please try again.");
@@ -73,8 +73,8 @@ export default function SocialAuthButtons({ mode = "login", onSuccess }) {
     setBusyProvider("apple");
     try {
       setActiveProvider("apple");
-      setCustomEmail("merchant@icloud.com");
-      setCustomName("Apple Merchant");
+      setCustomEmail("");
+      setCustomName("");
       setShowPrompt(true);
     } catch (e) {
       toast.error("Apple sign-in error.");
@@ -85,23 +85,27 @@ export default function SocialAuthButtons({ mode = "login", onSuccess }) {
 
   const submitPrompt = async (e) => {
     if (e) e.preventDefault();
-    if (!customEmail) return toast.error("Please enter a valid email.");
+    const cleanEmail = customEmail.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes("@")) {
+      return toast.error("Please enter a valid email address.");
+    }
 
     setBusyProvider(activeProvider);
     setShowPrompt(false);
 
     try {
+      const generatedName = customName.trim() || cleanEmail.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
       let res;
       if (activeProvider === "google") {
         res = await loginWithGoogle({
-          email: customEmail.trim().toLowerCase(),
-          name: customName.trim() || "Google Merchant",
+          email: cleanEmail,
+          name: generatedName,
           provider: "google",
         });
       } else {
         res = await loginWithApple({
-          email: customEmail.trim().toLowerCase(),
-          name: customName.trim() || "Apple Merchant",
+          email: cleanEmail,
+          name: generatedName,
           provider: "apple",
         });
       }
@@ -178,27 +182,14 @@ export default function SocialAuthButtons({ mode = "login", onSuccess }) {
               )}
             </div>
             <DialogTitle className="text-xl font-bold text-slate-900">
-              Continue with {activeProvider === "google" ? "Google" : "Apple"}
+              Sign In with {activeProvider === "google" ? "Google" : "Apple"}
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Your email is auto-verified. No 6-digit code or password required.
+              Instant 1-click verification. No password or 6-digit email code needed.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={submitPrompt} className="space-y-4 pt-2">
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                Your Name / Business Name
-              </label>
-              <Input
-                type="text"
-                value={customName}
-                onChange={(e) => setCustomName(e.target.value)}
-                placeholder="e.g. Priyen Naik"
-                className="h-11 rounded-xl border-2 border-slate-200 bg-slate-50/50 text-xs font-semibold text-slate-800"
-              />
-            </div>
-
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
                 {activeProvider === "google" ? "Google / Gmail Address" : "Apple ID / iCloud Email"}
@@ -206,33 +197,33 @@ export default function SocialAuthButtons({ mode = "login", onSuccess }) {
               <Input
                 type="email"
                 required
+                autoFocus
                 value={customEmail}
                 onChange={(e) => setCustomEmail(e.target.value)}
-                placeholder="name@gmail.com"
+                placeholder={activeProvider === "google" ? "youremail@gmail.com" : "youremail@icloud.com"}
                 className="h-11 rounded-xl border-2 border-slate-200 bg-slate-50/50 text-xs font-semibold text-slate-800"
               />
             </div>
 
-            {/* Quick pre-filled suggestions */}
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setCustomEmail("pcagraphics@gmail.com");
-                  setCustomName("PCA Graphics");
-                }}
-                className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors"
-              >
-                Use pcagraphics@gmail.com
-              </button>
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                Shop Name / Your Name (Optional)
+              </label>
+              <Input
+                type="text"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                placeholder="e.g. Apna Supermarket"
+                className="h-11 rounded-xl border-2 border-slate-200 bg-slate-50/50 text-xs font-semibold text-slate-800"
+              />
             </div>
 
             <Button
               type="submit"
               disabled={busyProvider !== null}
-              className="w-full h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md mt-2"
+              className="w-full h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/25 mt-2 flex items-center justify-center gap-2"
             >
-              {busyProvider !== null ? "Authorizing..." : `Sign in with ${activeProvider === "google" ? "Google" : "Apple"}`}
+              <span>{busyProvider !== null ? "Signing in..." : `Continue with ${activeProvider === "google" ? "Google" : "Apple"}`}</span>
             </Button>
           </form>
         </DialogContent>

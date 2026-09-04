@@ -145,7 +145,7 @@ export default function Landing() {
       <header className="sticky top-0 z-30 bg-brand-cream/85 backdrop-blur-xl border-b border-brand-mitti shadow-xs">
         <div className="mx-auto max-w-6xl px-5 h-20 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5" data-testid="landing-logo">
-            <img src="/logo.png" alt="Dukaan" className="h-9 sm:h-10 w-auto object-contain" />
+            <img src="/logo.png" alt="Dukaan" className="h-10 sm:h-12 w-auto object-contain transition-transform hover:scale-105" />
           </Link>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-brand-indigo/80">

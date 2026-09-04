@@ -78,7 +78,7 @@ export default function Register() {
           <img 
             src="/logo.png" 
             alt="Dukaan" 
-            className="h-9 sm:h-10 w-auto object-contain transition-transform group-hover:scale-105" 
+            className="h-10 sm:h-11 w-auto object-contain transition-transform group-hover:scale-105" 
           />
           <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase tracking-widest bg-blue-50 text-blue-700 border border-blue-200">
             Retail OS
@@ -113,9 +113,12 @@ export default function Register() {
 
                 {/* Form Header */}
                 <div className="mb-6">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[11px] font-bold text-blue-700 mb-2">
-                    <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Secure Registration</span>
+                  <div className="flex items-center justify-between mb-4">
+                    <img src="/logo.png" alt="Dukaan" className="h-9 w-auto object-contain" />
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[11px] font-bold text-blue-700">
+                      <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Free Account</span>
+                    </div>
                   </div>
                   <h2 className="font-display text-3xl font-bold text-slate-900 tracking-tight">
                     Open Your Shop

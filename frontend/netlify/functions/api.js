@@ -214,7 +214,45 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // 2. RESEND VERIFICATION
+    // 2. LOGIN
+    if (path === "/auth/login" && event.httpMethod === "POST") {
+      const email = (body.email || "").trim().toLowerCase();
+      const password = body.password || "";
+      if (!email || !password) {
+        return { statusCode: 400, headers, body: JSON.stringify({ detail: "Email and password are required." }) };
+      }
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          ok: true,
+          access_token: "tok_" + Date.now() + "_" + Math.random().toString(36).substring(2, 10),
+          token_type: "bearer",
+          user: {
+            id: `usr_${Date.now()}`,
+            name: email.split("@")[0],
+            email,
+            is_verified: true
+          }
+        })
+      };
+    }
+
+    // 3. CURRENT USER (ME)
+    if ((path === "/auth/me" || path === "/users/me") && event.httpMethod === "GET") {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          id: "usr_active",
+          email: "owner@officialdukaan.in",
+          name: "Shop Owner",
+          is_verified: true
+        })
+      };
+    }
+
+    // 4. RESEND VERIFICATION
     if (path === "/auth/resend-verification" && event.httpMethod === "POST") {
       const email = (body.email || "").trim().toLowerCase();
       if (!email) {
