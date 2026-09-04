@@ -19,22 +19,11 @@ export default class ErrorBoundary extends React.Component {
     try {
       // Ensure dukaan_orders is a clean array
       localStorage.setItem("dukaan_orders", "[]");
-      // Ensure dukaan_user is valid or reset to clean demo owner
-      const user = {
-        id: "demo_user_1",
-        name: "Dukaan Owner",
-        email: "owner@officialdukaan.in",
-        is_admin: true,
-        subscription: { plan: "premium", status: "active" },
-        default_shop_id: "demo_shop_1",
-      };
-      localStorage.setItem("dukaan_user", JSON.stringify(user));
-      localStorage.setItem("dukaan_shop_id", "demo_shop_1");
     } catch {}
     
     // Reset state and redirect
     this.setState({ hasError: false, error: null });
-    window.location.href = "/app";
+    window.location.reload();
   };
 
   render() {

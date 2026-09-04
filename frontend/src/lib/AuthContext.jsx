@@ -3,19 +3,10 @@ import { api, formatApiError } from "./api";
 
 const AuthCtx = createContext(null);
 
-const DEFAULT_USER = {
-  id: "user_owner",
-  name: "Shop Owner",
-  email: "owner@officialdukaan.in",
-  is_admin: false,
-  subscription: { plan: "starter", status: "active" },
-  default_shop_id: "shop_main",
-};
-
 const DEFAULT_SHOP = {
   id: "shop_main",
-  name: "Apni Dukaan",
-  owner_name: "Shop Owner",
+  name: "My Store",
+  owner_name: "Merchant",
   phone: "9876543210",
   address: "Main Market, India",
   upi_id: "",
@@ -55,19 +46,41 @@ export function AuthProvider({ children }) {
         const next = validStored?.id || fallbackId || data[0]?.id || null;
         setActiveShop(next);
       } else {
-        setShops([DEFAULT_SHOP]);
-        setActiveShop(DEFAULT_SHOP.id);
+        const storedUser = localStorage.getItem("dukaan_user");
+        let uName = "My";
+        if (storedUser) {
+          try { uName = JSON.parse(storedUser).name || "My"; } catch {}
+        }
+        const userShop = {
+          ...DEFAULT_SHOP,
+          id: `shop_${Date.now()}`,
+          name: `${uName}'s Store`,
+          owner_name: uName
+        };
+        setShops([userShop]);
+        setActiveShop(userShop.id);
       }
     } catch (e) {
-      setShops([DEFAULT_SHOP]);
-      setActiveShop(DEFAULT_SHOP.id);
+      const storedUser = localStorage.getItem("dukaan_user");
+      let uName = "My";
+      if (storedUser) {
+        try { uName = JSON.parse(storedUser).name || "My"; } catch {}
+      }
+      const userShop = {
+        ...DEFAULT_SHOP,
+        id: `shop_${Date.now()}`,
+        name: `${uName}'s Store`,
+        owner_name: uName
+      };
+      setShops([userShop]);
+      setActiveShop(userShop.id);
     }
   }, [setActiveShop]);
 
   const refresh = useCallback(async () => {
     try {
       const { data } = await api.get("/auth/me");
-      if (data) {
+      if (data && data.email) {
         setUser(data);
         localStorage.setItem("dukaan_user", JSON.stringify(data));
         await loadShops(data.default_shop_id);
@@ -75,15 +88,14 @@ export function AuthProvider({ children }) {
       }
     } catch {
       // If there's a stored user, keep using it (offline mode)
-      // If no stored user, stay logged out — don't force DEMO_USER
       const stored = localStorage.getItem("dukaan_user");
       if (stored) {
         try {
           const current = JSON.parse(stored);
-          setUser(current);
-          setShops([DEFAULT_SHOP]);
-          setActiveShop(DEFAULT_SHOP.id);
-          return current;
+          if (current && current.email) {
+            setUser(current);
+            return current;
+          }
         } catch {
           // corrupt stored data — stay logged out
           localStorage.removeItem("dukaan_user");
@@ -92,7 +104,7 @@ export function AuthProvider({ children }) {
       }
       return null;
     }
-  }, [loadShops, setActiveShop]);
+  }, [loadShops]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -322,82 +334,89 @@ export function AuthProvider({ children }) {
     const cleanEmail = (email || "").toLowerCase().trim();
     const cleanName = (name || (provider === "google" ? "Google User" : "Apple User")).trim();
 
+    // 1. Clear any old session so old admin/owner account never persists
+    localStorage.removeItem("dukaan_user");
+    localStorage.removeItem("dukaan_access_token");
+    localStorage.removeItem("dukaan_shop_id");
+
+    let socialUser = {
+      id: `usr_${Date.now()}`,
+      name: cleanName,
+      email: cleanEmail,
+      avatar: avatar || "",
+      is_verified: true,
+      is_admin: false,
+      provider,
+      subscription: null
+    };
+
     try {
       const { data } = await api.post("/auth/social-login", {
         email: cleanEmail,
         name: cleanName,
         provider,
-        id_token: idToken
+        id_token: idToken,
+        avatar: avatar || ""
       });
 
       if (data?.access_token) {
         localStorage.setItem("dukaan_access_token", data.access_token);
       }
-      const u = await refresh();
-      const verifiedUser = u || data?.user || {
-        id: data?.user?.id || `user_${Date.now()}`,
-        name: cleanName,
-        email: cleanEmail,
-        is_verified: true,
-        provider,
-        avatar
-      };
-      verifiedUser.is_verified = true;
-      setUser(verifiedUser);
-      localStorage.setItem("dukaan_user", JSON.stringify(verifiedUser));
-
-      try {
-        let regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
-        const idx = regUsers.findIndex(ru => ru.email.toLowerCase() === cleanEmail);
-        if (idx >= 0) {
-          regUsers[idx].is_verified = true;
-          regUsers[idx].provider = provider;
-          regUsers[idx].name = cleanName;
-        } else {
-          regUsers.push({
-            id: verifiedUser.id,
-            name: cleanName,
-            email: cleanEmail,
-            is_verified: true,
-            provider,
-            created_at: new Date().toISOString()
-          });
-        }
-        localStorage.setItem("dukaan_registered_users", JSON.stringify(regUsers));
-      } catch {}
-
-      await loadShops();
-      return { ok: true, user: verifiedUser };
-    } catch (err) {
-      let regUsers = [];
-      try {
-        regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
-      } catch {}
-
-      let existing = regUsers.find(ru => ru.email.toLowerCase() === cleanEmail);
-      if (!existing) {
-        existing = {
-          id: `user_${Date.now()}`,
+      if (data?.user) {
+        socialUser = {
+          ...socialUser,
+          ...data.user,
           name: cleanName,
           email: cleanEmail,
-          is_verified: true,
-          provider,
-          subscription: null,
-          default_shop_id: `shop_${Date.now()}`,
-          created_at: new Date().toISOString()
+          avatar: avatar || data.user.avatar || "",
+          provider
         };
-        regUsers.push(existing);
-      } else {
+      }
+    } catch (err) {
+      console.warn("Backend social login offline fallback:", err);
+    }
+
+    // 2. Check local database for existing subscriptions / account history
+    try {
+      let regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
+      const existing = regUsers.find(ru => ru.email && ru.email.toLowerCase() === cleanEmail);
+      if (existing) {
+        socialUser.id = existing.id || socialUser.id;
+        if (existing.subscription) socialUser.subscription = existing.subscription;
+        if (existing.is_admin) socialUser.is_admin = true;
         existing.is_verified = true;
         existing.provider = provider;
+        existing.name = cleanName;
+        if (avatar) existing.avatar = avatar;
+      } else {
+        regUsers.push(socialUser);
       }
       localStorage.setItem("dukaan_registered_users", JSON.stringify(regUsers));
+    } catch {}
 
-      setUser(existing);
-      localStorage.setItem("dukaan_user", JSON.stringify(existing));
-      await loadShops();
-      return { ok: true, user: existing };
-    }
+    // 3. Set the authenticated user state
+    setUser(socialUser);
+    localStorage.setItem("dukaan_user", JSON.stringify(socialUser));
+
+    // 4. Setup merchant store for this specific Google user
+    const merchantShopId = `shop_${cleanEmail.replace(/[^a-zA-Z0-9]/g, "_")}`;
+    const merchantShop = {
+      id: merchantShopId,
+      name: `${cleanName}'s Store`,
+      owner_name: cleanName,
+      phone: "",
+      address: "India",
+      upi_id: "",
+      store_category: "General Store",
+      gst_status: "pending",
+      gst_enabled: false,
+      financial_year: "2026-27",
+      store_active: true,
+    };
+    setShops([merchantShop]);
+    setActiveShop(merchantShop.id);
+
+    return { ok: true, user: socialUser };
   };
 
   const loginWithGoogle = (payload) => loginWithSocial({ ...payload, provider: "google" });

@@ -104,7 +104,25 @@ async function sendMailWithFallback({ to, subject, html }) {
   throw lastErr || new Error("Failed to dispatch email across candidate SMTP hosts");
 }
 
+function makeToken(userData) {
+  return "duk_" + Buffer.from(JSON.stringify(userData)).toString("base64url");
+}
+
+function parseToken(authHeader) {
+  if (!authHeader) return null;
+  const match = authHeader.match(/^Bearer\s+(?:duk_)?([A-Za-z0-9_-]+)/);
+  if (!match) return null;
+  try {
+    const json = Buffer.from(match[1], "base64url").toString("utf-8");
+    const parsed = JSON.parse(json);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 exports.handler = async (event, context) => {
+  // CORS Headers
   const headers = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Shop-Id",
@@ -113,7 +131,7 @@ exports.handler = async (event, context) => {
   };
 
   if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 204, headers, body: "" };
+    return { statusCode: 200, headers, body: "" };
   }
 
   const rawPath = event.path || "";
@@ -221,34 +239,45 @@ exports.handler = async (event, context) => {
       if (!email || !password) {
         return { statusCode: 400, headers, body: JSON.stringify({ detail: "Email and password are required." }) };
       }
+      const isAdmin = email === "admin@officialdukaan.in" || email === "admin@dukaan.app";
+      const user = {
+        id: `usr_${Date.now()}`,
+        name: email.split("@")[0],
+        email,
+        is_verified: true,
+        is_admin: isAdmin,
+        subscription: null
+      };
+      const token = makeToken(user);
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           ok: true,
-          access_token: "tok_" + Date.now() + "_" + Math.random().toString(36).substring(2, 10),
+          access_token: token,
           token_type: "bearer",
-          user: {
-            id: `usr_${Date.now()}`,
-            name: email.split("@")[0],
-            email,
-            is_verified: true
-          }
+          user
         })
       };
     }
 
     // 3. CURRENT USER (ME)
     if ((path === "/auth/me" || path === "/users/me") && event.httpMethod === "GET") {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const userFromToken = parseToken(authHeader);
+
+      if (userFromToken && userFromToken.email) {
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify(userFromToken)
+        };
+      }
+
       return {
-        statusCode: 200,
+        statusCode: 401,
         headers,
-        body: JSON.stringify({
-          id: "usr_active",
-          email: "owner@officialdukaan.in",
-          name: "Shop Owner",
-          is_verified: true
-        })
+        body: JSON.stringify({ detail: "Not authenticated" })
       };
     }
 
@@ -364,25 +393,36 @@ exports.handler = async (event, context) => {
       const email = (body.email || "").trim().toLowerCase();
       const name = (body.name || (body.provider === "google" ? "Google User" : "Apple User")).trim();
       const provider = body.provider || "google";
+      const avatar = body.avatar || "";
 
       if (!email) {
         return { statusCode: 400, headers, body: JSON.stringify({ detail: "Email is required for social sign-in." }) };
       }
+
+      const isAdmin = email === "admin@officialdukaan.in" || email === "admin@dukaan.app";
+
+      const user = {
+        id: `usr_${Date.now()}`,
+        name,
+        email,
+        avatar,
+        is_verified: true,
+        is_admin: isAdmin,
+        provider,
+        subscription: null
+      };
+
+      const token = makeToken(user);
 
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           ok: true,
-          access_token: "soc_" + Date.now() + "_" + Math.random().toString(36).substring(2, 10),
+          access_token: token,
+          token_type: "bearer",
           message: `Successfully authenticated via ${provider}`,
-          user: {
-            id: `usr_${Date.now()}`,
-            name,
-            email,
-            is_verified: true,
-            provider
-          }
+          user
         })
       };
     }
