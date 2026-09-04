@@ -10,17 +10,24 @@ export const api = axios.create({
   withCredentials: true,
 });
 
-// Attach the selected shop and, when available, the login token automatically.
-// The token fallback keeps authentication working when the browser blocks
-// cross-site cookies between officialdukaan.in and the Render API.
+// Attach token, shop ID, and cache-busting timestamps to avoid stale browser disk cache
 api.interceptors.request.use((config) => {
   const shopId = localStorage.getItem("dukaan_shop_id");
-  const token = localStorage.getItem("dukaan_access_token");
+  const token = localStorage.getItem("dukaan_access_token") || localStorage.getItem("dukaan_token");
   if (shopId) {
     config.headers["X-Shop-Id"] = shopId;
   }
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  // Guarantee 100% fresh real-time responses by cache-busting all GET queries
+  if (!config.method || config.method.toLowerCase() === "get") {
+    config.params = {
+      ...(config.params || {}),
+      _t: Date.now()
+    };
+    config.headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+    config.headers["Pragma"] = "no-cache";
   }
   return config;
 });

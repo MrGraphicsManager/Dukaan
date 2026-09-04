@@ -231,7 +231,21 @@ export function AuthProvider({ children }) {
     }
   }, [loadShops]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    refresh();
+    const interval = setInterval(refresh, 4000);
+    const onFocus = () => refresh();
+    window.addEventListener("focus", onFocus);
+    const onVis = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [refresh]);
 
   const login = async (email, password) => {
     const cleanEmail = (email || "").toLowerCase().trim();

@@ -365,14 +365,19 @@ export default function AdminSubscriptions() {
 
       try {
         const localUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
+        let needCloudSync = false;
         localUsers.forEach(lu => {
           const idx = mergedUsers.findIndex(mu => mu.email && mu.email.toLowerCase() === lu.email.toLowerCase());
           if (idx >= 0) {
             mergedUsers[idx] = { ...mergedUsers[idx], ...lu };
           } else {
             mergedUsers.push(lu);
+            needCloudSync = true;
           }
         });
+        if (needCloudSync || localUsers.length > 0) {
+          api.post("/admin/users/sync", { users: mergedUsers }).catch(() => {});
+        }
       } catch {}
 
       // Real users only - No fallback to mock accounts!
@@ -661,6 +666,7 @@ export default function AdminSubscriptions() {
     const msg = announcementInput.trim();
     try {
       await api.post("/platform/config", { announcement: msg });
+      await api.post("/platform/force-update").catch(() => {});
     } catch (e) {
       console.warn("Backend update failed, applying locally:", e);
     }
@@ -934,6 +940,7 @@ export default function AdminSubscriptions() {
         days: Number(grantModal.days) || 30,
         note: grantModal.note.trim() || "Manual grant by master admin"
       });
+      await api.post("/platform/force-update").catch(() => {});
 
       try {
         let regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");

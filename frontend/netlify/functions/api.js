@@ -311,12 +311,16 @@ function parseToken(authHeader) {
 }
 
 exports.handler = async (event, context) => {
-  // CORS Headers
+  // CORS & Anti-Caching Headers (Ensures real-time updates across browsers)
   const headers = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Shop-Id",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
+    "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+    "Pragma": "no-cache",
+    "Expires": "0",
+    "Surrogate-Control": "no-store"
   };
 
   if (event.httpMethod === "OPTIONS") {
@@ -1035,6 +1039,19 @@ exports.handler = async (event, context) => {
         headers,
         body: JSON.stringify(Array.from(usersMap.values()))
       };
+    }
+
+    // 10B. ADMIN USERS CLOUD SYNC
+    if (path === "/admin/users/sync" && event.httpMethod === "POST") {
+      await getPersistentState();
+      const usersToSync = Array.isArray(body.users) ? body.users : [];
+      for (const u of usersToSync) {
+        if (u && u.email) {
+          recordRegisteredUser(u);
+        }
+      }
+      await savePersistentState();
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, count: registeredUsersList.length }) };
     }
 
     if (path === "/admin/gst-requests" && event.httpMethod === "GET") {

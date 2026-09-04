@@ -213,7 +213,7 @@ export default function AppLayout() {
 
         // Feature 14: Global Force Update / OTA Cache Refresh
         if (res.data.ota_version) {
-          const currentOta = parseInt(localStorage.getItem("dukaan_ota_version") || "1", 10);
+          const currentOta = parseInt(localStorage.getItem("dukaan_ota_version") || "0", 10);
           if (res.data.ota_version > currentOta) {
             localStorage.setItem("dukaan_ota_version", String(res.data.ota_version));
             console.log("OTA Update received. Reloading application cache...");
@@ -246,6 +246,7 @@ export default function AppLayout() {
               u.subscription = activeSub;
               if (activeSub.plan === "premium") u.is_premium = true;
               localStorage.setItem("dukaan_user", JSON.stringify(u));
+              if (typeof refreshAuth === "function") refreshAuth();
             }
           } catch {}
         }
@@ -255,7 +256,7 @@ export default function AppLayout() {
 
   useEffect(() => {
     checkPlatformConfig();
-    const interval = setInterval(checkPlatformConfig, 8000);
+    const interval = setInterval(checkPlatformConfig, 4000);
     const onFocus = () => checkPlatformConfig();
     window.addEventListener("focus", onFocus);
     const onVis = () => {
