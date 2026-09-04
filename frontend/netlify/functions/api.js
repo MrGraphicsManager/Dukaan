@@ -88,7 +88,8 @@ async function getPersistentState(force = false) {
     if (res.ok) {
       const rawText = await res.text();
       if (rawText && rawText.trim()) {
-        const json = JSON.parse(rawText.trim());
+        const lines = rawText.trim().split('\n').filter(Boolean);
+        const json = JSON.parse(lines[lines.length - 1]);
         if (json) {
           lastCloudFetchTime = now;
           if (typeof json.maintenance_mode === "boolean") {
