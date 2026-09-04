@@ -3,7 +3,7 @@ import axios from "axios";
 // Use the configured backend URL in deployment; fall back to the live Dukaan API
 // so the production site does not break if the hosting environment variable is missing.
 const BASE = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
-export const API_BASE = BASE ? `${BASE}/api` : "/api";
+export const API_BASE = BASE ? `${BASE}/api` : "/.netlify/functions/api";
 
 export const api = axios.create({
   baseURL: API_BASE,
