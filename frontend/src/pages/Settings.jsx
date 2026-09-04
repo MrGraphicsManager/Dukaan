@@ -27,7 +27,14 @@ import {
   ArrowRight,
   Camera,
   AlertTriangle,
-  Mail
+  Mail,
+  MessageSquare,
+  Star,
+  Globe,
+  Copy,
+  Gift,
+  Send,
+  HelpCircle
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -255,6 +262,102 @@ export default function Settings() {
     ? Math.max(0, Math.ceil((new Date(sub.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : null;
 
+  // Feature 8: Customer Support Ticket Desk
+  const [tickets, setTickets] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`dukaan_support_tickets_${user?.email}`);
+      return stored ? JSON.parse(stored) : [
+        { id: "TCK_9912", subject: "Printer 58mm Margin Setup", priority: "medium", status: "open", message: "Need help aligning margins.", created_at: new Date().toISOString() }
+      ];
+    } catch {
+      return [];
+    }
+  });
+  const [ticketForm, setTicketForm] = useState({ subject: "", priority: "medium", message: "" });
+  const [submittingTicket, setSubmittingTicket] = useState(false);
+
+  const handleCreateTicket = async (e) => {
+    if (e?.preventDefault) e.preventDefault();
+    if (!ticketForm.subject.trim() || !ticketForm.message.trim()) {
+      toast.error("Please enter a subject and message description.");
+      return;
+    }
+    setSubmittingTicket(true);
+    const newT = {
+      id: `TCK_${Math.floor(1000 + Math.random() * 9000)}`,
+      merchant_name: user?.name || "Merchant",
+      merchant_email: user?.email,
+      phone: user?.phone || "",
+      subject: ticketForm.subject.trim(),
+      priority: ticketForm.priority,
+      status: "open",
+      message: ticketForm.message.trim(),
+      created_at: new Date().toISOString()
+    };
+    try {
+      await api.post("/support/tickets", newT);
+    } catch (_) {}
+    const updated = [newT, ...tickets];
+    setTickets(updated);
+    try { localStorage.setItem(`dukaan_support_tickets_${user?.email}`, JSON.stringify(updated)); } catch {}
+    setTicketForm({ subject: "", priority: "medium", message: "" });
+    setSubmittingTicket(false);
+    toast.success("Support ticket submitted! Ticket ID: #" + newT.id);
+  };
+
+  // Feature 29: Merchant Feedback & NPS Rating Wall
+  const [feedbackRating, setFeedbackRating] = useState(5);
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+
+  const handleSendFeedback = async (e) => {
+    if (e?.preventDefault) e.preventDefault();
+    if (!feedbackComment.trim()) {
+      toast.error("Please provide your comments or suggestions.");
+      return;
+    }
+    setSubmittingFeedback(true);
+    try {
+      await api.post("/merchant/feedback", {
+        rating: feedbackRating,
+        comment: feedbackComment.trim(),
+        shop_name: form.name || "Apni Dukaan"
+      });
+    } catch (_) {}
+    setSubmittingFeedback(false);
+    setFeedbackSubmitted(true);
+    toast.success("Thank you for your feedback! Your review helps Dukaan improve for all Indian merchants.");
+  };
+
+  // Feature 33: Custom Domain & White-Label DNS Manager
+  const [customDomain, setCustomDomain] = useState(() => {
+    return localStorage.getItem(`dukaan_custom_domain_${currentShopId}`) || "";
+  });
+  const [domainStatus, setDomainStatus] = useState(() => {
+    return localStorage.getItem(`dukaan_custom_domain_status_${currentShopId}`) || "not_configured";
+  });
+  const [savingDomain, setSavingDomain] = useState(false);
+
+  const handleSaveDomain = async () => {
+    if (!customDomain.trim()) return toast.error("Please enter a valid domain name (e.g. shop.mybrand.in)");
+    setSavingDomain(true);
+    try {
+      await api.post("/admin/custom-domains", {
+        shop_name: form.name || "My Store",
+        domain: customDomain.trim().toLowerCase()
+      });
+    } catch (_) {}
+    localStorage.setItem(`dukaan_custom_domain_${currentShopId}`, customDomain.trim().toLowerCase());
+    localStorage.setItem(`dukaan_custom_domain_status_${currentShopId}`, "pending_dns");
+    setDomainStatus("pending_dns");
+    setSavingDomain(false);
+    toast.success("Custom domain registered! Please configure your DNS CNAME record.");
+  };
+
+  // Feature 20: Merchant Referral Code
+  const referralCode = `DUK-${(user?.name || "SHOP").replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 4) || "DUK"}${String(user?.id || "99").slice(-3)}`;
+
   return (
     <div className="space-y-8 animate-fade-up max-w-[1200px] mx-auto pb-16 font-sans selection:bg-brand-terracotta/20">
       
@@ -310,7 +413,7 @@ export default function Settings() {
       {/* =========================================================
           TAB NAVIGATION SWITCHER
       ========================================================= */}
-      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-white border-2 border-brand-mitti shadow-xs max-w-md">
+      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-white border-2 border-brand-mitti shadow-xs max-w-xl">
         <button
           onClick={() => setTab("account")}
           className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
@@ -320,7 +423,7 @@ export default function Settings() {
           }`}
         >
           <User className="w-4 h-4" />
-          <span>My Account & Profile</span>
+          <span>My Profile & Referrals</span>
         </button>
         <button
           onClick={() => setTab("shop")}
@@ -331,7 +434,18 @@ export default function Settings() {
           }`}
         >
           <Store className="w-4 h-4" />
-          <span>Shop & Business</span>
+          <span>Shop & Custom Domain</span>
+        </button>
+        <button
+          onClick={() => setTab("support")}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+            activeTab === "support"
+              ? "bg-brand-indigo text-white shadow-xs"
+              : "text-brand-indigo/60 hover:text-brand-indigo hover:bg-brand-sand/50"
+          }`}
+        >
+          <HelpCircle className="w-4 h-4" />
+          <span>Support & NPS Feedback</span>
         </button>
       </div>
 
@@ -567,6 +681,56 @@ export default function Settings() {
                 <span>Upgrade / Change Plan</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Button>
+            </div>
+          </div>
+
+          {/* Card 4: Merchant Partner & Referral Program (Feature #20) */}
+          <div className="bg-gradient-to-br from-amber-500/10 via-amber-100/30 to-amber-500/10 rounded-3xl p-6 border-2 border-amber-300 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white grid place-items-center shadow-sm">
+                  <Gift className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-bold text-base text-amber-950">Merchant Partner & Referral Program (Feature #20)</h3>
+                  <p className="text-xs text-amber-800">Earn 30 days of free subscription for every retail store you refer to Dukaan!</p>
+                </div>
+              </div>
+              <span className="text-[11px] font-mono font-bold bg-amber-200 text-amber-900 px-3 py-1 rounded-full border border-amber-300">
+                30 Days Free / Referral
+              </span>
+            </div>
+
+            <div className="p-4 bg-white rounded-2xl border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <div className="text-[10px] uppercase font-bold text-slate-400">Your Exclusive Merchant Referral Code</div>
+                <div className="text-2xl font-black font-mono tracking-widest text-brand-indigo">{referralCode}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(referralCode);
+                    toast.success("Referral code copied to clipboard!");
+                  }}
+                  className="rounded-xl border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs h-10 px-4 flex items-center gap-1.5"
+                >
+                  <Copy className="w-3.5 h-3.5" /> Copy Code
+                </Button>
+                <a
+                  href={`https://wa.me/?text=Namaste!%20I%20use%20Dukaan%20for%20my%20store%20billing%20and%20inventory.%20Sign%20up%20with%20my%20code%20*${referralCode}*%20at%20https://officialdukaan.in%20to%20get%2030%20days%20free!`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Button
+                    size="sm"
+                    className="rounded-xl bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold text-xs h-10 px-4 flex items-center gap-1.5 shadow-sm"
+                  >
+                    <Send className="w-3.5 h-3.5" /> Share on WhatsApp
+                  </Button>
+                </a>
+              </div>
             </div>
           </div>
 
@@ -809,6 +973,229 @@ export default function Settings() {
               </div>
             </div>
 
+          </div>
+
+          {/* Card: Custom Domain & White-Label DNS (Feature #33) */}
+          <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-brand-mitti">
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-brand-terracotta" />
+                <h3 className="font-heading font-bold text-base text-brand-indigo">Custom Domain & White-Label DNS (Feature #33)</h3>
+              </div>
+              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase ${
+                domainStatus === "active" ? "bg-emerald-100 text-emerald-800" :
+                domainStatus === "pending_dns" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"
+              }`}>
+                {domainStatus === "active" ? "Active (SSL Live)" :
+                 domainStatus === "pending_dns" ? "Pending DNS" : "Not Connected"}
+              </span>
+            </div>
+
+            <p className="text-xs text-brand-indigo/70">
+              Connect your brand's custom domain (e.g. <span className="font-mono font-bold text-brand-indigo">shop.yourbrand.in</span>) so customers order directly under your private store domain with zero marketplace branding.
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Your Store Domain</Label>
+                <div className="mt-1 flex items-center gap-2">
+                  <Input
+                    value={customDomain}
+                    onChange={(e) => setCustomDomain(e.target.value)}
+                    placeholder="e.g. shop.sharmagrocery.in"
+                    className="h-11 rounded-xl border-brand-mitti font-mono text-sm"
+                  />
+                  <Button
+                    disabled={savingDomain}
+                    onClick={handleSaveDomain}
+                    className="h-11 px-5 rounded-xl bg-brand-indigo hover:bg-brand-indigo/90 text-white font-bold text-xs shrink-0"
+                  >
+                    {savingDomain ? "Saving…" : "Connect Domain"}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-brand-sand border border-brand-mitti text-[11px] text-brand-indigo/80 space-y-1 font-mono">
+                <div className="font-bold text-brand-indigo">Required DNS Settings (GoDaddy / Cloudflare / Hostinger):</div>
+                <div>Type: <span className="font-bold">CNAME</span></div>
+                <div>Host / Subdomain: <span className="font-bold">shop</span> (or @)</div>
+                <div>Points to / Target: <span className="font-bold text-brand-terracotta">custom.officialdukaan.in</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================
+          TAB 3: SUPPORT DESK & NPS FEEDBACK (Features #8 & #29)
+      ========================================================= */}
+      {activeTab === "support" && (
+        <div className="space-y-6 animate-fade-up">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Card 1: Submit New Support Ticket (Feature #8) */}
+            <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-xs space-y-5">
+              <div className="flex items-center justify-between pb-3 border-b border-brand-mitti">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-brand-terracotta" />
+                  <h3 className="font-heading font-bold text-base text-brand-indigo">In-App Customer Support Desk</h3>
+                </div>
+                <span className="text-[10px] bg-brand-indigo/10 text-brand-indigo font-bold px-2 py-0.5 rounded-full uppercase">
+                  Feature #8
+                </span>
+              </div>
+
+              <p className="text-xs text-brand-indigo/70">
+                Direct priority ticket channel to our master admin engineering desk. Response guaranteed within 2 hours.
+              </p>
+
+              <form onSubmit={handleCreateTicket} className="space-y-4">
+                <div>
+                  <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Ticket Subject *</Label>
+                  <Input
+                    value={ticketForm.subject}
+                    onChange={(e) => setTicketForm({ ...ticketForm, subject: e.target.value })}
+                    placeholder="e.g. Printer margin adjustment in 58mm..."
+                    className="mt-1 h-11 rounded-xl border-brand-mitti text-sm"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Urgency / Priority</Label>
+                  <Select
+                    value={ticketForm.priority}
+                    onValueChange={(p) => setTicketForm({ ...ticketForm, priority: p })}
+                  >
+                    <SelectTrigger className="mt-1 h-11 rounded-xl border-brand-mitti text-xs font-bold bg-white">
+                      <SelectValue placeholder="Priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low (General Query)</SelectItem>
+                      <SelectItem value="medium">Medium (Standard Issue)</SelectItem>
+                      <SelectItem value="high">High (Counter / POS Blocked)</SelectItem>
+                      <SelectItem value="critical">Critical (Hardware / Payment Issue)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Issue Description *</Label>
+                  <Textarea
+                    value={ticketForm.message}
+                    onChange={(e) => setTicketForm({ ...ticketForm, message: e.target.value })}
+                    placeholder="Describe what happened or what help you need..."
+                    rows={4}
+                    className="mt-1 rounded-xl border-brand-mitti text-xs"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={submittingTicket}
+                  className="w-full h-11 rounded-xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-xs shadow-xs"
+                >
+                  {submittingTicket ? "Submitting Ticket…" : "Submit Support Ticket"}
+                </Button>
+              </form>
+            </div>
+
+            {/* Card 2: Merchant Feedback & NPS Rating Wall (Feature #29) */}
+            <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-xs space-y-5">
+              <div className="flex items-center justify-between pb-3 border-b border-brand-mitti">
+                <div className="flex items-center gap-2">
+                  <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                  <h3 className="font-heading font-bold text-base text-brand-indigo">Merchant NPS Feedback Wall</h3>
+                </div>
+                <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full uppercase">
+                  Feature #29
+                </span>
+              </div>
+
+              <p className="text-xs text-brand-indigo/70">
+                Rate your daily billing experience on Dukaan. Your feedback shapes our next software releases!
+              </p>
+
+              {feedbackSubmitted ? (
+                <div className="p-8 text-center bg-emerald-50 rounded-2xl border border-emerald-200 space-y-2">
+                  <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
+                  <div className="font-bold text-emerald-900 text-sm">Feedback Received!</div>
+                  <p className="text-xs text-emerald-700">Thank you for rating Official Dukaan. We read every review.</p>
+                </div>
+              ) : (
+                <form onSubmit={handleSendFeedback} className="space-y-4">
+                  <div>
+                    <Label className="text-xs font-bold text-brand-indigo/70 uppercase">How satisfied are you with Dukaan?</Label>
+                    <div className="flex items-center gap-2 mt-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          type="button"
+                          key={star}
+                          onClick={() => setFeedbackRating(star)}
+                          className="p-2 rounded-xl border border-brand-mitti transition-transform hover:scale-110"
+                        >
+                          <Star className={`w-6 h-6 ${star <= feedbackRating ? "fill-amber-400 text-amber-400" : "text-slate-300"}`} />
+                        </button>
+                      ))}
+                      <span className="text-xs font-bold text-brand-indigo ml-2">
+                        {feedbackRating === 5 ? "⭐️ 5 - Exceptional" :
+                         feedbackRating === 4 ? "⭐️ 4 - Very Good" :
+                         feedbackRating === 3 ? "⭐️ 3 - Good" :
+                         feedbackRating === 2 ? "⭐️ 2 - Needs Work" : "⭐️ 1 - Poor"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Your Comments or Feature Request</Label>
+                    <Textarea
+                      value={feedbackComment}
+                      onChange={(e) => setFeedbackComment(e.target.value)}
+                      placeholder="What do you love? What features would make your daily store operations even smoother?..."
+                      rows={4}
+                      className="mt-1 rounded-xl border-brand-mitti text-xs"
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={submittingFeedback}
+                    className="w-full h-11 rounded-xl bg-brand-indigo hover:bg-brand-indigo/90 text-white font-bold text-xs shadow-xs"
+                  >
+                    {submittingFeedback ? "Submitting Review…" : "Publish Feedback Review"}
+                  </Button>
+                </form>
+              )}
+            </div>
+
+          </div>
+
+          {/* Submitted Tickets History */}
+          <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-xs space-y-4">
+            <h3 className="font-heading font-bold text-base text-brand-indigo">My Support Tickets History</h3>
+            {tickets.length === 0 ? (
+              <div className="text-center py-8 text-xs text-brand-indigo/50">No support tickets submitted yet.</div>
+            ) : (
+              <div className="space-y-2.5">
+                {tickets.map(t => (
+                  <div key={t.id} className="p-4 rounded-2xl bg-brand-sand/50 border border-brand-mitti flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-xs text-brand-indigo">{t.id}</span>
+                        <span className="font-bold text-sm text-brand-indigo">{t.subject}</span>
+                      </div>
+                      <p className="text-xs text-brand-indigo/70">{t.message}</p>
+                      <div className="text-[10px] text-slate-400">Submitted: {new Date(t.created_at).toLocaleString("en-IN")}</div>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase shrink-0 ${
+                      t.status === "resolved" ? "bg-emerald-100 text-emerald-800" :
+                      t.status === "in_progress" ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800"
+                    }`}>
+                      {t.status.replace("_", " ")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

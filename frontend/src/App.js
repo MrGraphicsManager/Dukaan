@@ -37,6 +37,7 @@ import Subscribe from "@/pages/Subscribe";
 import Billing from "@/pages/Billing";
 import AdminSubscriptions from "@/pages/AdminSubscriptions";
 import CounterMode from "@/pages/CounterMode";
+import PublicStoreDirectory from "@/pages/PublicStoreDirectory";
 
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundPolicy from "./pages/RefundPolicy";
@@ -64,8 +65,9 @@ function Protected({ children }) {
     return <Navigate to={`/login?next=${encodeURIComponent(loc.pathname)}`} replace />;
   }
 
-  // Admin should only see the Admin Portal, not the merchant store dashboard
-  if (user.is_admin || isAdminEmail(user.email)) {
+  // Admin should only see Admin Portal unless actively running Store Inspector mode
+  const isInspector = !!sessionStorage.getItem("dukaan_inspector_mode");
+  if (!isInspector && (user.is_admin || isAdminEmail(user.email))) {
     return <Navigate to="/admin" replace />;
   }
 
@@ -196,6 +198,11 @@ function LaunchController() {
       <Route
         path="/subscribe"
         element={<Subscribe />}
+      />
+
+      <Route
+        path="/stores"
+        element={<PublicStoreDirectory />}
       />
 
       {/* ===================================================

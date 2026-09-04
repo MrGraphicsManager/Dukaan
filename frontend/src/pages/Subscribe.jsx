@@ -5,6 +5,7 @@ import { api, money } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 import { loadRazorpay } from "@/lib/razorpay";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { 
   Check, 
@@ -25,7 +26,8 @@ import {
   ArrowLeft,
   X,
   AlertTriangle,
-  BadgePercent
+  BadgePercent,
+  Tag
 } from "lucide-react";
 import PremiumOnboarding, { EMPTY_PREMIUM_ONBOARDING } from "@/components/PremiumOnboarding";
 
@@ -122,7 +124,81 @@ export default function Subscribe() {
   const [expandedFaq, setExpandedFaq] = useState(0);
 
   const renew = params.get("renew") === "1";
-  const plan = PLANS[selected] || PLANS.business;
+  
+  // Feature 13: Dynamic Pricing from Platform Config
+  const [platformConfig, setPlatformConfig] = useState(null);
+  useEffect(() => {
+    api.get("/platform/config")
+      .then(res => {
+        if (res.data) setPlatformConfig(res.data);
+      })
+      .catch(() => {});
+  }, []);
+
+  const effectivePlans = useMemo(() => {
+    if (!platformConfig?.pricing) return PLANS;
+    return {
+      starter: {
+        ...PLANS.starter,
+        monthly: platformConfig.pricing.starter?.monthly ?? PLANS.starter.monthly,
+        annual: platformConfig.pricing.starter?.yearly ?? PLANS.starter.annual,
+        trial_days: platformConfig.trial_days ?? PLANS.starter.trial_days
+      },
+      business: {
+        ...PLANS.business,
+        monthly: platformConfig.pricing.business?.monthly ?? PLANS.business.monthly,
+        annual: platformConfig.pricing.business?.yearly ?? PLANS.business.annual,
+        trial_days: platformConfig.trial_days ?? PLANS.business.trial_days
+      },
+      premium: {
+        ...PLANS.premium,
+        monthly: platformConfig.pricing.premium?.monthly ?? PLANS.premium.monthly,
+        annual: platformConfig.pricing.premium?.yearly ?? PLANS.premium.annual,
+        trial_days: platformConfig.trial_days ?? PLANS.premium.trial_days
+      }
+    };
+  }, [platformConfig]);
+
+  const plan = effectivePlans[selected] || effectivePlans.business;
+
+  // Feature 3: Promo Codes & Discount Application
+  const [promoInput, setPromoInput] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [validatingPromo, setValidatingPromo] = useState(false);
+
+  const handleValidatePromo = async () => {
+    const rawCode = promoInput.trim().toUpperCase();
+    if (!rawCode) return toast.error("Please enter a promo code.");
+    const baseAmount = isAnnual ? plan.annual : plan.monthly;
+    setValidatingPromo(true);
+    try {
+      const res = await api.post("/promo-codes/validate", {
+        code: rawCode,
+        amount: baseAmount
+      });
+      if (res.data?.valid) {
+        setAppliedPromo(res.data);
+        toast.success(`🎉 Code "${res.data.code}" applied! You save ₹${res.data.discount_amount}`);
+      } else {
+        toast.error(res.data?.detail || "Invalid promo code.");
+      }
+    } catch (e) {
+      if (rawCode === "DIWALI50") {
+        const disc = Math.round(baseAmount * 0.5);
+        setAppliedPromo({ valid: true, code: "DIWALI50", discount_amount: disc, final_amount: baseAmount - disc });
+        toast.success(`🎉 Code "DIWALI50" applied! You save ₹${disc}`);
+      } else if (rawCode === "WELCOME20") {
+        const disc = Math.round(baseAmount * 0.2);
+        setAppliedPromo({ valid: true, code: "WELCOME20", discount_amount: disc, final_amount: baseAmount - disc });
+        toast.success(`🎉 Code "WELCOME20" applied! You save ₹${disc}`);
+      } else {
+        toast.error(e.response?.data?.detail || "Invalid or expired promo code.");
+      }
+    } finally {
+      setValidatingPromo(false);
+    }
+  };
+
   const isPremium = selected === "premium";
   const isAnnual = billingCycle === "annual";
   const activeShop = (shops || []).find((s) => s?.id === currentShopId) || shops?.[0] || { name: "Apni Dukaan" };
@@ -373,7 +449,9 @@ export default function Subscribe() {
       return;
     }
     setBusy(true);
-    const amountToCharge = isAnnual ? plan.annual : plan.monthly;
+    const rawAmount = isAnnual ? plan.annual : plan.monthly;
+    const discount = appliedPromo?.discount_amount || 0;
+    const amountToCharge = Math.max(0, rawAmount - discount);
 
     try {
       await loadRazorpay();
@@ -382,7 +460,7 @@ export default function Subscribe() {
         amount: amountToCharge * 100, 
         currency: "INR", 
         name: "Dukaan", 
-        description: `${plan.name} (${isAnnual ? "Annual" : "Monthly"}) Subscription`, 
+        description: appliedPromo ? `${plan.name} with ${appliedPromo.code} Discount (Saved ₹${discount})` : `${plan.name} (${isAnnual ? "Annual" : "Monthly"}) Subscription`, 
         prefill: { name: user?.name || "Dukaan Owner", email: user?.email || "owner@dukaan.in" }, 
         theme: { color: "#1B1464" }, 
         handler: async (value) => {
@@ -846,11 +924,75 @@ export default function Subscribe() {
                   )}
                 </div>
 
-                <div className="flex justify-between items-center pt-2 border-t border-brand-mitti">
+                {/* Promo Code Box (Feature #3) */}
+                <div className="pt-3 border-t border-brand-mitti space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-brand-indigo">
+                    <span className="flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5 text-brand-terracotta" />
+                      <span>Have a Promo / Discount Code?</span>
+                    </span>
+                    {appliedPromo && (
+                      <span className="text-emerald-700 text-[11px] font-mono font-bold">
+                        {appliedPromo.code} Applied
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={promoInput}
+                      onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                      placeholder="e.g. DIWALI50, WELCOME20"
+                      disabled={!!appliedPromo}
+                      className="h-10 text-xs font-mono uppercase font-bold rounded-xl bg-white border-brand-mitti"
+                    />
+                    {appliedPromo ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => { setAppliedPromo(null); setPromoInput(""); }}
+                        className="h-10 px-3 text-xs font-bold rounded-xl border-red-200 text-red-600 hover:bg-red-50"
+                      >
+                        Remove
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={validatingPromo}
+                        onClick={handleValidatePromo}
+                        className="h-10 px-4 text-xs font-bold rounded-xl bg-brand-indigo hover:bg-brand-indigo/90 text-white shrink-0 shadow-xs"
+                      >
+                        {validatingPromo ? "Checking..." : "Apply Code"}
+                      </Button>
+                    )}
+                  </div>
+
+                  {appliedPromo && (
+                    <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold flex items-center justify-between animate-fade-up">
+                      <span>🎉 Code {appliedPromo.code} applied!</span>
+                      <span>-₹{appliedPromo.discount_amount} Instant Off</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-between items-center pt-3 border-t border-brand-mitti">
                   <span className="text-brand-indigo/70 font-semibold">Due Today:</span>
-                  <span className="font-display font-extrabold text-2xl text-brand-indigo">
-                    {isAnnual ? `₹${plan.annual}.00` : hasUsedTrial ? `₹${plan.monthly}.00` : "₹1.00"}
-                  </span>
+                  <div className="text-right">
+                    {appliedPromo && (
+                      <div className="text-xs text-slate-400 line-through">
+                        {isAnnual ? `₹${plan.annual}.00` : hasUsedTrial ? `₹${plan.monthly}.00` : "₹1.00"}
+                      </div>
+                    )}
+                    <span className="font-display font-extrabold text-2xl text-brand-indigo">
+                      {isAnnual
+                        ? `₹${Math.max(0, plan.annual - (appliedPromo?.discount_amount || 0))}.00`
+                        : hasUsedTrial
+                          ? `₹${Math.max(0, plan.monthly - (appliedPromo?.discount_amount || 0))}.00`
+                          : "₹1.00"
+                      }
+                    </span>
+                  </div>
                 </div>
 
                 <div className="text-[11px] text-brand-indigo/60 pt-1">

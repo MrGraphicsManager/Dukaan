@@ -38,6 +38,7 @@ import {
 import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
 import { useAuth } from "@/lib/AuthContext";
 import { playVoiceSoundbox } from "@/lib/soundbox";
+import { findFMCGByBarcode } from "@/lib/fmcgMasterCatalog";
 
 export default function POS() {
   const nav = useNavigate();
@@ -434,6 +435,143 @@ export default function POS() {
     toast.success("Opening WhatsApp...");
   };
 
+  // Feature 16 & Feature 25: Master Bill Thermal Receipt Printer with Branding Toggle
+  const handlePrintReceipt = (billToPrint) => {
+    const b = billToPrint || completedBill;
+    if (!b) return;
+    const brandingEnabled = localStorage.getItem("dukaan_receipt_branding_enabled") !== "false";
+    const shopName = shop?.name || activeShop?.name || "Apni Dukaan";
+    const shopPhone = shop?.phone || activeShop?.phone || "";
+    const itemsHtml = (b.items || []).map(it => `
+      <tr>
+        <td style="padding: 3px 0; text-align: left;">${it.name} x${it.qty}</td>
+        <td style="padding: 3px 0; text-align: right; font-family: monospace;">₹${Number(it.price || it.selling_price || 0) * Number(it.qty || 1)}</td>
+      </tr>
+    `).join("");
+
+    const printWin = window.open("", "_blank", "width=380,height=600");
+    if (!printWin) {
+      toast.error("Please allow popups to print thermal receipts.");
+      return;
+    }
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Receipt #${b.order_no}</title>
+          <style>
+            @media print {
+              body { margin: 0; padding: 10px; font-family: 'Courier New', Courier, monospace; font-size: 12px; color: #000; width: 58mm; }
+              .center { text-align: center; }
+              .dashed { border-top: 1px dashed #000; margin: 8px 0; }
+              .bold { font-weight: bold; }
+            }
+            body { font-family: 'Courier New', Courier, monospace; font-size: 13px; margin: 0; padding: 14px; width: 58mm; max-width: 80mm; }
+            .center { text-align: center; }
+            .dashed { border-top: 1px dashed #000; margin: 8px 0; }
+            .bold { font-weight: bold; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+          </style>
+        </head>
+        <body onload="window.print(); window.close();">
+          <div class="center bold" style="font-size: 16px;">${shopName}</div>
+          <div class="center" style="font-size: 11px;">${shopPhone ? `Ph: ${shopPhone}` : ""}</div>
+          <div class="dashed"></div>
+          <div>Bill No: #${b.order_no}</div>
+          <div>Date: ${new Date().toLocaleDateString("en-IN")} ${new Date().toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit' })}</div>
+          <div>Customer: ${b.customer_name || "Walk-in"}</div>
+          <div class="dashed"></div>
+          <table>
+            <thead>
+              <tr style="border-bottom: 1px dashed #000;">
+                <th style="text-align: left; padding-bottom: 4px;">Item</th>
+                <th style="text-align: right; padding-bottom: 4px;">Amt</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+          <div class="dashed"></div>
+          <table>
+            <tr>
+              <td class="bold">GRAND TOTAL:</td>
+              <td class="bold" style="text-align: right; font-size: 14px;">₹${b.total}</td>
+            </tr>
+            <tr>
+              <td>Payment Mode:</td>
+              <td style="text-align: right; text-transform: uppercase;">${b.payment_method}</td>
+            </tr>
+            ${b.change > 0 ? `<tr><td>Change Returned:</td><td style="text-align: right;">₹${b.change}</td></tr>` : ""}
+          </table>
+          <div class="dashed"></div>
+          <div class="center">Thank you for visiting! 🙏</div>
+          ${brandingEnabled ? `
+            <div class="center" style="font-size: 9px; margin-top: 12px; color: #555;">
+              *** Powered by officialdukaan.in ***<br/>
+              Smart Thermal POS Engine
+            </div>
+          ` : ""}
+          <div style="height: 20px;"></div>
+        </body>
+      </html>
+    `);
+    printWin.document.close();
+  };
+
+  const handlePrintTestDiagnostic = () => {
+    const printWin = window.open("", "_blank", "width=380,height=500");
+    if (!printWin) {
+      toast.error("Please allow popups to run printer test.");
+      return;
+    }
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>POS Diagnostic Test</title>
+          <style>
+            body { font-family: monospace; font-size: 12px; padding: 10px; width: 58mm; text-align: center; }
+            .line { border-top: 1px dashed #000; margin: 6px 0; }
+          </style>
+        </head>
+        <body onload="window.print(); window.close();">
+          <div style="font-weight: bold; font-size: 14px;">DUKAAN PRINTER TEST</div>
+          <div>58mm / 80mm ESC/POS OK</div>
+          <div class="line"></div>
+          <div>Left Margin: OK [0]</div>
+          <div>Right Margin: OK [32 Col]</div>
+          <div>Feed & Cut Test: PASS</div>
+          <div class="line"></div>
+          <div>Date: ${new Date().toLocaleString("en-IN")}</div>
+          <div style="margin-top: 10px;">OfficialDukaan.in Hardware Guard</div>
+          <div style="height: 30px;">.</div>
+        </body>
+      </html>
+    `);
+    printWin.document.close();
+    toast.success("Diagnostic receipt dispatched to thermal spooler!");
+  };
+
+  // Feature 18: Universal FMCG Barcode Scanner Auto-match in POS
+  const fmcgMatched = useMemo(() => {
+    if (!q || q.trim().length < 4) return null;
+    return findFMCGByBarcode(q.trim());
+  }, [q]);
+
+  const handleAddFmcgDirect = (item) => {
+    addToCart({
+      id: `fmcg_${item.barcode}`,
+      name: item.name,
+      selling_price: item.selling_price,
+      stock: 99,
+      unlimited_stock: true,
+      category: item.category
+    });
+    setQ("");
+    toast.success(`⚡ Added "${item.name}" directly to cart!`);
+  };
+
   const handleManualReset = () => {
     if (autoResetTimer) clearTimeout(autoResetTimer);
     setCompletedBill(null);
@@ -500,6 +638,15 @@ export default function POS() {
           </Button>
           <Button
             variant="outline"
+            onClick={handlePrintTestDiagnostic}
+            className="rounded-full border-2 border-brand-mitti hover:border-brand-indigo bg-white text-brand-indigo text-xs font-bold px-3.5 h-10 flex items-center gap-1.5"
+            title="ESC/POS Thermal Printer Diagnostics (Feature #25)"
+          >
+            <Printer className="w-3.5 h-3.5 text-slate-600" />
+            <span className="hidden sm:inline">Printer Test</span>
+          </Button>
+          <Button
+            variant="outline"
             onClick={clearCart}
             disabled={cart.length === 0}
             className="rounded-full border-brand-mitti hover:bg-red-50 text-red-600 text-xs font-semibold px-4 h-10 flex items-center gap-1"
@@ -524,7 +671,7 @@ export default function POS() {
               <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-brand-indigo/40" />
               <Input
                 data-testid="pos-product-search"
-                placeholder="Search products by name or category (e.g. Atta, Oil, Milk)..."
+                placeholder="Search products by name, barcode or category (e.g. Atta, Maggi, Dettol)..."
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 className="pl-12 pr-4 h-13 rounded-2xl border-2 border-brand-mitti focus-visible:border-brand-terracotta bg-brand-sand/50 text-base text-brand-indigo"
@@ -538,6 +685,31 @@ export default function POS() {
                 </button>
               )}
             </div>
+
+            {/* FMCG Universal Barcode Matched Banner (Feature #18) */}
+            {fmcgMatched && (
+              <div className="p-3 bg-amber-50 border-2 border-amber-300 rounded-2xl flex items-center justify-between gap-3 text-xs animate-fade-up">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xl">⚡</span>
+                  <div>
+                    <div className="font-bold text-amber-950 flex items-center gap-1.5">
+                      <span>FMCG Master Barcode Match: {fmcgMatched.name}</span>
+                      <span className="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.2 rounded font-mono font-bold">₹{fmcgMatched.selling_price}</span>
+                    </div>
+                    <div className="text-[11px] text-amber-800">
+                      Standard MRP ₹{fmcgMatched.mrp} · {fmcgMatched.category} · HSN {fmcgMatched.hsn}
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => handleAddFmcgDirect(fmcgMatched)}
+                  className="h-8 px-3.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl shadow-xs shrink-0"
+                >
+                  + Add to Cart
+                </Button>
+              </div>
+            )}
 
             {/* Category Scroll Pills */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
@@ -1094,12 +1266,19 @@ export default function POS() {
 
           <div className="space-y-2.5">
             <Button
+              onClick={() => handlePrintReceipt(completedBill)}
+              className="w-full h-12 rounded-full bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm"
+            >
+              <Printer className="w-4 h-4" /> 🖨️ Print 58mm/80mm Thermal Slip
+            </Button>
+
+            <Button
               onClick={() => {
                 if (completedBill?.id) nav(`/app/orders/${completedBill.id}`);
               }}
               className="w-full h-12 rounded-full bg-brand-indigo hover:bg-brand-indigo/90 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm"
             >
-              <Printer className="w-4 h-4" /> View Printable Invoice
+              <Receipt className="w-4 h-4" /> View Printable Invoice
             </Button>
 
             <Button

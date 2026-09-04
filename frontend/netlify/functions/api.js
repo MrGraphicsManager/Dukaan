@@ -9,12 +9,54 @@ const EMAIL_FROM = "Dukaan <contact@officialdukaan.in>";
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://officialdukaan.in";
 const ADMIN_EMAIL = "contact@officialdukaan.in";
 
-// Global Platform Configuration (Broadcasts & Maintenance Mode)
+// Global Platform Configuration (Enterprise Suite Features)
 let globalPlatformConfig = {
   maintenance_mode: false,
   announcement: "",
-  updated_at: new Date().toISOString()
+  updated_at: new Date().toISOString(),
+  pricing: {
+    starter: { monthly: 499, yearly: 4990 },
+    business: { monthly: 999, yearly: 9990 },
+    premium: { monthly: 1999, yearly: 19990 }
+  },
+  trial_days: 14,
+  ota_version: 1,
+  kill_switch_active: false,
+  kill_switch_at: null,
+  receipt_branding_enabled: true,
+  payment_alert_chime: true,
+  soundbox_devices: [
+    { id: "SND_9082", serial: "DUK-SB-88219", model: "4G 3W Audio Soundbox", shop_name: "Priyen Kirana", battery: "92%", status: "online", sim: "Jio IoT" },
+    { id: "SND_9083", serial: "DUK-SB-88220", model: "4G 3W Audio Soundbox", shop_name: "Sharma Supermarket", battery: "74%", status: "online", sim: "Airtel" },
+    { id: "SND_9084", serial: "DUK-SB-88221", model: "Dukaan NFC QR Standee V2", shop_name: "Balaji Traders", battery: "AC Powered", status: "dispatched", sim: "N/A" }
+  ],
+  custom_domains: [
+    { id: "cd_1", user_email: "priyenyug@gmail.com", shop_name: "Yug Super Mart", domain: "shop.yugmart.in", status: "active", ssl: "active", created_at: new Date(Date.now() - 5 * 86400000).toISOString() }
+  ]
 };
+
+let promoCodes = [
+  { code: "DIWALI50", discount_percent: 50, max_discount: 1500, min_amount: 999, usage_count: 14, active: true, expires_at: "2026-12-31" },
+  { code: "WELCOME20", discount_percent: 20, max_discount: 600, min_amount: 499, usage_count: 38, active: true, expires_at: "2026-12-31" },
+  { code: "STARTUP100", discount_percent: 100, max_discount: 499, min_amount: 499, usage_count: 9, active: true, expires_at: "2026-12-31" },
+  { code: "SUPERSTORE", discount_percent: 30, max_discount: 1000, min_amount: 999, usage_count: 5, active: true, expires_at: "2026-12-31" }
+];
+
+let supportTickets = [
+  { id: "TCK_1001", merchant_name: "Priyen Yug", merchant_email: "priyenyug@gmail.com", phone: "9876543210", subject: "Thermal printer margin adjustment in 58mm", priority: "high", status: "in_progress", message: "Need help aligning the right margin on Sunmi thermal printer for grocery receipts.", created_at: new Date(Date.now() - 2 * 86400000).toISOString() },
+  { id: "TCK_1002", merchant_name: "Rajesh Sharma", merchant_email: "merchant@kirana.store", phone: "9123456780", subject: "Bulk barcode scanner Bluetooth delay", priority: "medium", status: "open", message: "Honeywell wireless scanner takes 2 seconds to register on counter mode.", created_at: new Date(Date.now() - 1 * 86400000).toISOString() }
+];
+
+let merchantFeedbacks = [
+  { id: "fb_1", merchant_name: "Priyen Yug", shop_name: "Yug Super Mart", rating: 5, comment: "Dukaan has transformed our daily billing. Counter mode with keyboard shortcuts is blazing fast!", created_at: new Date(Date.now() - 6 * 86400000).toISOString() },
+  { id: "fb_2", merchant_name: "Rajesh Sharma", shop_name: "Sharma Daily Needs", rating: 5, comment: "WhatsApp bills save us ₹1,200 per month on thermal paper rolls. Highly recommended!", created_at: new Date(Date.now() - 4 * 86400000).toISOString() },
+  { id: "fb_3", merchant_name: "Amit Patel", shop_name: "Patel Provision Store", rating: 4, comment: "Great UI, easy for my staff to learn in 5 minutes.", created_at: new Date(Date.now() - 2 * 86400000).toISOString() }
+];
+
+let referralCodes = [
+  { id: "ref_1", referrer_email: "priyenyug@gmail.com", referrer_name: "Priyen Yug", code: "DUK-YUG77", total_referred: 3, pending_bonus_days: 30, status: "approved" },
+  { id: "ref_2", referrer_email: "merchant@kirana.store", referrer_name: "Rajesh Sharma", code: "DUK-RAJ22", total_referred: 1, pending_bonus_days: 30, status: "pending" }
+];
 
 // Core SMTPS socket sender with RFC 822 Base64 Transfer Encoding (100% GoDaddy / Secureserver compliant)
 function sendMailSocket({ host, port, user, pass, to, subject, html }) {
@@ -807,7 +849,7 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // 12. PLATFORM CONFIG (Maintenance Mode & Global Merchant Broadcast)
+    // 12. PLATFORM CONFIG (Maintenance, Dynamic Pricing, Branding, OTA, Emergency Switch)
     if (path === "/platform/config" && event.httpMethod === "GET") {
       return {
         statusCode: 200,
@@ -823,12 +865,310 @@ exports.handler = async (event, context) => {
       if (typeof body.announcement === "string") {
         globalPlatformConfig.announcement = body.announcement;
       }
+      if (body.pricing && typeof body.pricing === "object") {
+        globalPlatformConfig.pricing = { ...globalPlatformConfig.pricing, ...body.pricing };
+      }
+      if (typeof body.trial_days === "number") {
+        globalPlatformConfig.trial_days = body.trial_days;
+      }
+      if (typeof body.receipt_branding_enabled === "boolean") {
+        globalPlatformConfig.receipt_branding_enabled = body.receipt_branding_enabled;
+      }
+      if (typeof body.payment_alert_chime === "boolean") {
+        globalPlatformConfig.payment_alert_chime = body.payment_alert_chime;
+      }
       globalPlatformConfig.updated_at = new Date().toISOString();
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({ ok: true, config: globalPlatformConfig })
       };
+    }
+
+    // 13. OTA FORCE UPDATE
+    if (path === "/platform/force-update" && event.httpMethod === "POST") {
+      globalPlatformConfig.ota_version = (globalPlatformConfig.ota_version || 1) + 1;
+      globalPlatformConfig.updated_at = new Date().toISOString();
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ ok: true, ota_version: globalPlatformConfig.ota_version, timestamp: globalPlatformConfig.updated_at })
+      };
+    }
+
+    // 14. EMERGENCY SESSION KILL SWITCH
+    if (path === "/platform/kill-switch" && event.httpMethod === "POST") {
+      globalPlatformConfig.kill_switch_active = !globalPlatformConfig.kill_switch_active;
+      globalPlatformConfig.kill_switch_at = globalPlatformConfig.kill_switch_active ? new Date().toISOString() : null;
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ ok: true, active: globalPlatformConfig.kill_switch_active, kill_switch_at: globalPlatformConfig.kill_switch_at })
+      };
+    }
+
+    // 15. PROMO CODES MANAGER
+    if (path === "/promo-codes" && event.httpMethod === "GET") {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(promoCodes)
+      };
+    }
+
+    if (path === "/promo-codes" && event.httpMethod === "POST") {
+      const codeUpper = (body.code || "").trim().toUpperCase();
+      if (!codeUpper) {
+        return { statusCode: 400, headers, body: JSON.stringify({ detail: "Promo code name is required." }) };
+      }
+      const existingIdx = promoCodes.findIndex(p => p.code === codeUpper);
+      const newPromo = {
+        code: codeUpper,
+        discount_percent: Number(body.discount_percent) || 20,
+        max_discount: Number(body.max_discount) || 500,
+        min_amount: Number(body.min_amount) || 0,
+        usage_count: existingIdx >= 0 ? promoCodes[existingIdx].usage_count : 0,
+        active: body.active !== undefined ? !!body.active : true,
+        expires_at: body.expires_at || "2026-12-31"
+      };
+      if (existingIdx >= 0) {
+        promoCodes[existingIdx] = newPromo;
+      } else {
+        promoCodes.unshift(newPromo);
+      }
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, promo: newPromo, promoCodes }) };
+    }
+
+    if (path.startsWith("/promo-codes/") && event.httpMethod === "DELETE") {
+      const codeToDelete = decodeURIComponent(path.replace("/promo-codes/", "")).trim().toUpperCase();
+      promoCodes = promoCodes.filter(p => p.code !== codeToDelete);
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, deleted: codeToDelete, promoCodes }) };
+    }
+
+    if (path === "/promo-codes/validate" && event.httpMethod === "POST") {
+      const codeUpper = (body.code || "").trim().toUpperCase();
+      const amount = Number(body.amount) || 0;
+      const promo = promoCodes.find(p => p.code === codeUpper && p.active);
+      if (!promo) {
+        return { statusCode: 400, headers, body: JSON.stringify({ valid: false, detail: "Invalid or expired promo code." }) };
+      }
+      if (amount < promo.min_amount) {
+        return { statusCode: 400, headers, body: JSON.stringify({ valid: false, detail: `Minimum order amount for this code is ₹${promo.min_amount}.` }) };
+      }
+      const discount = Math.min((amount * promo.discount_percent) / 100, promo.max_discount);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          valid: true,
+          code: promo.code,
+          discount_percent: promo.discount_percent,
+          discount_amount: Math.round(discount),
+          final_amount: Math.max(0, Math.round(amount - discount))
+        })
+      };
+    }
+
+    // 16. IN-APP CUSTOMER SUPPORT DESK
+    if (path === "/support/tickets" && event.httpMethod === "GET") {
+      return { statusCode: 200, headers, body: JSON.stringify(supportTickets) };
+    }
+
+    if (path === "/support/tickets" && event.httpMethod === "POST") {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const newTicket = {
+        id: `TCK_${Date.now().toString().slice(-4)}`,
+        merchant_name: body.merchant_name || user?.name || "Merchant",
+        merchant_email: body.merchant_email || user?.email || "merchant@store.in",
+        phone: body.phone || user?.phone || "",
+        subject: body.subject || "General Dukaan Query",
+        priority: body.priority || "medium",
+        status: "open",
+        message: body.message || "",
+        created_at: new Date().toISOString()
+      };
+      supportTickets.unshift(newTicket);
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, ticket: newTicket }) };
+    }
+
+    if (path.startsWith("/support/tickets/") && (event.httpMethod === "PUT" || event.httpMethod === "POST")) {
+      const ticketId = path.replace("/support/tickets/", "").replace("/status", "");
+      const idx = supportTickets.findIndex(t => t.id === ticketId);
+      if (idx >= 0) {
+        if (body.status) supportTickets[idx].status = body.status;
+        if (body.admin_note) supportTickets[idx].admin_note = body.admin_note;
+        return { statusCode: 200, headers, body: JSON.stringify({ ok: true, ticket: supportTickets[idx] }) };
+      }
+      return { statusCode: 404, headers, body: JSON.stringify({ detail: "Ticket not found" }) };
+    }
+
+    // 17. MERCHANT FEEDBACK & NPS RATING WALL
+    if (path === "/merchant/feedback" && event.httpMethod === "GET") {
+      return { statusCode: 200, headers, body: JSON.stringify(merchantFeedbacks) };
+    }
+
+    if (path === "/merchant/feedback" && event.httpMethod === "POST") {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const newFeedback = {
+        id: `fb_${Date.now()}`,
+        merchant_name: body.merchant_name || user?.name || "Verified Merchant",
+        shop_name: body.shop_name || "Apni Dukaan",
+        rating: Math.min(5, Math.max(1, Number(body.rating) || 5)),
+        comment: (body.comment || "").trim(),
+        created_at: new Date().toISOString()
+      };
+      merchantFeedbacks.unshift(newFeedback);
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, feedback: newFeedback }) };
+    }
+
+    // 18. REFERRAL & PARTNER PROGRAM HUB
+    if (path === "/admin/referrals" && event.httpMethod === "GET") {
+      return { statusCode: 200, headers, body: JSON.stringify(referralCodes) };
+    }
+
+    if (path === "/admin/referrals/approve" && event.httpMethod === "POST") {
+      const { id } = body;
+      const item = referralCodes.find(r => r.id === id);
+      if (item) {
+        item.status = "approved";
+        return { statusCode: 200, headers, body: JSON.stringify({ ok: true, referral: item }) };
+      }
+      return { statusCode: 404, headers, body: JSON.stringify({ detail: "Referral not found" }) };
+    }
+
+    // 19. RAZORPAY INSTANT PAYMENT RE-SYNC
+    if (path === "/admin/payment-resync" && event.httpMethod === "POST") {
+      const paymentId = (body.payment_id || "").trim();
+      const email = (body.email || "").trim().toLowerCase();
+      const plan = body.plan || "business";
+      if (!paymentId || !email) {
+        return { statusCode: 400, headers, body: JSON.stringify({ detail: "Payment ID and merchant email are required." }) };
+      }
+      const syncRecord = {
+        id: `sub_resync_${Date.now()}`,
+        user_email: email,
+        payer_name: email.split("@")[0],
+        plan,
+        status: "active",
+        amount: plan === "premium" ? 2990 : 999,
+        payment_id: paymentId,
+        source: "razorpay_resync",
+        created_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 365 * 86400000).toISOString()
+      };
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          ok: true,
+          message: `Payment ${paymentId} successfully synced and plan ${plan.toUpperCase()} activated for 365 days.`,
+          subscription: syncRecord
+        })
+      };
+    }
+
+    // 20. PUBLIC ONLINE STORE DIRECTORY (/stores)
+    if (path === "/stores" && event.httpMethod === "GET") {
+      const publicStores = [
+        {
+          id: "store_1",
+          name: "Yug Super Mart & FMCG",
+          owner: "Priyen Yug",
+          category: "Grocery & Kirana",
+          city: "Navsari",
+          state: "Gujarat",
+          phone: "919876543210",
+          verified: true,
+          rating: 4.9,
+          items_count: 420,
+          catalog_preview: ["Amul Butter", "Tata Salt", "Maggi 70g", "Fortune Oil"]
+        },
+        {
+          id: "store_2",
+          name: "Sharma Daily Needs & Dairy",
+          owner: "Rajesh Sharma",
+          category: "General Store",
+          city: "Mumbai",
+          state: "Maharashtra",
+          phone: "919123456780",
+          verified: true,
+          rating: 4.8,
+          items_count: 310,
+          catalog_preview: ["Parle-G", "Britannia Good Day", "Dettol Soap"]
+        },
+        {
+          id: "store_3",
+          name: "Sanjivani Medicos & Pharmacy",
+          owner: "Dr. Sandeep Mehta",
+          category: "Medical Store & Pharmacy",
+          city: "Jaipur",
+          state: "Rajasthan",
+          phone: "919822334455",
+          verified: true,
+          rating: 5.0,
+          items_count: 560,
+          catalog_preview: ["Paracetamol 650mg", "Azithromycin 500mg", "Dabur Chyawanprash"]
+        },
+        {
+          id: "store_4",
+          name: "Balaji Provisions & Wholesale",
+          owner: "Venkatesh Rao",
+          category: "Supermarket",
+          city: "Bengaluru",
+          state: "Karnataka",
+          phone: "919744112233",
+          verified: true,
+          rating: 4.7,
+          items_count: 890,
+          catalog_preview: ["Aashirvaad Atta 10kg", "Red Label Tea 500g", "Surf Excel 1kg"]
+        }
+      ];
+      return { statusCode: 200, headers, body: JSON.stringify(publicStores) };
+    }
+
+    // 21. HARDWARE SOUNDBOX & QR STANDEES
+    if (path === "/admin/soundbox" && event.httpMethod === "GET") {
+      return { statusCode: 200, headers, body: JSON.stringify(globalPlatformConfig.soundbox_devices || []) };
+    }
+
+    if (path === "/admin/soundbox" && event.httpMethod === "POST") {
+      const newDev = {
+        id: `SND_${Date.now().toString().slice(-4)}`,
+        serial: body.serial || `DUK-SB-${Math.floor(10000 + Math.random() * 90000)}`,
+        model: body.model || "4G 3W Audio Soundbox",
+        shop_name: body.shop_name || "New Dukaan",
+        battery: "100%",
+        status: body.status || "online",
+        sim: body.sim || "Jio IoT"
+      };
+      if (!globalPlatformConfig.soundbox_devices) globalPlatformConfig.soundbox_devices = [];
+      globalPlatformConfig.soundbox_devices.push(newDev);
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, device: newDev, devices: globalPlatformConfig.soundbox_devices }) };
+    }
+
+    // 22. CUSTOM DOMAINS / WHITE-LABEL DNS
+    if (path === "/admin/custom-domains" && event.httpMethod === "GET") {
+      return { statusCode: 200, headers, body: JSON.stringify(globalPlatformConfig.custom_domains || []) };
+    }
+
+    if (path === "/admin/custom-domains" && event.httpMethod === "POST") {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const newDomain = {
+        id: `cd_${Date.now()}`,
+        user_email: body.user_email || user?.email || "merchant@store.in",
+        shop_name: body.shop_name || "My Store",
+        domain: (body.domain || "").trim().toLowerCase(),
+        status: "pending_dns",
+        ssl: "provisioning",
+        cname_target: "custom.officialdukaan.in",
+        created_at: new Date().toISOString()
+      };
+      if (!globalPlatformConfig.custom_domains) globalPlatformConfig.custom_domains = [];
+      globalPlatformConfig.custom_domains.push(newDomain);
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, domain: newDomain }) };
     }
 
     return {

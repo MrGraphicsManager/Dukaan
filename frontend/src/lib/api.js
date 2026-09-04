@@ -34,3 +34,5 @@ export function formatApiError(detail) {
 }
 
 export const money = (n) => `₹${Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+
+export default api;

@@ -30,10 +30,15 @@ import {
   ShieldAlert,
   ShieldCheck,
   Calendar,
-  ArrowRight
+  ArrowRight,
+  Barcode,
+  Zap,
+  RefreshCw,
+  Store
 } from "lucide-react";
 import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
 import { useAuth } from "@/lib/AuthContext";
+import { FMCG_MASTER_CATALOG, findFMCGByBarcode, searchFMCGCatalog } from "@/lib/fmcgMasterCatalog";
 
 export const getExpiryStatus = (expiryDate) => {
   if (!expiryDate) return { status: "none", label: "", daysLeft: null, color: "" };
@@ -77,6 +82,7 @@ export const getExpiryStatus = (expiryDate) => {
 
 const EMPTY = { 
   name: "", 
+  barcode: "",
   category: "Kirana & Grains", 
   selling_price: "", 
   purchase_price: "", 
@@ -121,6 +127,77 @@ export default function Products() {
   const [viewMode, setViewMode] = useState("grid"); // "grid" or "table"
   const [form, setForm] = useState({ open: false, mode: "create", data: EMPTY });
   const [busy, setBusy] = useState(false);
+
+  // Feature 18 & Feature 35 states
+  const [fmcgModalOpen, setFmcgModalOpen] = useState(false);
+  const [fmcgSearch, setFmcgSearch] = useState("");
+  const [syncingBranches, setSyncingBranches] = useState(false);
+
+  const handleBarcodeLookup = (code) => {
+    if (!code) return;
+    const found = findFMCGByBarcode(code);
+    if (found) {
+      setForm(prev => ({
+        ...prev,
+        data: {
+          ...prev.data,
+          barcode: found.barcode,
+          name: prev.data.name || found.name,
+          category: found.category || prev.data.category,
+          selling_price: prev.data.selling_price || found.selling_price,
+          purchase_price: prev.data.purchase_price || Math.round(found.selling_price * 0.82)
+        }
+      }));
+      toast.success(`⚡ Matched FMCG: ${found.name} (MRP ₹${found.mrp})`);
+    }
+  };
+
+  const handleSyncToAllBranches = async () => {
+    if (!shops || shops.length <= 1) {
+      toast.error("You currently only have 1 active branch.");
+      return;
+    }
+    if (!window.confirm(`Sync ${items.length} products and prices to all ${shops.length - 1} other branch locations? This will ensure catalog parity across all your stores.`)) {
+      return;
+    }
+    setSyncingBranches(true);
+    try {
+      shops.forEach(sh => {
+        if (sh.id !== currentShopId) {
+          localStorage.setItem(`dukaan_products_${sh.id}`, JSON.stringify(items));
+        }
+      });
+      toast.success(`✅ Successfully synced ${items.length} products across ${shops.length} branch stores!`);
+    } catch {
+      toast.error("Failed to synchronize branch inventories");
+    } finally {
+      setSyncingBranches(false);
+    }
+  };
+
+  const handleImportFMCG = (fmcgItem) => {
+    if (items.some(i => i.barcode === fmcgItem.barcode || i.name.toLowerCase() === fmcgItem.name.toLowerCase())) {
+      toast.info(`"${fmcgItem.name}" is already in your inventory.`);
+      return;
+    }
+    const newProd = {
+      id: `prod_fmcg_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      name: fmcgItem.name,
+      barcode: fmcgItem.barcode,
+      category: fmcgItem.category,
+      selling_price: fmcgItem.selling_price,
+      purchase_price: Math.round(fmcgItem.selling_price * 0.85),
+      stock: 24,
+      min_stock: 5,
+      unlimited_stock: false,
+      hsn: fmcgItem.hsn,
+      gst_rate: fmcgItem.gst_rate
+    };
+    const updated = [newProd, ...items];
+    saveStoredProducts(updated);
+    setItems(updated);
+    toast.success(`⚡ Added "${fmcgItem.name}" to inventory!`);
+  };
 
   const load = () => {
     api.get("/products", { params: { q: q || undefined, category } })
@@ -300,6 +377,27 @@ export default function Products() {
               )}
             </>
           )}
+          {shops && shops.length > 1 && (
+            <Button
+              variant="outline"
+              onClick={handleSyncToAllBranches}
+              disabled={syncingBranches}
+              className="h-12 px-4 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 border-amber-400/40 text-amber-200 font-bold text-xs backdrop-blur-md flex items-center gap-1.5"
+              title="Sync catalog & prices to all branch stores"
+            >
+              <RefreshCw className={`w-4 h-4 ${syncingBranches ? "animate-spin" : ""}`} />
+              Sync All Branches ({shops.length})
+            </Button>
+          )}
+
+          <Button
+            variant="outline"
+            onClick={() => setFmcgModalOpen(true)}
+            className="h-12 px-4 rounded-2xl bg-white/10 hover:bg-white/20 border-white/20 text-white font-bold text-xs backdrop-blur-md flex items-center gap-1.5"
+          >
+            <Zap className="w-4 h-4 text-amber-400" /> FMCG Master Catalog
+          </Button>
+
           <Button
             variant="outline"
             onClick={() => navigate("/app/stock")}
@@ -663,6 +761,37 @@ export default function Products() {
               />
             </div>
 
+            {/* Barcode / FMCG Lookup */}
+            <div>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold text-brand-indigo/70 uppercase flex items-center gap-1.5">
+                  <Barcode className="w-3.5 h-3.5 text-brand-indigo" /> Barcode (EAN / UPC)
+                </Label>
+                <span className="text-[10px] text-brand-terracotta font-semibold">Auto-matches 55+ Indian FMCG brands</span>
+              </div>
+              <div className="mt-1 flex items-center gap-2">
+                <Input
+                  value={form.data.barcode || ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setForm(prev => ({ ...prev, data: { ...prev.data, barcode: val } }));
+                    handleBarcodeLookup(val);
+                  }}
+                  placeholder="Scan or enter barcode (e.g. 8901058852394 for Maggi)"
+                  className="h-11 rounded-xl border-brand-mitti font-mono text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleBarcodeLookup(form.data.barcode)}
+                  className="h-11 px-3 border-brand-mitti bg-brand-sand hover:bg-brand-mitti text-xs font-bold shrink-0"
+                >
+                  <Zap className="w-3.5 h-3.5 text-amber-500 mr-1" /> Match
+                </Button>
+              </div>
+            </div>
+
             {/* Category */}
             <div>
               <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Category</Label>
@@ -834,6 +963,83 @@ export default function Products() {
               className="rounded-full bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold h-11 px-6 shadow-md"
             >
               {busy ? "Saving…" : form.mode === "create" ? "Add to Catalog" : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* =========================================================
+          FMCG MASTER CATALOG IMPORT MODAL (Feature #18)
+      ========================================================= */}
+      <Dialog open={fmcgModalOpen} onOpenChange={setFmcgModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col rounded-3xl p-6 border-2 border-brand-mitti">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl text-brand-indigo flex items-center gap-2">
+              <Zap className="w-5 h-5 text-amber-500" />
+              <span>Universal FMCG Master Barcode Catalog</span>
+            </DialogTitle>
+            <p className="text-xs text-brand-indigo/70">
+              Browse 55+ authentic Indian retail products with verified EAN barcodes, HSN codes, and standard MRPs. Add to your store in 1 click!
+            </p>
+          </DialogHeader>
+
+          {/* Search bar */}
+          <div className="relative my-2">
+            <Search className="w-4 h-4 absolute left-3 top-3.5 text-slate-400" />
+            <Input
+              value={fmcgSearch}
+              onChange={(e) => setFmcgSearch(e.target.value)}
+              placeholder="Search FMCG products (e.g. Maggi, Parle-G, Amul, Dettol, Tata Salt)..."
+              className="pl-9 h-11 rounded-xl border-brand-mitti text-sm"
+            />
+          </div>
+
+          {/* Items list */}
+          <div className="flex-1 overflow-y-auto space-y-2 pr-1 my-2 max-h-[50vh]">
+            {searchFMCGCatalog(fmcgSearch, 50).map(item => {
+              const alreadyAdded = items.some(i => i.barcode === item.barcode || i.name.toLowerCase() === item.name.toLowerCase());
+              return (
+                <div 
+                  key={item.barcode}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-brand-sand/50 border border-brand-mitti hover:bg-brand-sand transition-all"
+                >
+                  <div className="space-y-0.5">
+                    <div className="font-bold text-sm text-brand-indigo">{item.name}</div>
+                    <div className="flex items-center gap-2 text-[11px] text-brand-indigo/60 font-mono">
+                      <span>Barcode: {item.barcode}</span>
+                      <span>·</span>
+                      <span>{item.category}</span>
+                      <span>·</span>
+                      <span>HSN: {item.hsn}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-right">
+                      <div className="font-bold text-sm text-brand-terracotta">₹{item.selling_price}</div>
+                      <div className="text-[10px] text-slate-400 font-mono">MRP ₹{item.mrp}</div>
+                    </div>
+                    <Button
+                      size="sm"
+                      disabled={alreadyAdded}
+                      onClick={() => handleImportFMCG(item)}
+                      className={`h-8 px-3 text-xs font-bold rounded-xl ${
+                        alreadyAdded 
+                          ? "bg-slate-200 text-slate-500 cursor-not-allowed" 
+                          : "bg-brand-indigo hover:bg-brand-indigo/90 text-white shadow-xs"
+                      }`}
+                    >
+                      {alreadyAdded ? "In Stock" : "+ Add"}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <DialogFooter className="pt-2 border-t border-brand-mitti">
+            <Button variant="outline" onClick={() => setFmcgModalOpen(false)} className="rounded-xl text-xs font-bold">
+              Close Catalog
             </Button>
           </DialogFooter>
         </DialogContent>

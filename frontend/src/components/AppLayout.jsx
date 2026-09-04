@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { useEffect, useState, useCallback } from "react";
 import { t } from "@/lib/i18n";
-import { LayoutDashboard, Receipt, Package, Warehouse, Users, Wallet, ClipboardList, BarChart3, Settings as Cog, LogOut, Store, CreditCard, ShieldCheck, Lock, Monitor, Bell, CheckCheck, AlertTriangle, X } from "lucide-react";
+import { LayoutDashboard, Receipt, Package, Warehouse, Users, Wallet, ClipboardList, BarChart3, Settings as Cog, LogOut, Store, CreditCard, ShieldCheck, ShieldAlert, Lock, Monitor, Bell, CheckCheck, AlertTriangle, X, RotateCw, Eye } from "lucide-react";
 import { PLAN_TIER, ROUTE_PLAN } from "@/components/SubGate";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -157,7 +157,30 @@ export default function AppLayout() {
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
-  // Platform configuration: Maintenance mode & Announcement
+  // Store Inspector Session (Admin impersonating merchant)
+  const inspectorSession = (() => {
+    try {
+      const raw = sessionStorage.getItem("dukaan_inspector_mode");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const exitInspector = () => {
+    if (inspectorSession) {
+      if (inspectorSession.original_token) {
+        localStorage.setItem("dukaan_token", inspectorSession.original_token);
+      }
+      if (inspectorSession.original_user) {
+        localStorage.setItem("dukaan_user", JSON.stringify(inspectorSession.original_user));
+      }
+      sessionStorage.removeItem("dukaan_inspector_mode");
+      window.location.href = "/admin";
+    }
+  };
+
+  // Platform configuration: Maintenance mode, OTA Updates & Announcement
   const [platformConfig, setPlatformConfig] = useState(() => {
     return {
       maintenance_mode: localStorage.getItem("dukaan_platform_maintenance") === "true",
@@ -184,15 +207,64 @@ export default function AppLayout() {
         } else {
           localStorage.removeItem("dukaan_platform_announcement");
         }
+
+        // Feature 14: Global Force Update / OTA Cache Refresh
+        if (res.data.ota_version) {
+          const currentOta = parseInt(localStorage.getItem("dukaan_ota_version") || "1", 10);
+          if (res.data.ota_version > currentOta) {
+            localStorage.setItem("dukaan_ota_version", String(res.data.ota_version));
+            console.log("OTA Update received. Reloading application cache...");
+            setTimeout(() => {
+              window.location.reload(true);
+            }, 1000);
+          }
+        }
+
+        // Feature 30: Emergency Kill Switch
+        if (res.data.kill_switch_active && !user?.is_admin && !inspectorSession) {
+          localStorage.removeItem("dukaan_token");
+          localStorage.removeItem("dukaan_user");
+          window.location.href = "/login?emergency_lockdown=1";
+        }
       }
     } catch (_) {}
-  }, []);
+  }, [user?.is_admin, inspectorSession]);
 
   useEffect(() => {
     checkPlatformConfig();
     const interval = setInterval(checkPlatformConfig, 45000);
     return () => clearInterval(interval);
   }, [checkPlatformConfig]);
+
+  // Feature 9: Store Freeze & Fraud Security Shield
+  const isStoreFrozen = !user?.is_admin && !inspectorSession && (user?.is_frozen || localStorage.getItem(`dukaan_store_frozen_${user?.email}`) === "true");
+  if (isStoreFrozen) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-20 h-20 rounded-3xl bg-rose-500/10 border border-rose-500/30 text-rose-500 flex items-center justify-center mb-6 shadow-2xl">
+          <ShieldAlert className="w-10 h-10 animate-bounce" />
+        </div>
+        <span className="text-xs font-mono uppercase tracking-widest text-rose-400 font-bold bg-rose-950/60 px-3.5 py-1 rounded-full border border-rose-800/50 mb-3">
+          Account Suspended · Security Shield
+        </span>
+        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight max-w-lg mb-3">
+          Merchant Access Temporarily Restricted
+        </h1>
+        <p className="text-sm text-slate-400 max-w-md mb-6 leading-relaxed">
+          This store has been temporarily locked by platform security for compliance verification or fraud prevention. 
+          Please contact our security operations desk to re-activate your store.
+        </p>
+        <div className="flex items-center gap-3">
+          <a
+            href="mailto:contact@officialdukaan.in?subject=Reactivate%20Frozen%20Store%20Request"
+            className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-rose-600/20"
+          >
+            Contact Security (contact@officialdukaan.in)
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   const isPremium = subscription?.plan === "premium" || user?.subscription?.plan === "premium" || user?.is_premium || user?.plan === "premium";
   const tierMap = PLAN_TIER || { starter: 1, business: 2, premium: 3 };
@@ -215,7 +287,7 @@ export default function AppLayout() {
   };
 
   // Full-screen Maintenance Mode for merchants (Admins retain access to /admin)
-  if (platformConfig.maintenance_mode && !user?.is_admin) {
+  if (platformConfig.maintenance_mode && !user?.is_admin && !inspectorSession) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
         <div className="w-20 h-20 rounded-3xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mb-6 shadow-2xl">
@@ -245,6 +317,25 @@ export default function AppLayout() {
   return (
     <div className={`min-h-screen ${isPremium ? "premium-app-shell" : "bg-brand-sand"} ${premiumClass}`}>
 
+      {/* Store Inspector Mode Banner (Feature #1) */}
+      {inspectorSession && (
+        <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 text-white px-4 py-2 text-xs font-bold flex items-center justify-between shadow-md sticky top-0 z-50">
+          <div className="flex items-center gap-2">
+            <Eye className="w-4 h-4 shrink-0 text-amber-200" />
+            <span>
+              <strong>👀 Store Inspector Active:</strong> Viewing store of <span className="underline decoration-amber-300 font-extrabold">{inspectorSession.target_name || "Merchant"}</span> ({inspectorSession.target_email}) as Super Administrator.
+            </span>
+          </div>
+          <Button
+            onClick={exitInspector}
+            size="sm"
+            className="bg-white text-slate-900 hover:bg-amber-100 font-extrabold text-[11px] h-7 px-3 rounded-lg shadow-sm border border-amber-200"
+          >
+            Exit Inspector & Return to Admin
+          </Button>
+        </div>
+      )}
+
       {/* =====================================================
           TOP NAVIGATION BAR
       ===================================================== */}
@@ -271,6 +362,11 @@ export default function AppLayout() {
               {isPremium && (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 text-slate-900 shadow-xs border border-amber-300 font-mono">
                   PREMIUM MERCHANT
+                </span>
+              )}
+              {(user?.is_verified || currentShop?.gst_status === "approved") && (
+                <span className="hidden lg:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono" title="Verified Dukaan Merchant">
+                  <ShieldCheck className="w-3 h-3 text-emerald-600" /> VERIFIED
                 </span>
               )}
             </div>
