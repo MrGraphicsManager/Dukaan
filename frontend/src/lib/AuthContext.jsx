@@ -182,12 +182,21 @@ export function AuthProvider({ children }) {
             localIsPremium = Boolean(parsed.is_premium);
           } catch {}
         }
+        // Query subscriptions endpoint directly for any live admin-granted plans
+        let activeSubscription = data.subscription;
+        try {
+          const subRes = await api.get("/subscriptions/me");
+          if (subRes.data?.active) {
+            activeSubscription = subRes.data.active;
+          }
+        } catch {}
+
         const isUserAdmin = isAdminEmail(data.email);
         const finalUser = {
           ...data,
           is_admin: isUserAdmin,
-          subscription: data.subscription || localSub || null,
-          is_premium: data.is_premium || localIsPremium || (data.subscription?.plan === "premium") || (localSub?.plan === "premium")
+          subscription: activeSubscription || localSub || null,
+          is_premium: data.is_premium || localIsPremium || (activeSubscription?.plan === "premium") || (localSub?.plan === "premium")
         };
         setUser(finalUser);
         localStorage.setItem("dukaan_user", JSON.stringify(finalUser));

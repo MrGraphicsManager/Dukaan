@@ -86,10 +86,35 @@ export default function Billing() {
     }
     if (localSub) setSub(localSub);
 
-    api.get("/subscriptions/me")
-      .then(r => { if (r.data?.active) setSub(r.data.active); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    const syncSub = () => {
+      api.get("/subscriptions/me")
+        .then(r => { 
+          if (r.data?.active) {
+            setSub(r.data.active);
+            const stored = localStorage.getItem("dukaan_user");
+            if (stored) {
+              try {
+                const u = JSON.parse(stored);
+                if (u.subscription?.plan !== r.data.active.plan || u.subscription?.expires_at !== r.data.active.expires_at) {
+                  u.subscription = r.data.active;
+                  if (r.data.active.plan === "premium") u.is_premium = true;
+                  localStorage.setItem("dukaan_user", JSON.stringify(u));
+                }
+              } catch {}
+            }
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    };
+
+    syncSub();
+    const interval = setInterval(syncSub, 5000);
+    window.addEventListener("focus", syncSub);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", syncSub);
+    };
   }, [user?.subscription]);
 
   const currentPlanId = sub?.plan || user?.subscription?.plan || "business";

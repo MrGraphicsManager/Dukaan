@@ -577,13 +577,17 @@ export default function AdminSubscriptions() {
   };
 
   // --- FEATURE #9: Store Freeze & Fraud Shield ---
-  const handleToggleFreezeStore = (targetEmail, currentFreezeState) => {
+  const handleToggleFreezeStore = async (targetEmail, currentFreezeState) => {
     const nextFreeze = !currentFreezeState;
     if (nextFreeze) {
       localStorage.setItem(`dukaan_store_frozen_${targetEmail}`, "true");
     } else {
       localStorage.removeItem(`dukaan_store_frozen_${targetEmail}`);
     }
+
+    try {
+      await api.post("/admin/users/freeze", { email: targetEmail, is_frozen: nextFreeze });
+    } catch {}
 
     try {
       let reg = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
@@ -600,8 +604,12 @@ export default function AdminSubscriptions() {
   };
 
   // --- FEATURE #10: Gold Verified Dukaan Badge ---
-  const handleToggleVerifiedBadge = (targetEmail, currentVerified) => {
+  const handleToggleVerifiedBadge = async (targetEmail, currentVerified) => {
     const nextVerified = !currentVerified;
+    try {
+      await api.post("/admin/users/verify", { email: targetEmail, is_verified: nextVerified });
+    } catch {}
+
     try {
       let reg = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
       const idx = reg.findIndex(u => u.email?.toLowerCase() === targetEmail.toLowerCase());
@@ -618,10 +626,10 @@ export default function AdminSubscriptions() {
 
   // --- FEATURE #4: WhatsApp Renewal Reminder ---
   const handleSendWhatsAppRenewal = (sub) => {
-    const phone = (sub.phone || "919979314819").replace(/\D/g, "");
-    const cleanPhone = phone.startsWith("91") ? phone : `91${phone}`;
+    const phone = sub.phone || "919979314819";
+    const cleanPhone = phone.replace(/[^0-9]/g, "");
     const daysLeft = sub.expires_at ? Math.max(0, Math.ceil((new Date(sub.expires_at) - new Date()) / (1000 * 60 * 60 * 24))) : 0;
-    const planName = (sub.plan || "premium").toUpperCase();
+    const planName = (sub.plan || "business").toUpperCase();
     const text = `Namaste ${sub.payer_name || "Merchant"} ji! 🙏\n\nYour Dukaan OS ${planName} subscription ${daysLeft === 0 ? "has expired" : `expires in ${daysLeft} days`}.\n\nRenew now to continue uninterrupted POS billing, Soundbox alerts, and multi-shop sync without service disruption:\n👉 https://officialdukaan.in/subscribe\n\nOfficial Dukaan Support Desk: +91 99793 14819`;
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, "_blank");
     toast.success(`Opening WhatsApp renewal dispatch for ${sub.payer_name || sub.user_email}...`);
@@ -633,6 +641,7 @@ export default function AdminSubscriptions() {
     const nextMode = !maintenanceMode;
     try {
       await api.post("/platform/config", { maintenance_mode: nextMode });
+      await api.post("/platform/force-update");
     } catch (e) {
       console.warn("Backend update failed, applying locally:", e);
     }

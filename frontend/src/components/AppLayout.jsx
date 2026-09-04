@@ -190,6 +190,8 @@ export default function AppLayout() {
   });
   const [dismissedAnnouncement, setDismissedAnnouncement] = useState("");
 
+  const isMasterAdmin = (user?.email || "").toLowerCase().trim() === "contact@officialdukaan.in";
+
   const checkPlatformConfig = useCallback(async () => {
     try {
       const res = await api.get("/platform/config");
@@ -216,29 +218,59 @@ export default function AppLayout() {
             localStorage.setItem("dukaan_ota_version", String(res.data.ota_version));
             console.log("OTA Update received. Reloading application cache...");
             setTimeout(() => {
-              window.location.reload(true);
-            }, 1000);
+              window.location.reload();
+            }, 600);
           }
         }
 
         // Feature 30: Emergency Kill Switch
-        if (res.data.kill_switch_active && !user?.is_admin && !inspectorSession) {
-          localStorage.removeItem("dukaan_token");
+        if (res.data.kill_switch_active && !isMasterAdmin && !inspectorSession) {
+          localStorage.removeItem("dukaan_access_token");
           localStorage.removeItem("dukaan_user");
           window.location.href = "/login?emergency_lockdown=1";
         }
       }
     } catch (_) {}
-  }, [user?.is_admin, inspectorSession]);
+
+    // Live subscription sync: instantly check if admin granted plan
+    try {
+      const subRes = await api.get("/subscriptions/me");
+      if (subRes.data?.active) {
+        const activeSub = subRes.data.active;
+        setSubscription(activeSub);
+        const stored = localStorage.getItem("dukaan_user");
+        if (stored) {
+          try {
+            const u = JSON.parse(stored);
+            if (u.subscription?.plan !== activeSub.plan || u.subscription?.expires_at !== activeSub.expires_at) {
+              u.subscription = activeSub;
+              if (activeSub.plan === "premium") u.is_premium = true;
+              localStorage.setItem("dukaan_user", JSON.stringify(u));
+            }
+          } catch {}
+        }
+      }
+    } catch (_) {}
+  }, [isMasterAdmin, inspectorSession]);
 
   useEffect(() => {
     checkPlatformConfig();
-    const interval = setInterval(checkPlatformConfig, 45000);
-    return () => clearInterval(interval);
+    const interval = setInterval(checkPlatformConfig, 8000);
+    const onFocus = () => checkPlatformConfig();
+    window.addEventListener("focus", onFocus);
+    const onVis = () => {
+      if (document.visibilityState === "visible") checkPlatformConfig();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, [checkPlatformConfig]);
 
   // Feature 9: Store Freeze & Fraud Security Shield
-  const isStoreFrozen = !user?.is_admin && !inspectorSession && (user?.is_frozen || localStorage.getItem(`dukaan_store_frozen_${user?.email}`) === "true");
+  const isStoreFrozen = !isMasterAdmin && !inspectorSession && (user?.is_frozen || localStorage.getItem(`dukaan_store_frozen_${user?.email}`) === "true");
   if (isStoreFrozen) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
@@ -288,7 +320,7 @@ export default function AppLayout() {
   };
 
   // Full-screen Maintenance Mode for merchants (Admins retain access to /admin)
-  if (platformConfig.maintenance_mode && !user?.is_admin && !inspectorSession) {
+  if (platformConfig.maintenance_mode && !isMasterAdmin && !inspectorSession) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
         <div className="w-20 h-20 rounded-3xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mb-6 shadow-2xl">

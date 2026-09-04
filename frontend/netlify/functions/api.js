@@ -26,8 +26,171 @@ let globalPlatformConfig = {
   receipt_branding_enabled: true,
   payment_alert_chime: true,
   soundbox_devices: [],
-  custom_domains: []
+  custom_domains: [],
+  granted_subscriptions: {
+    "support@officialdukaan.in": {
+      plan: "premium",
+      status: "active",
+      expires_at: "2036-09-01T00:00:00.000Z",
+      days: 3650,
+      granted_by: "contact@officialdukaan.in",
+      granted_at: new Date().toISOString(),
+      note: "Lifetime Master Access"
+    }
+  },
+  frozen_merchants: {},
+  verified_merchants: {
+    "support@officialdukaan.in": true
+  }
 };
+
+const CLOUD_STATE_ID = process.env.DUKAAN_CLOUD_STATE_ID || "ff808181a067127101a06df9da67143f";
+const CLOUD_STATE_URL = `https://api.restful-api.dev/objects/${CLOUD_STATE_ID}`;
+
+let registeredUsersList = [
+  {
+    id: "usr_admin_master",
+    name: "Super Administrator",
+    email: ADMIN_EMAIL,
+    is_admin: true,
+    is_verified: true,
+    subscription: { plan: "premium", status: "active", expires_at: new Date(Date.now() + 365 * 10 * 86400000).toISOString() },
+    created_at: new Date().toISOString()
+  },
+  {
+    id: "usr_priyen_master",
+    name: "Naik Priyen",
+    email: "support@officialdukaan.in",
+    is_admin: false,
+    is_verified: true,
+    subscription: {
+      plan: "premium",
+      status: "active",
+      expires_at: "2036-09-01T00:00:00.000Z",
+      days: 3650,
+      granted_by: ADMIN_EMAIL,
+      granted_at: new Date().toISOString(),
+      note: "Lifetime Master Access"
+    },
+    created_at: new Date().toISOString()
+  }
+];
+
+let lastCloudFetchTime = 0;
+async function getPersistentState(force = false) {
+  const now = Date.now();
+  if (!force && (now - lastCloudFetchTime < 1500)) {
+    return globalPlatformConfig;
+  }
+  try {
+    const res = await fetch(CLOUD_STATE_URL, { signal: AbortSignal.timeout(3000) });
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.data) {
+        lastCloudFetchTime = now;
+        if (typeof json.data.maintenance_mode === "boolean") {
+          globalPlatformConfig.maintenance_mode = json.data.maintenance_mode;
+        }
+        if (typeof json.data.announcement === "string") {
+          globalPlatformConfig.announcement = json.data.announcement;
+        }
+        if (typeof json.data.ota_version === "number") {
+          globalPlatformConfig.ota_version = json.data.ota_version;
+        }
+        if (typeof json.data.kill_switch_active === "boolean") {
+          globalPlatformConfig.kill_switch_active = json.data.kill_switch_active;
+        }
+        if (json.data.granted_subscriptions) {
+          globalPlatformConfig.granted_subscriptions = {
+            ...globalPlatformConfig.granted_subscriptions,
+            ...json.data.granted_subscriptions
+          };
+        }
+        if (json.data.frozen_merchants) {
+          globalPlatformConfig.frozen_merchants = {
+            ...globalPlatformConfig.frozen_merchants,
+            ...json.data.frozen_merchants
+          };
+        }
+        if (json.data.verified_merchants) {
+          globalPlatformConfig.verified_merchants = {
+            ...globalPlatformConfig.verified_merchants,
+            ...json.data.verified_merchants
+          };
+        }
+        if (Array.isArray(json.data.registered_users)) {
+          for (const u of json.data.registered_users) {
+            if (!u || !u.email) continue;
+            const em = u.email.toLowerCase();
+            const idx = registeredUsersList.findIndex(x => x.email.toLowerCase() === em);
+            if (idx >= 0) {
+              registeredUsersList[idx] = { ...registeredUsersList[idx], ...u };
+            } else {
+              registeredUsersList.push(u);
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Persistent cloud state fetch error:", e.message);
+  }
+  return globalPlatformConfig;
+}
+
+async function savePersistentState(extraConfig = {}) {
+  globalPlatformConfig = {
+    ...globalPlatformConfig,
+    ...extraConfig,
+    updated_at: new Date().toISOString()
+  };
+  try {
+    const payload = {
+      name: "dukaan_platform_state",
+      data: {
+        maintenance_mode: globalPlatformConfig.maintenance_mode,
+        announcement: globalPlatformConfig.announcement,
+        ota_version: globalPlatformConfig.ota_version,
+        kill_switch_active: globalPlatformConfig.kill_switch_active,
+        granted_subscriptions: globalPlatformConfig.granted_subscriptions || {},
+        frozen_merchants: globalPlatformConfig.frozen_merchants || {},
+        verified_merchants: globalPlatformConfig.verified_merchants || {},
+        registered_users: registeredUsersList
+      }
+    };
+    await fetch(CLOUD_STATE_URL, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(3500)
+    });
+  } catch (e) {
+    console.warn("Persistent cloud state save error:", e.message);
+  }
+}
+
+function recordRegisteredUser(userObj) {
+  if (!userObj || !userObj.email) return;
+  const email = userObj.email.toLowerCase();
+  const existing = registeredUsersList.find(u => u.email.toLowerCase() === email);
+  if (existing) {
+    if (userObj.name) existing.name = userObj.name;
+    if (userObj.subscription) existing.subscription = userObj.subscription;
+    if (userObj.is_verified !== undefined) existing.is_verified = userObj.is_verified;
+    if (userObj.is_frozen !== undefined) existing.is_frozen = userObj.is_frozen;
+  } else {
+    registeredUsersList.push({
+      id: userObj.id || `usr_${Date.now()}`,
+      name: userObj.name || email.split("@")[0],
+      email: email,
+      is_admin: email === ADMIN_EMAIL,
+      is_verified: userObj.is_verified !== undefined ? userObj.is_verified : true,
+      is_frozen: userObj.is_frozen || false,
+      subscription: userObj.subscription || { plan: "starter", status: "active" },
+      created_at: new Date().toISOString()
+    });
+  }
+}
 
 let promoCodes = [];
 let supportTickets = [];
@@ -260,6 +423,7 @@ exports.handler = async (event, context) => {
 
     // 2. LOGIN
     if (path === "/auth/login" && event.httpMethod === "POST") {
+      await getPersistentState();
       const email = (body.email || "").trim().toLowerCase();
       const password = body.password || "";
       const name = (body.name || "").trim() || email.split("@")[0];
@@ -270,14 +434,27 @@ exports.handler = async (event, context) => {
       if (isAdmin && password !== "Viral@1979") {
         return { statusCode: 401, headers, body: JSON.stringify({ detail: "Incorrect admin password. Please try again." }) };
       }
+
+      const granted = globalPlatformConfig.granted_subscriptions?.[email];
+      const isFrozen = !!globalPlatformConfig.frozen_merchants?.[email];
+      const isVerified = globalPlatformConfig.verified_merchants?.[email] !== undefined 
+        ? globalPlatformConfig.verified_merchants[email] 
+        : true;
+
       const user = {
         id: `usr_${Date.now()}`,
         name,
         email,
-        is_verified: true,
+        is_verified: isVerified,
+        is_frozen: isFrozen,
         is_admin: isAdmin,
-        subscription: null
+        subscription: granted || null,
+        is_premium: granted?.plan === "premium"
       };
+
+      recordRegisteredUser(user);
+      savePersistentState().catch(() => {});
+
       const token = makeToken(user);
       return {
         statusCode: 200,
@@ -335,14 +512,35 @@ exports.handler = async (event, context) => {
 
     // 3. CURRENT USER (ME)
     if ((path === "/auth/me" || path === "/users/me") && event.httpMethod === "GET") {
+      await getPersistentState();
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const userFromToken = parseToken(authHeader);
 
       if (userFromToken && userFromToken.email) {
+        const email = userFromToken.email.toLowerCase();
+        const granted = globalPlatformConfig.granted_subscriptions?.[email];
+        const isFrozen = !!globalPlatformConfig.frozen_merchants?.[email];
+        const isVerified = globalPlatformConfig.verified_merchants?.[email] !== undefined 
+          ? globalPlatformConfig.verified_merchants[email] 
+          : (userFromToken.is_verified ?? true);
+
+        const mergedUser = {
+          ...userFromToken,
+          is_admin: email === ADMIN_EMAIL,
+          is_frozen: isFrozen,
+          is_verified: isVerified
+        };
+
+        if (granted) {
+          mergedUser.subscription = granted;
+          if (granted.plan === "premium") mergedUser.is_premium = true;
+        }
+
+        recordRegisteredUser(mergedUser);
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify(userFromToken)
+          body: JSON.stringify(mergedUser)
         };
       }
 
@@ -462,6 +660,7 @@ exports.handler = async (event, context) => {
 
     // 5. SOCIAL LOGIN (Google & Apple)
     if (path === "/auth/social-login" && event.httpMethod === "POST") {
+      await getPersistentState();
       const email = (body.email || "").trim().toLowerCase();
       const name = (body.name || (body.provider === "google" ? "Google User" : "Apple User")).trim();
       const provider = body.provider || "google";
@@ -472,17 +671,27 @@ exports.handler = async (event, context) => {
       }
 
       const isAdmin = email.toLowerCase() === ADMIN_EMAIL;
+      const granted = globalPlatformConfig.granted_subscriptions?.[email];
+      const isFrozen = !!globalPlatformConfig.frozen_merchants?.[email];
+      const isVerified = globalPlatformConfig.verified_merchants?.[email] !== undefined 
+        ? globalPlatformConfig.verified_merchants[email] 
+        : true;
 
       const user = {
         id: `usr_${Date.now()}`,
         name,
         email,
         avatar,
-        is_verified: true,
+        is_verified: isVerified,
+        is_frozen: isFrozen,
         is_admin: isAdmin,
         provider,
-        subscription: null
+        subscription: granted || null,
+        is_premium: granted?.plan === "premium"
       };
+
+      recordRegisteredUser(user);
+      savePersistentState().catch(() => {});
 
       const token = makeToken(user);
 
@@ -609,72 +818,222 @@ exports.handler = async (event, context) => {
 
     // 9. SUBSCRIPTIONS - ME
     if (path === "/subscriptions/me" && event.httpMethod === "GET") {
+      await getPersistentState();
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
+      const email = (user?.email || "").toLowerCase();
+      const granted = email ? globalPlatformConfig.granted_subscriptions?.[email] : null;
+      const activeSub = granted || user?.subscription || null;
+
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
-          active: user?.subscription || null,
-          subscription: user?.subscription || null
+          active: activeSub,
+          subscription: activeSub
         })
       };
     }
 
-    // 10. ADMIN SUBSCRIPTIONS & STATS
-    if (path === "/admin/subscriptions" && event.httpMethod === "GET") {
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify([
-          {
-            id: "sub_master_admin",
-            user_email: ADMIN_EMAIL,
-            payer_name: "Master Administrator",
-            plan: "premium",
-            status: "active",
-            amount: 0,
-            source: "system_master",
-            created_at: new Date().toISOString(),
-            expires_at: new Date(Date.now() + 365 * 10 * 86400000).toISOString()
-          }
-        ])
-      };
-    }
+    // 9B. ADMIN GRANT SUBSCRIPTION
+    if (path === "/admin/subscriptions/grant" && event.httpMethod === "POST") {
+      await getPersistentState();
+      const targetEmail = (body.user_email || "").trim().toLowerCase();
+      if (!targetEmail) {
+        return { statusCode: 400, headers, body: JSON.stringify({ detail: "User email is required." }) };
+      }
+      const plan = (body.plan || "premium").toLowerCase();
+      const days = Number(body.days) || 365;
+      const expDate = new Date(Date.now() + days * 86400000).toISOString();
+      const note = body.note || "Manual grant by master admin";
 
-    if (path === "/admin/stats" && event.httpMethod === "GET") {
+      if (!globalPlatformConfig.granted_subscriptions) {
+        globalPlatformConfig.granted_subscriptions = {};
+      }
+      const grantRecord = {
+        plan,
+        status: "active",
+        expires_at: expDate,
+        is_trial: false,
+        days,
+        granted_by: ADMIN_EMAIL,
+        granted_at: new Date().toISOString(),
+        note
+      };
+      globalPlatformConfig.granted_subscriptions[targetEmail] = grantRecord;
+
+      if (!globalPlatformConfig.verified_merchants) {
+        globalPlatformConfig.verified_merchants = {};
+      }
+      globalPlatformConfig.verified_merchants[targetEmail] = true;
+
+      recordRegisteredUser({
+        email: targetEmail,
+        name: targetEmail.split("@")[0],
+        subscription: grantRecord,
+        is_verified: true
+      });
+
+      // Bump OTA version so connected clients immediately re-sync & unlock
+      globalPlatformConfig.ota_version = (globalPlatformConfig.ota_version || 1) + 1;
+
+      await savePersistentState();
+
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
-          users: 1,
-          shops: 1,
-          active_subscriptions: 1,
+          ok: true,
+          message: `Successfully granted ${plan.toUpperCase()} plan to ${targetEmail} for ${days} days!`,
+          subscription: grantRecord
+        })
+      };
+    }
+
+    // 9C. ADMIN USERS FREEZE & VERIFY CONTROLS
+    if (path === "/admin/users/freeze" && event.httpMethod === "POST") {
+      await getPersistentState();
+      const targetEmail = (body.email || "").trim().toLowerCase();
+      const isFrozen = Boolean(body.is_frozen);
+      if (!globalPlatformConfig.frozen_merchants) globalPlatformConfig.frozen_merchants = {};
+      globalPlatformConfig.frozen_merchants[targetEmail] = isFrozen;
+      globalPlatformConfig.ota_version = (globalPlatformConfig.ota_version || 1) + 1;
+      await savePersistentState();
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, email: targetEmail, is_frozen: isFrozen }) };
+    }
+
+    if (path === "/admin/users/verify" && event.httpMethod === "POST") {
+      await getPersistentState();
+      const targetEmail = (body.email || "").trim().toLowerCase();
+      const isVerified = Boolean(body.is_verified);
+      if (!globalPlatformConfig.verified_merchants) globalPlatformConfig.verified_merchants = {};
+      globalPlatformConfig.verified_merchants[targetEmail] = isVerified;
+      await savePersistentState();
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, email: targetEmail, is_verified: isVerified }) };
+    }
+
+    // 10. ADMIN SUBSCRIPTIONS & STATS
+    if (path === "/admin/subscriptions" && event.httpMethod === "GET") {
+      await getPersistentState();
+      const subs = [
+        {
+          id: "sub_master_admin",
+          user_email: ADMIN_EMAIL,
+          payer_name: "Master Administrator",
+          plan: "premium",
+          status: "active",
+          amount: 0,
+          source: "system_master",
+          created_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 365 * 10 * 86400000).toISOString()
+        }
+      ];
+
+      if (globalPlatformConfig.granted_subscriptions) {
+        for (const [em, gSub] of Object.entries(globalPlatformConfig.granted_subscriptions)) {
+          if (em.toLowerCase() === ADMIN_EMAIL.toLowerCase()) continue;
+          subs.push({
+            id: `sub_grant_${em.replace(/[^a-z0-9]/gi, "_")}`,
+            user_email: em,
+            payer_name: em.split("@")[0],
+            phone: "919979314819",
+            plan: gSub.plan || "premium",
+            status: gSub.status || "active",
+            amount: gSub.plan === "premium" ? 2990 : gSub.plan === "business" ? 1490 : 990,
+            source: "admin_grant",
+            review_note: gSub.note,
+            created_at: gSub.granted_at || new Date().toISOString(),
+            expires_at: gSub.expires_at
+          });
+        }
+      }
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(subs)
+      };
+    }
+
+    if (path === "/admin/stats" && event.httpMethod === "GET") {
+      await getPersistentState();
+      const grantedCount = Object.keys(globalPlatformConfig.granted_subscriptions || {}).length;
+      const totalUsers = Math.max(1, registeredUsersList.length);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          users: totalUsers,
+          shops: totalUsers,
+          active_subscriptions: Math.max(1, grantedCount),
           pending_subscriptions: 0,
           total_revenue: 0,
           active_trials: 0,
           starter_count: 0,
           business_count: 0,
-          premium_count: 1
+          premium_count: Math.max(1, grantedCount)
         })
       };
     }
 
     if (path === "/admin/users" && event.httpMethod === "GET") {
+      await getPersistentState();
+      const usersMap = new Map();
+
+      // Master Admin
+      usersMap.set(ADMIN_EMAIL.toLowerCase(), {
+        id: "usr_admin_master",
+        name: "Super Administrator",
+        email: ADMIN_EMAIL,
+        is_admin: true,
+        is_verified: true,
+        subscription: { plan: "premium", status: "active", expires_at: new Date(Date.now() + 365 * 10 * 86400000).toISOString() },
+        created_at: new Date().toISOString()
+      });
+
+      // Registered users
+      for (const u of registeredUsersList) {
+        if (!u || !u.email) continue;
+        const em = u.email.toLowerCase();
+        const granted = globalPlatformConfig.granted_subscriptions?.[em];
+        const isFrozen = !!globalPlatformConfig.frozen_merchants?.[em];
+        const isVerified = globalPlatformConfig.verified_merchants?.[em] !== undefined 
+          ? globalPlatformConfig.verified_merchants[em] 
+          : (u.is_verified ?? true);
+
+        usersMap.set(em, {
+          ...u,
+          is_admin: em === ADMIN_EMAIL.toLowerCase(),
+          is_frozen: isFrozen,
+          is_verified: isVerified,
+          subscription: granted || u.subscription || { plan: "starter", status: "active" }
+        });
+      }
+
+      // Any granted subscriptions not in usersMap yet
+      if (globalPlatformConfig.granted_subscriptions) {
+        for (const [em, sub] of Object.entries(globalPlatformConfig.granted_subscriptions)) {
+          const lower = em.toLowerCase();
+          if (!usersMap.has(lower)) {
+            usersMap.set(lower, {
+              id: `usr_${lower.replace(/[^a-z0-9]/gi, "_")}`,
+              name: lower.split("@")[0],
+              email: lower,
+              is_admin: lower === ADMIN_EMAIL.toLowerCase(),
+              is_verified: true,
+              subscription: sub,
+              created_at: sub.granted_at || new Date().toISOString()
+            });
+          } else {
+            usersMap.get(lower).subscription = sub;
+          }
+        }
+      }
+
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify([
-          {
-            id: "usr_admin_master",
-            name: "Super Administrator",
-            email: ADMIN_EMAIL,
-            is_admin: true,
-            is_verified: true,
-            subscription: { plan: "premium", status: "active", expires_at: new Date(Date.now() + 365 * 10 * 86400000).toISOString() },
-            created_at: new Date().toISOString()
-          }
-        ])
+        body: JSON.stringify(Array.from(usersMap.values()))
       };
     }
 
@@ -756,6 +1115,7 @@ exports.handler = async (event, context) => {
 
     // 12. PLATFORM CONFIG (Maintenance, Dynamic Pricing, Branding, OTA, Emergency Switch)
     if (path === "/platform/config" && event.httpMethod === "GET") {
+      await getPersistentState();
       return {
         statusCode: 200,
         headers,
@@ -764,7 +1124,12 @@ exports.handler = async (event, context) => {
     }
 
     if (path === "/platform/config" && event.httpMethod === "POST") {
+      await getPersistentState();
+      let modeChanged = false;
       if (typeof body.maintenance_mode === "boolean") {
+        if (globalPlatformConfig.maintenance_mode !== body.maintenance_mode) {
+          modeChanged = true;
+        }
         globalPlatformConfig.maintenance_mode = body.maintenance_mode;
       }
       if (typeof body.announcement === "string") {
@@ -782,7 +1147,15 @@ exports.handler = async (event, context) => {
       if (typeof body.payment_alert_chime === "boolean") {
         globalPlatformConfig.payment_alert_chime = body.payment_alert_chime;
       }
+
+      // Auto-bump OTA version on maintenance mode or announcement updates so merchants immediately reload / react!
+      if (modeChanged || body.announcement !== undefined) {
+        globalPlatformConfig.ota_version = (globalPlatformConfig.ota_version || 1) + 1;
+      }
+
       globalPlatformConfig.updated_at = new Date().toISOString();
+      await savePersistentState();
+
       return {
         statusCode: 200,
         headers,
@@ -792,8 +1165,10 @@ exports.handler = async (event, context) => {
 
     // 13. OTA FORCE UPDATE
     if (path === "/platform/force-update" && event.httpMethod === "POST") {
+      await getPersistentState();
       globalPlatformConfig.ota_version = (globalPlatformConfig.ota_version || 1) + 1;
       globalPlatformConfig.updated_at = new Date().toISOString();
+      await savePersistentState();
       return {
         statusCode: 200,
         headers,
@@ -803,8 +1178,13 @@ exports.handler = async (event, context) => {
 
     // 14. EMERGENCY SESSION KILL SWITCH
     if (path === "/platform/kill-switch" && event.httpMethod === "POST") {
+      await getPersistentState();
       globalPlatformConfig.kill_switch_active = !globalPlatformConfig.kill_switch_active;
       globalPlatformConfig.kill_switch_at = globalPlatformConfig.kill_switch_active ? new Date().toISOString() : null;
+      if (globalPlatformConfig.kill_switch_active) {
+        globalPlatformConfig.ota_version = (globalPlatformConfig.ota_version || 1) + 1;
+      }
+      await savePersistentState();
       return {
         statusCode: 200,
         headers,
