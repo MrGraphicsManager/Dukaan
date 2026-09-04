@@ -47,11 +47,16 @@ export const EMPTY_PREMIUM_ONBOARDING = {
 
 export default function PremiumOnboarding({ initialValues, user, onComplete, busy = false }) {
   const [step, setStep] = useState(0);
+  // Always start with clean, completely blank fields so no prior/dummy data appears prefilled
   const [form, setForm] = useState({ 
-    ...EMPTY_PREMIUM_ONBOARDING, 
-    ...initialValues, 
-    contact_email: initialValues?.contact_email || user?.email || "", 
-    owner_name: initialValues?.owner_name || user?.name || "" 
+    owner_name: "",
+    phone: "",
+    contact_email: "",
+    name: "",
+    store_category: "Kirana & Grocery",
+    address: "",
+    gst_number: "",
+    gst_enabled: false,
   });
   const [error, setError] = useState("");
 
@@ -166,14 +171,14 @@ export default function PremiumOnboarding({ initialValues, user, onComplete, bus
                   label="Proprietor / Owner Name *" 
                   value={form.owner_name} 
                   onChange={(v) => set("owner_name", v)} 
-                  placeholder="Your full name" 
+                  placeholder="e.g. Ramesh Kumar" 
                 />
                 <Field 
                   icon={Phone} 
                   label="10-Digit Mobile Number *" 
                   value={form.phone} 
                   onChange={(v) => set("phone", v)} 
-                  placeholder="9825100000" 
+                  placeholder="e.g. 9876543210" 
                   inputMode="tel" 
                 />
                 <Field 
@@ -181,7 +186,7 @@ export default function PremiumOnboarding({ initialValues, user, onComplete, bus
                   label="Official Email Address" 
                   value={form.contact_email} 
                   onChange={(v) => set("contact_email", v)} 
-                  placeholder="owner@dukaan.in" 
+                  placeholder="e.g. shop@gmail.com" 
                   type="email" 
                 />
               </div>

@@ -129,11 +129,14 @@ export default function Subscribe() {
 
   const initialPremium = useMemo(() => ({
     ...EMPTY_PREMIUM_ONBOARDING,
-    ...activeShop,
-    contact_email: activeShop?.contact_email || user?.email || "",
-    owner_name: activeShop?.owner_name || user?.name || "",
-    name: activeShop?.name || "",
-  }), [activeShop, user]);
+    name: "",
+    owner_name: "",
+    phone: "",
+    contact_email: "",
+    address: "",
+    gst_number: "",
+    gst_enabled: false,
+  }), []);
 
   const userPlan = user?.subscription?.plan;
   const hasUsedTrial = Boolean(
