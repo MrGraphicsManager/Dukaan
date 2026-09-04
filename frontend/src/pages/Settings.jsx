@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Store, 
   Plus, 
@@ -30,11 +31,23 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 
+export const STORE_CATEGORIES = [
+  "Medical Store & Pharmacy",
+  "Kirana & Grocery",
+  "Clothing & Apparel",
+  "Electronics & Mobile",
+  "Stationery & Books",
+  "Hardware & Electrical",
+  "Cafe & Food Corner",
+  "General Departmental Store"
+];
+
 const EMPTY_SHOP = {
   name: "", 
   owner_name: "", 
   phone: "", 
   address: "", 
+  store_category: "General Departmental Store",
   upi_id: "", 
   upi_qr_data_url: "",
   invoice_footer: "Thank you for shopping with us!", 
@@ -682,6 +695,33 @@ export default function Settings() {
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   className="mt-1 h-11 rounded-xl border-brand-mitti font-semibold"
                 />
+              </div>
+
+              <div>
+                <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Store Category & Industry</Label>
+                <Select
+                  value={form.store_category || "General Departmental Store"}
+                  onValueChange={(val) => setForm({ ...form, store_category: val })}
+                >
+                  <SelectTrigger className="mt-1 h-11 rounded-xl border-brand-mitti font-semibold bg-white">
+                    <SelectValue placeholder="Select Business Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STORE_CATEGORIES.map(cat => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {((form.store_category || "").toLowerCase().includes("medical") || (form.store_category || "").toLowerCase().includes("pharmacy")) && (
+                  <div className="mt-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-start gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <span>
+                      <b>Medical Store & Pharmacy detected:</b> With Dukaan Premium, Batch Number & Expiry Date Alert Guard (Feature #45) is activated for your inventory & POS.
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div>

@@ -25,9 +25,55 @@ import {
   Boxes,
   CheckCircle2,
   DollarSign,
-  Warehouse
+  Warehouse,
+  Clock,
+  ShieldAlert,
+  ShieldCheck,
+  Calendar,
+  ArrowRight
 } from "lucide-react";
 import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
+import { useAuth } from "@/lib/AuthContext";
+
+export const getExpiryStatus = (expiryDate) => {
+  if (!expiryDate) return { status: "none", label: "", daysLeft: null, color: "" };
+  const exp = new Date(expiryDate);
+  if (isNaN(exp.getTime())) return { status: "none", label: "", daysLeft: null, color: "" };
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const expZero = new Date(exp);
+  expZero.setHours(0, 0, 0, 0);
+  
+  const diffTime = expZero.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) {
+    return { 
+      status: "expired", 
+      label: `Expired (${Math.abs(diffDays)}d ago)`, 
+      daysLeft: diffDays, 
+      color: "bg-rose-100 text-rose-800 border-rose-300",
+      isCritical: true
+    };
+  } else if (diffDays <= 30) {
+    return { 
+      status: "expiring_soon", 
+      label: diffDays === 0 ? "Expires Today" : `Exp in ${diffDays}d`, 
+      daysLeft: diffDays, 
+      color: "bg-amber-100 text-amber-800 border-amber-300",
+      isWarning: true
+    };
+  } else {
+    return { 
+      status: "valid", 
+      label: `Exp: ${expiryDate}`, 
+      daysLeft: diffDays, 
+      color: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      isValid: true
+    };
+  }
+};
 
 const EMPTY = { 
   name: "", 
@@ -36,11 +82,17 @@ const EMPTY = {
   purchase_price: "", 
   stock: 10, 
   min_stock: 5, 
-  unlimited_stock: false 
+  unlimited_stock: false,
+  batch_number: "",
+  expiry_date: ""
 };
 
 const DEFAULT_CATEGORIES = [
   "Kirana & Grains",
+  "Medicines & Tablets",
+  "Syrups & Liquids",
+  "Ointments & First Aid",
+  "Health Supplements",
   "Edible Oil & Ghee",
   "Dairy & Eggs",
   "Biscuits & Snacks",
@@ -53,10 +105,19 @@ const DEFAULT_CATEGORIES = [
 
 export default function Products() {
   const navigate = useNavigate();
+  const { user, shops, currentShopId } = useAuth();
+  const activeShop = (shops || []).find(s => s?.id === currentShopId) || shops?.[0];
+  const shopCategory = (activeShop?.store_category || "").toLowerCase();
+  
+  // STRICT GATING: Feature #45 activates ONLY if user is Premium AND shop is Medical Store
+  const isMedicalStore = shopCategory.includes("medical") || shopCategory.includes("pharmacy");
+  const isPremium = user?.subscription?.plan === "premium" || user?.is_premium || user?.is_admin || user?.plan === "premium";
+  const canUseExpiryGuard = isPremium && isMedicalStore;
+
   const [items, setItems] = useState(() => getStoredProducts());
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all"); // "all", "in_stock", "low_stock", "out_of_stock"
+  const [statusFilter, setStatusFilter] = useState("all"); // "all", "in_stock", "low_stock", "out_of_stock", "expiring_soon", "expired"
   const [viewMode, setViewMode] = useState("grid"); // "grid" or "table"
   const [form, setForm] = useState({ open: false, mode: "create", data: EMPTY });
   const [busy, setBusy] = useState(false);
@@ -87,17 +148,6 @@ export default function Products() {
     return ["all", ...Array.from(set)];
   }, [items]);
 
-  // Filtered by search, category, and stock status
-  const filtered = useMemo(() => {
-    return items.filter(p => {
-      // Stock status filter
-      if (statusFilter === "in_stock" && (p.stock <= (p.min_stock || 0) && !p.unlimited_stock)) return false;
-      if (statusFilter === "low_stock" && (p.unlimited_stock || p.stock <= 0 || p.stock > (p.min_stock || 5))) return false;
-      if (statusFilter === "out_of_stock" && (p.unlimited_stock || p.stock > 0)) return false;
-      return true;
-    });
-  }, [items, statusFilter]);
-
   // Inventory value & stats
   const totalStockValue = useMemo(() => {
     return items.reduce((acc, it) => acc + (it.unlimited_stock ? 0 : (it.selling_price || 0) * (it.stock || 0)), 0);
@@ -107,6 +157,35 @@ export default function Products() {
     return items.filter(p => !p.unlimited_stock && p.stock <= (p.min_stock || 5)).length;
   }, [items]);
 
+  const expiredCount = useMemo(() => {
+    return items.filter(p => p.expiry_date && getExpiryStatus(p.expiry_date).status === "expired").length;
+  }, [items]);
+
+  const expiringSoonCount = useMemo(() => {
+    return items.filter(p => p.expiry_date && getExpiryStatus(p.expiry_date).status === "expiring_soon").length;
+  }, [items]);
+
+  // Filtered by search, category, and stock/expiry status
+  const filtered = useMemo(() => {
+    return items.filter(p => {
+      // Expiry filter (Feature #45)
+      if (statusFilter === "expired") {
+        if (!p.expiry_date) return false;
+        return getExpiryStatus(p.expiry_date).status === "expired";
+      }
+      if (statusFilter === "expiring_soon") {
+        if (!p.expiry_date) return false;
+        return getExpiryStatus(p.expiry_date).status === "expiring_soon";
+      }
+
+      // Stock status filter
+      if (statusFilter === "in_stock" && (p.stock <= (p.min_stock || 0) && !p.unlimited_stock)) return false;
+      if (statusFilter === "low_stock" && (p.unlimited_stock || p.stock <= 0 || p.stock > (p.min_stock || 5))) return false;
+      if (statusFilter === "out_of_stock" && (p.unlimited_stock || p.stock > 0)) return false;
+      return true;
+    });
+  }, [items, statusFilter]);
+
   const submit = async () => {
     const data = {
       ...form.data,
@@ -114,7 +193,9 @@ export default function Products() {
       purchase_price: Number(form.data.purchase_price || 0),
       stock: form.data.unlimited_stock ? 0 : Number(form.data.stock || 0),
       min_stock: form.data.unlimited_stock ? 0 : Number(form.data.min_stock || 5),
-      unlimited_stock: !!form.data.unlimited_stock
+      unlimited_stock: !!form.data.unlimited_stock,
+      batch_number: form.data.batch_number ? String(form.data.batch_number).trim() : "",
+      expiry_date: form.data.expiry_date ? String(form.data.expiry_date).trim() : ""
     };
     if (!data.name.trim()) return toast.error("Product name is required");
     if (data.selling_price <= 0) return toast.error("Please enter a valid selling price");
@@ -205,6 +286,20 @@ export default function Products() {
             <div className="text-[10px] uppercase font-bold text-amber-300">Low Stock</div>
             <div className="font-display text-xl font-bold text-amber-300">{lowStockCount} items</div>
           </div>
+          {canUseExpiryGuard && (
+            <>
+              <div className="bg-white/10 border border-white/15 px-4 py-2 rounded-2xl backdrop-blur-md">
+                <div className="text-[10px] uppercase font-bold text-amber-300">Expiring Soon</div>
+                <div className="font-display text-xl font-bold text-amber-300">{expiringSoonCount} items</div>
+              </div>
+              {expiredCount > 0 && (
+                <div className="bg-rose-500/30 border border-rose-400/40 px-4 py-2 rounded-2xl backdrop-blur-md animate-pulse">
+                  <div className="text-[10px] uppercase font-bold text-rose-200">Expired Items</div>
+                  <div className="font-display text-xl font-bold text-rose-100">{expiredCount} items</div>
+                </div>
+              )}
+            </>
+          )}
           <Button
             variant="outline"
             onClick={() => navigate("/app/stock")}
@@ -221,6 +316,33 @@ export default function Products() {
           </Button>
         </div>
       </div>
+
+      {/* Feature #45 Teaser Banner (Medical Store on Non-Premium Plan) */}
+      {isMedicalStore && !isPremium && (
+        <div className="bg-gradient-to-r from-amber-500/15 via-amber-50 to-amber-500/15 border-2 border-amber-400/50 rounded-3xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-fade-up">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-900 flex items-center justify-center shrink-0 border border-amber-400/40">
+              <ShieldAlert className="w-5 h-5 text-amber-800" />
+            </div>
+            <div>
+              <div className="font-heading font-bold text-sm text-amber-950 flex items-center gap-2">
+                <span>Medical & Pharmacy Store Detected</span>
+                <span className="text-[10px] font-mono uppercase bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">Feature #45</span>
+              </div>
+              <p className="text-xs text-amber-900/80 mt-0.5 max-w-2xl">
+                Batch number tracking and automated Medicine Expiry Alert Guard are exclusive to Dukaan Premium. Upgrade your plan to protect patients, receive shelf countdown warnings, and block expired sales at checkout.
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={() => navigate("/subscribe")}
+            className="rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs h-10 px-4 shrink-0 shadow-xs flex items-center gap-1.5"
+          >
+            <span>Upgrade to Premium</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      )}
 
       {/* =========================================================
           CONTROLS BAR: SEARCH, FILTERS & VIEW TOGGLE
@@ -256,20 +378,32 @@ export default function Products() {
 
         {/* Right: Stock Status Pills & View Mode */}
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center bg-brand-sand p-1 rounded-2xl border border-brand-mitti">
+          <div className="flex items-center bg-brand-sand p-1 rounded-2xl border border-brand-mitti flex-wrap gap-1">
             {[
               { id: "all", label: "All" },
               { id: "in_stock", label: "In Stock" },
               { id: "low_stock", label: `Low Stock (${lowStockCount})` },
               { id: "out_of_stock", label: "Out of Stock" },
+              ...(canUseExpiryGuard ? [
+                { id: "expiring_soon", label: `Expiring Soon (${expiringSoonCount})` },
+                { id: "expired", label: `Expired (${expiredCount})` }
+              ] : [])
             ].map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setStatusFilter(tab.id)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                   statusFilter === tab.id 
-                    ? "bg-white text-brand-indigo shadow-xs" 
-                    : "text-brand-indigo/60 hover:text-brand-indigo"
+                    ? tab.id === "expired"
+                      ? "bg-rose-600 text-white shadow-xs"
+                      : tab.id === "expiring_soon"
+                        ? "bg-amber-500 text-slate-900 shadow-xs"
+                        : "bg-white text-brand-indigo shadow-xs" 
+                    : tab.id === "expired" && expiredCount > 0
+                      ? "text-rose-600 font-bold hover:bg-rose-100"
+                      : tab.id === "expiring_soon" && expiringSoonCount > 0
+                        ? "text-amber-700 font-bold hover:bg-amber-100"
+                        : "text-brand-indigo/60 hover:text-brand-indigo"
                 }`}
               >
                 {tab.label}
@@ -346,6 +480,28 @@ export default function Products() {
                     {p.name}
                   </h3>
 
+                  {/* Feature #45: Medicine Expiry & Batch Badges for Medical Stores */}
+                  {canUseExpiryGuard && (p.expiry_date || p.batch_number) && (
+                    <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
+                      {p.expiry_date && (() => {
+                        const expInfo = getExpiryStatus(p.expiry_date);
+                        return (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${expInfo.color}`}>
+                            {expInfo.status === "expired" && <AlertTriangle className="w-3 h-3 text-rose-600" />}
+                            {expInfo.status === "expiring_soon" && <Clock className="w-3 h-3 text-amber-700" />}
+                            {expInfo.status === "valid" && <CheckCircle2 className="w-3 h-3 text-emerald-600" />}
+                            <span>{expInfo.label}</span>
+                          </span>
+                        );
+                      })()}
+                      {p.batch_number && (
+                        <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                          Lot: {p.batch_number}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {/* Pricing breakdown */}
                   <div className="mt-4 p-3 rounded-2xl bg-brand-sand/50 border border-brand-mitti/60 flex items-center justify-between">
                     <div>
@@ -405,6 +561,7 @@ export default function Products() {
               <tr>
                 <th className="px-6 py-4">Product Name</th>
                 <th className="px-6 py-4">Category</th>
+                {canUseExpiryGuard && <th className="px-6 py-4">Batch & Expiry</th>}
                 <th className="px-6 py-4 text-right">Selling Price</th>
                 <th className="px-6 py-4 text-right">Purchase Price</th>
                 <th className="px-6 py-4 text-right">Stock</th>
@@ -421,6 +578,28 @@ export default function Products() {
                   <tr key={p.id} className="hover:bg-brand-sand/50 transition-colors">
                     <td className="px-6 py-4 font-heading font-bold text-base">{p.name}</td>
                     <td className="px-6 py-4 text-xs font-semibold uppercase text-brand-indigo/60">{p.category}</td>
+                    {canUseExpiryGuard && (
+                      <td className="px-6 py-4">
+                        {p.expiry_date ? (() => {
+                          const expInfo = getExpiryStatus(p.expiry_date);
+                          return (
+                            <div className="space-y-1">
+                              <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${expInfo.color}`}>
+                                {expInfo.status === "expired" ? <AlertTriangle className="w-3 h-3 text-rose-600" /> : expInfo.status === "expiring_soon" ? <Clock className="w-3 h-3 text-amber-700" /> : null}
+                                {expInfo.label}
+                              </span>
+                              {p.batch_number && (
+                                <div className="text-[10px] font-mono font-bold text-slate-500">
+                                  Lot: {p.batch_number}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })() : (
+                          <span className="text-xs text-slate-400 font-mono">—</span>
+                        )}
+                      </td>
+                    )}
                     <td className="px-6 py-4 text-right font-display font-bold text-base">{money(p.selling_price)}</td>
                     <td className="px-6 py-4 text-right text-xs font-mono text-brand-indigo/60">{p.purchase_price ? money(p.purchase_price) : "—"}</td>
                     <td className="px-6 py-4 text-right font-display font-bold text-base">
@@ -575,6 +754,70 @@ export default function Products() {
                 </div>
               )}
             </div>
+
+            {/* Feature #45: Medicine & Pharmacy Batch + Expiry Guard */}
+            {canUseExpiryGuard && (
+              <div className="pt-3 border-t border-brand-mitti space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span className="font-heading font-bold text-xs uppercase text-brand-indigo tracking-wider">
+                      Medicine Batch & Expiry Guard (Feature #45)
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                    Premium Active
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Batch / Lot Number</Label>
+                    <Input
+                      value={form.data.batch_number || ""}
+                      onChange={(e) => setForm({ ...form, data: { ...form.data, batch_number: e.target.value.toUpperCase() } })}
+                      placeholder="e.g. BATCH-2026-X8"
+                      className="mt-1 h-11 rounded-xl border-brand-mitti font-mono text-sm uppercase font-bold"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Expiry Date</Label>
+                    <Input
+                      type="date"
+                      value={form.data.expiry_date || ""}
+                      onChange={(e) => setForm({ ...form, data: { ...form.data, expiry_date: e.target.value } })}
+                      className="mt-1 h-11 rounded-xl border-brand-mitti font-mono text-sm"
+                    />
+                  </div>
+                </div>
+
+                {form.data.expiry_date && (() => {
+                  const status = getExpiryStatus(form.data.expiry_date);
+                  if (status.status === "expired") {
+                    return (
+                      <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-800 flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                        <span>Warning: This expiry date is in the past! Medicine will be flagged at checkout.</span>
+                      </div>
+                    );
+                  } else if (status.status === "expiring_soon") {
+                    return (
+                      <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs font-bold text-amber-800 flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>Near Expiry: This medicine expires in {status.daysLeft} days. Shelf watch will notify you.</span>
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>Safe Medicine: Valid for {status.daysLeft} days.</span>
+                      </div>
+                    );
+                  }
+                })()}
+              </div>
+            )}
           </div>
 
           <DialogFooter className="mt-5 gap-2">

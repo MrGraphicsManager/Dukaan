@@ -48,10 +48,12 @@ import {
   CartesianGrid
 } from "recharts";
 import { toast } from "sonner";
+import { getStoredProducts } from "@/lib/defaultProducts";
+import { getExpiryStatus } from "@/pages/Products";
 
 export default function Dashboard() {
   const nav = useNavigate();
-  const { lang, currentShopId, user } = useAuth();
+  const { lang, currentShopId, user, shops } = useAuth();
   const [d, setD] = useState(null);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
@@ -136,6 +138,7 @@ export default function Dashboard() {
     });
 
     return slots.map(s => ({ hour: s.hour, sales: Math.round(s.sales) }));
+    /* eslint-disable-next-line */
   }, [d, getSafeOrders]);
 
   const peakSlot = useMemo(() => {
@@ -143,6 +146,34 @@ export default function Dashboard() {
     const sorted = [...salesHourlyData].sort((a, b) => b.sales - a.sales);
     return sorted[0]?.sales > 0 ? sorted[0] : null;
   }, [salesHourlyData]);
+
+  // Feature #45: Gating for Medical Store on Premium Plan
+  const activeShop = (shops || []).find(s => s?.id === currentShopId) || shops?.[0];
+  const shopCategory = (activeShop?.store_category || premium?.store_category || "").toLowerCase();
+  const isMedicalStore = shopCategory.includes("medical") || shopCategory.includes("pharmacy");
+  const isPremium = user?.subscription?.plan === "premium" || user?.is_premium || user?.is_admin || user?.plan === "premium";
+  const canUseExpiryGuard = isPremium && isMedicalStore;
+
+  /* eslint-disable-next-line */
+  const storedProducts = useMemo(() => getStoredProducts(), [refreshing, d]);
+
+  const { expiredMeds, expiringSoonMeds, urgentMeds } = useMemo(() => {
+    if (!canUseExpiryGuard) return { expiredMeds: [], expiringSoonMeds: [], urgentMeds: [] };
+    const expired = [];
+    const expiringSoon = [];
+    storedProducts.forEach(p => {
+      if (p.expiry_date) {
+        const info = getExpiryStatus(p.expiry_date);
+        if (info.status === "expired") expired.push(p);
+        else if (info.status === "expiring_soon") expiringSoon.push(p);
+      }
+    });
+    return {
+      expiredMeds: expired,
+      expiringSoonMeds: expiringSoon,
+      urgentMeds: [...expired, ...expiringSoon]
+    };
+  }, [canUseExpiryGuard, storedProducts]);
 
   const loadDashboard = useCallback(async ({ silent = false } = {}) => {
     if (!currentShopId) return;
@@ -581,6 +612,131 @@ export default function Dashboard() {
           <span>{soundboxPlaying ? "Announcing..." : "Soundbox Test"}</span>
         </button>
       </div>
+
+      {/* =========================================================
+          FEATURE #45: MEDICINE & PHARMACY EXPIRY DATE ALERT GUARD
+          (STRICTLY GATED: ONLY FOR PREMIUM USERS WITH MEDICAL STORE)
+      ========================================================= */}
+      {canUseExpiryGuard && (
+        <div className="bg-white rounded-3xl p-6 md:p-7 border-2 border-brand-mitti shadow-sm space-y-5 animate-fade-up">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-brand-mitti">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 flex items-center justify-center shrink-0 shadow-xs">
+                <ShieldCheck className="w-6 h-6 text-emerald-600" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-display text-xl font-bold text-brand-indigo">
+                    Medicine & Food Expiry Date Alert Guard
+                  </h3>
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 uppercase tracking-wider font-mono border border-emerald-300/40">
+                    Feature #45 · Active
+                  </span>
+                </div>
+                <p className="text-xs text-brand-indigo/60 mt-0.5">
+                  Automated shelf watch for batch lots, near-expiry medicines, and patient safety
+                </p>
+              </div>
+            </div>
+
+            <Button
+              variant="outline"
+              onClick={() => nav("/app/products")}
+              className="rounded-xl border-brand-mitti hover:border-brand-indigo text-brand-indigo text-xs font-bold h-10 px-4 flex items-center gap-1.5"
+            >
+              <span>Manage Shelf Batches</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+
+          {/* Metric Summary Counters */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-between">
+              <div>
+                <div className="text-[11px] font-bold text-rose-800 uppercase tracking-wider">Expired Medicines</div>
+                <div className="font-display text-2xl font-extrabold text-rose-900 mt-1">{expiredMeds.length} Batches</div>
+                <div className="text-[11px] text-rose-700 mt-0.5">Blocked from POS billing</div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between">
+              <div>
+                <div className="text-[11px] font-bold text-amber-800 uppercase tracking-wider">Expiring in &lt; 30 Days</div>
+                <div className="font-display text-2xl font-extrabold text-amber-900 mt-1">{expiringSoonMeds.length} Batches</div>
+                <div className="text-[11px] text-amber-700 mt-0.5">Return to pharma distributor</div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
+                <Clock3 className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between sm:col-span-2 md:col-span-1">
+              <div>
+                <div className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">Pharmacy Compliance</div>
+                <div className="font-display text-2xl font-extrabold text-emerald-900 mt-1">
+                  {expiredMeds.length === 0 ? "100% Safe" : "Action Needed"}
+                </div>
+                <div className="text-[11px] text-emerald-700 mt-0.5">Drug & cosmetic act compliant</div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+
+          {/* Urgent Expiry Watch List */}
+          {urgentMeds.length > 0 ? (
+            <div className="rounded-2xl border border-brand-mitti overflow-hidden">
+              <div className="bg-brand-sand px-4 py-2.5 text-xs font-bold text-brand-indigo flex items-center justify-between border-b border-brand-mitti">
+                <span>Attention Required: Near Expiry or Expired Shelf Lots</span>
+                <span className="text-[11px] text-brand-indigo/60 font-mono">{urgentMeds.length} items flagged</span>
+              </div>
+              <div className="divide-y divide-brand-mitti">
+                {urgentMeds.slice(0, 5).map((med) => {
+                  const status = getExpiryStatus(med.expiry_date);
+                  return (
+                    <div key={med.id} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-brand-sand/30 transition-colors">
+                      <div>
+                        <div className="font-heading font-bold text-sm text-brand-indigo">{med.name}</div>
+                        <div className="flex items-center gap-2 text-xs text-brand-indigo/60 mt-0.5">
+                          <span>{med.category}</span>
+                          <span>·</span>
+                          <span className="font-mono font-bold text-slate-700">Lot: {med.batch_number || "Default"}</span>
+                          <span>·</span>
+                          <span>Stock: {med.stock} pcs</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full border flex items-center gap-1 ${status.color}`}>
+                          {status.status === "expired" ? <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> : <Clock3 className="w-3.5 h-3.5 text-amber-700" />}
+                          <span>{status.label}</span>
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => nav("/app/products")}
+                          className="text-xs font-bold text-brand-terracotta hover:bg-brand-sand h-8 px-2.5 rounded-lg"
+                        >
+                          Edit
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-200/60 text-xs text-emerald-800 flex items-center gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>All registered medicines are fresh and within shelf life. No expired or expiring lots found.</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* =========================================================
           ELEMENT 4 & 5: HOURLY SALES TREND + CASH DRAWER SPLIT

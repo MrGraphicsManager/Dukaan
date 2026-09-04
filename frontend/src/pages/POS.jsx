@@ -41,9 +41,9 @@ import { playVoiceSoundbox } from "@/lib/soundbox";
 
 export default function POS() {
   const nav = useNavigate();
-  const { lang, user } = useAuth();
+  const { lang, user, shops, currentShopId } = useAuth();
   const userPlan = user?.subscription?.plan || "starter";
-  const isPremium = userPlan === "premium" || user?.is_admin;
+  const isPremium = userPlan === "premium" || user?.is_premium || user?.is_admin;
 
   const [products, setProducts] = useState(() => getStoredProducts());
   const [q, setQ] = useState("");
@@ -54,6 +54,12 @@ export default function POS() {
   const [customerId, setCustomerId] = useState("");
   const [customers, setCustomers] = useState([]);
   const [shop, setShop] = useState(null);
+
+  // Feature #45: Gating for Medical Store on Premium Plan
+  const activeShop = (shops || []).find(s => s?.id === currentShopId) || shops?.[0];
+  const shopCategory = (activeShop?.store_category || shop?.store_category || "").toLowerCase();
+  const isMedicalStore = shopCategory.includes("medical") || shopCategory.includes("pharmacy");
+  const canUseExpiryGuard = isPremium && isMedicalStore;
   
   // Soundbox audio state (Premium only)
   const [soundboxEnabled, setSoundboxEnabled] = useState(isPremium);
@@ -142,6 +148,27 @@ export default function POS() {
       return;
     }
 
+    // Feature #45: Expiry verification on item scan / addition
+    if (canUseExpiryGuard && p.expiry_date) {
+      const exp = new Date(p.expiry_date);
+      if (!isNaN(exp.getTime())) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const expZero = new Date(exp);
+        expZero.setHours(0, 0, 0, 0);
+        const diffDays = Math.ceil((expZero.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays < 0) {
+          toast.error(`⚠️ EXPIRED MEDICINE ALERT: "${p.name}" expired ${Math.abs(diffDays)} days ago (${p.expiry_date}). Do not dispense!`, {
+            duration: 6000
+          });
+        } else if (diffDays <= 30) {
+          toast.warning(`⚠️ NEAR EXPIRY WARNING: "${p.name}" expires in ${diffDays} days (${p.expiry_date}).`, {
+            duration: 4000
+          });
+        }
+      }
+    }
+
     setCart(prev => {
       const idx = prev.findIndex(x => x.product_id === p.id);
       if (idx >= 0) {
@@ -160,6 +187,8 @@ export default function POS() {
         price: p.selling_price, 
         qty: 1, 
         category: p.category,
+        batch_number: p.batch_number || "",
+        expiry_date: p.expiry_date || "",
         max_stock: isUnlimited ? 99999 : availableStock,
         unlimited_stock: isUnlimited
       }];
@@ -568,12 +597,34 @@ export default function POS() {
                     )}
 
                     <div>
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-brand-indigo/50 mb-1">
-                        {p.category || "General"}
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-brand-indigo/50 truncate">
+                          {p.category || "General"}
+                        </span>
+                        {canUseExpiryGuard && p.expiry_date && (() => {
+                          const exp = new Date(p.expiry_date);
+                          if (isNaN(exp.getTime())) return null;
+                          const today = new Date();
+                          today.setHours(0,0,0,0);
+                          const expZ = new Date(exp);
+                          expZ.setHours(0,0,0,0);
+                          const diff = Math.ceil((expZ.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                          if (diff < 0) {
+                            return <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-300 shrink-0">Expired</span>;
+                          } else if (diff <= 30) {
+                            return <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300 shrink-0">Exp: {diff}d</span>;
+                          }
+                          return null;
+                        })()}
                       </div>
                       <h4 className="font-heading font-bold text-brand-indigo text-sm leading-snug line-clamp-2">
                         {p.name}
                       </h4>
+                      {canUseExpiryGuard && p.batch_number && (
+                        <div className="text-[10px] font-mono font-semibold text-slate-400 mt-1">
+                          Lot: {p.batch_number}
+                        </div>
+                      )}
                     </div>
 
                     <div className="mt-4 pt-3 border-t border-brand-mitti/60 flex items-center justify-between">
@@ -677,8 +728,23 @@ export default function POS() {
                       <div className="font-heading font-bold text-brand-indigo text-xs truncate">
                         {item.name}
                       </div>
-                      <div className="text-[11px] text-brand-indigo/60 font-mono mt-0.5">
-                        {money(item.price)} × {item.qty}
+                      <div className="flex items-center gap-2 mt-0.5 text-[11px] text-brand-indigo/60 font-mono">
+                        <span>{money(item.price)} × {item.qty}</span>
+                        {canUseExpiryGuard && item.batch_number && (
+                          <span className="text-[9px] font-mono font-semibold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-brand-mitti">
+                            Lot: {item.batch_number}
+                          </span>
+                        )}
+                        {canUseExpiryGuard && item.expiry_date && (() => {
+                          const exp = new Date(item.expiry_date);
+                          if (isNaN(exp.getTime())) return null;
+                          const isExp = exp.getTime() < new Date().setHours(0,0,0,0);
+                          return isExp ? (
+                            <span className="text-[9px] font-bold text-rose-700 bg-rose-100 px-1.5 py-0.5 rounded border border-rose-300">
+                              ⚠️ Expired
+                            </span>
+                          ) : null;
+                        })()}
                       </div>
                     </div>
 

@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { useEffect, useState, useCallback } from "react";
 import { t } from "@/lib/i18n";
-import { LayoutDashboard, Receipt, Package, Warehouse, Users, Wallet, ClipboardList, BarChart3, Settings as Cog, LogOut, Store, CreditCard, ShieldCheck, Lock, Monitor, Bell, CheckCheck } from "lucide-react";
+import { LayoutDashboard, Receipt, Package, Warehouse, Users, Wallet, ClipboardList, BarChart3, Settings as Cog, LogOut, Store, CreditCard, ShieldCheck, Lock, Monitor, Bell, CheckCheck, AlertTriangle, X } from "lucide-react";
 import { PLAN_TIER, ROUTE_PLAN } from "@/components/SubGate";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -157,6 +157,43 @@ export default function AppLayout() {
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
+  // Platform configuration: Maintenance mode & Announcement
+  const [platformConfig, setPlatformConfig] = useState(() => {
+    return {
+      maintenance_mode: localStorage.getItem("dukaan_platform_maintenance") === "true",
+      announcement: localStorage.getItem("dukaan_platform_announcement") || ""
+    };
+  });
+  const [dismissedAnnouncement, setDismissedAnnouncement] = useState("");
+
+  const checkPlatformConfig = useCallback(async () => {
+    try {
+      const res = await api.get("/platform/config");
+      if (res?.data) {
+        setPlatformConfig({
+          maintenance_mode: !!res.data.maintenance_mode,
+          announcement: res.data.announcement || ""
+        });
+        if (res.data.maintenance_mode) {
+          localStorage.setItem("dukaan_platform_maintenance", "true");
+        } else {
+          localStorage.removeItem("dukaan_platform_maintenance");
+        }
+        if (res.data.announcement) {
+          localStorage.setItem("dukaan_platform_announcement", res.data.announcement);
+        } else {
+          localStorage.removeItem("dukaan_platform_announcement");
+        }
+      }
+    } catch (_) {}
+  }, []);
+
+  useEffect(() => {
+    checkPlatformConfig();
+    const interval = setInterval(checkPlatformConfig, 45000);
+    return () => clearInterval(interval);
+  }, [checkPlatformConfig]);
+
   const isPremium = subscription?.plan === "premium" || user?.subscription?.plan === "premium" || user?.is_premium || user?.plan === "premium";
   const tierMap = PLAN_TIER || { starter: 1, business: 2, premium: 3 };
   const routeMap = ROUTE_PLAN || {};
@@ -176,6 +213,34 @@ export default function AppLayout() {
     success: "bg-emerald-100 text-emerald-800",
     error: "bg-red-100 text-red-800",
   };
+
+  // Full-screen Maintenance Mode for merchants (Admins retain access to /admin)
+  if (platformConfig.maintenance_mode && !user?.is_admin) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-20 h-20 rounded-3xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mb-6 shadow-2xl">
+          <AlertTriangle className="w-10 h-10 animate-pulse" />
+        </div>
+        <span className="text-xs font-mono uppercase tracking-widest text-amber-400 font-bold bg-amber-950/60 px-3 py-1 rounded-full border border-amber-800/50 mb-3">
+          Scheduled Platform Maintenance
+        </span>
+        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight max-w-lg mb-3">
+          Dukaan is Updating
+        </h1>
+        <p className="text-sm text-slate-400 max-w-md mb-6 leading-relaxed">
+          Our engineering team is currently deploying an upgrade to enhance system security and speed. All merchant data is safe and transactions will resume momentarily.
+        </p>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => window.location.reload()}
+            className="rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs h-10 px-5"
+          >
+            Check Status Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen ${isPremium ? "premium-app-shell" : "bg-brand-sand"} ${premiumClass}`}>
@@ -352,6 +417,28 @@ export default function AppLayout() {
         </div>
       </header>
 
+      {/* Global Merchant Broadcast Banner */}
+      {platformConfig.announcement && dismissedAnnouncement !== platformConfig.announcement && (
+        <div className="bg-gradient-to-r from-[#1B1464] via-indigo-900 to-[#1B1464] text-white px-4 py-2.5 text-xs font-semibold flex items-center justify-between border-b border-indigo-700/50 shadow-md">
+          <div className="mx-auto max-w-[1400px] flex-1 flex items-center gap-2.5">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+            </span>
+            <span className="text-amber-300 font-bold uppercase tracking-wider text-[10px] bg-amber-400/20 px-2 py-0.5 rounded border border-amber-300/30">
+              Announcement
+            </span>
+            <span className="text-white font-medium">{platformConfig.announcement}</span>
+          </div>
+          <button 
+            onClick={() => setDismissedAnnouncement(platformConfig.announcement)}
+            className="text-white/60 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors ml-3"
+            title="Dismiss notification"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* =====================================================
           CONTENT AREA (SIDEBAR + MAIN)

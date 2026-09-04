@@ -233,6 +233,21 @@ export default function AdminSubscriptions() {
       const gstRes = await api.get("/admin/gst-requests", { params: { status: gstStatus } }).catch(() => ({ data: [] }));
       setGstRows(Array.isArray(gstRes.data) ? gstRes.data : []);
 
+      // 5. Platform Config (Maintenance Mode & Broadcast)
+      api.get("/platform/config").then(res => {
+        if (res?.data) {
+          if (typeof res.data.maintenance_mode === "boolean") {
+            setMaintenanceMode(res.data.maintenance_mode);
+            if (res.data.maintenance_mode) localStorage.setItem("dukaan_platform_maintenance", "true");
+            else localStorage.removeItem("dukaan_platform_maintenance");
+          }
+          if (typeof res.data.announcement === "string") {
+            setAnnouncement(res.data.announcement);
+            localStorage.setItem("dukaan_platform_announcement", res.data.announcement);
+          }
+        }
+      }).catch(() => {});
+
     } catch (e) {
       console.warn("Failed to refresh admin data:", e);
     }
@@ -1393,13 +1408,18 @@ export default function AdminSubscriptions() {
                     <div className="text-[11px] text-slate-400">Current status: {maintenanceMode ? "ENABLED" : "DISABLED"}</div>
                   </div>
                   <Button
-                    onClick={() => {
+                    onClick={async () => {
                       const next = !maintenanceMode;
                       setMaintenanceMode(next);
                       if (next) localStorage.setItem("dukaan_platform_maintenance", "true");
                       else localStorage.removeItem("dukaan_platform_maintenance");
+                      try {
+                        await api.post("/platform/config", { maintenance_mode: next });
+                      } catch (e) {
+                        console.warn("Failed to sync maintenance mode:", e);
+                      }
                       addAuditLog("TOGGLE_MAINTENANCE", "PLATFORM", next ? "Enabled" : "Disabled");
-                      toast.success(next ? "Maintenance mode activated." : "Maintenance mode disabled.");
+                      toast.success(next ? "Maintenance mode activated across cloud." : "Maintenance mode disabled across cloud.");
                     }}
                     className={`font-bold text-xs rounded-xl h-9 px-4 ${
                       maintenanceMode ? "bg-rose-600 hover:bg-rose-500 text-white" : "bg-slate-800 hover:bg-slate-700 text-slate-200"
@@ -1432,9 +1452,14 @@ export default function AdminSubscriptions() {
                   <div className="flex items-center justify-between">
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         setAnnouncement("");
                         localStorage.removeItem("dukaan_platform_announcement");
+                        try {
+                          await api.post("/platform/config", { announcement: "" });
+                        } catch (e) {
+                          console.warn("Failed to clear broadcast:", e);
+                        }
                         toast.success("Broadcast cleared.");
                       }}
                       className="text-xs text-slate-500 hover:text-slate-400 underline"
@@ -1442,10 +1467,16 @@ export default function AdminSubscriptions() {
                       Clear Broadcast
                     </button>
                     <Button
-                      onClick={() => {
-                        localStorage.setItem("dukaan_platform_announcement", announcement.trim());
-                        addAuditLog("BROADCAST_ANNOUNCEMENT", "ALL_MERCHANTS", announcement.trim());
-                        toast.success("Broadcast message published live!");
+                      onClick={async () => {
+                        const msg = announcement.trim();
+                        localStorage.setItem("dukaan_platform_announcement", msg);
+                        try {
+                          await api.post("/platform/config", { announcement: msg });
+                        } catch (e) {
+                          console.warn("Failed to sync broadcast:", e);
+                        }
+                        addAuditLog("BROADCAST_ANNOUNCEMENT", "ALL_MERCHANTS", msg);
+                        toast.success("Broadcast message published live to all merchant stores!");
                       }}
                       className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl h-9 px-4"
                     >

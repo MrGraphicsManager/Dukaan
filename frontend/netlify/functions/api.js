@@ -9,6 +9,13 @@ const EMAIL_FROM = "Dukaan <contact@officialdukaan.in>";
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://officialdukaan.in";
 const ADMIN_EMAIL = "contact@officialdukaan.in";
 
+// Global Platform Configuration (Broadcasts & Maintenance Mode)
+let globalPlatformConfig = {
+  maintenance_mode: false,
+  announcement: "",
+  updated_at: new Date().toISOString()
+};
+
 // Core SMTPS socket sender with RFC 822 Base64 Transfer Encoding (100% GoDaddy / Secureserver compliant)
 function sendMailSocket({ host, port, user, pass, to, subject, html }) {
   return new Promise((resolve, reject) => {
@@ -797,6 +804,30 @@ exports.handler = async (event, context) => {
         statusCode: 200,
         headers,
         body: JSON.stringify({ id: shopId, name: "Apni Dukaan" })
+      };
+    }
+
+    // 12. PLATFORM CONFIG (Maintenance Mode & Global Merchant Broadcast)
+    if (path === "/platform/config" && event.httpMethod === "GET") {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(globalPlatformConfig)
+      };
+    }
+
+    if (path === "/platform/config" && event.httpMethod === "POST") {
+      if (typeof body.maintenance_mode === "boolean") {
+        globalPlatformConfig.maintenance_mode = body.maintenance_mode;
+      }
+      if (typeof body.announcement === "string") {
+        globalPlatformConfig.announcement = body.announcement;
+      }
+      globalPlatformConfig.updated_at = new Date().toISOString();
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ ok: true, config: globalPlatformConfig })
       };
     }
 
