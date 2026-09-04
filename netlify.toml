@@ -17,3 +17,4 @@
 
 [build.environment]
   CI = "false"
+  REACT_APP_GOOGLE_CLIENT_ID = "682420913410-dfarb0n3e5a44vsh32fh1hh5j4ig0n6r.apps.googleusercontent.com"
