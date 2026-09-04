@@ -122,6 +122,7 @@ export default function AppLayout() {
   const { user, shops, currentShopId, setActiveShop, logout, lang, setLang } = useAuth();
   const nav = useNavigate();
   const activeShop = (shops || []).find(s => s?.id === currentShopId) || shops?.[0] || { name: "Apni Dukaan" };
+  const currentShop = activeShop;
   const [subscription, setSubscription] = useState(() => {
     let localSub = user?.subscription || null;
     if (!localSub) {
@@ -364,7 +365,7 @@ export default function AppLayout() {
                   PREMIUM MERCHANT
                 </span>
               )}
-              {(user?.is_verified || currentShop?.gst_status === "approved") && (
+              {(user?.is_verified || user?.is_verified_store || currentShop?.gst_status === "approved") && (
                 <span className="hidden lg:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono" title="Verified Dukaan Merchant">
                   <ShieldCheck className="w-3 h-3 text-emerald-600" /> VERIFIED
                 </span>
