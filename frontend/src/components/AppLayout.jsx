@@ -382,7 +382,7 @@ export default function AppLayout() {
             })}
             {user?.is_admin && (
               <NavLink
-                to="/app/admin"
+                to="/admin"
                 data-testid="nav-admin"
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive ? "bg-brand-terracotta text-white" : "text-brand-terracotta hover:bg-brand-terracotta/10"}`

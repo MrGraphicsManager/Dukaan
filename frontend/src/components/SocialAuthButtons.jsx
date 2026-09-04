@@ -97,7 +97,11 @@ export default function SocialAuthButtons({ mode = "login", onSuccess }) {
           const exp = new Date(s.expires_at).getTime();
           return !isNaN(exp) && exp > Date.now();
         };
-        const hasSub = Boolean(res.user?.is_admin || isSubActive(sub));
+        if (res.user?.is_admin || res.user?.email?.toLowerCase() === "contact@officialdukaan.in") {
+          nav("/admin");
+          return;
+        }
+        const hasSub = Boolean(isSubActive(sub));
         if (onSuccess) onSuccess(res.user);
         else nav(hasSub ? "/app" : "/subscribe");
       } else {

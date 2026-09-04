@@ -81,7 +81,11 @@ export default function Login() {
             const exp = new Date(sub.expires_at).getTime();
             return !isNaN(exp) && exp > Date.now();
           };
-          const hasActiveSub = Boolean(currentUser?.is_admin || isSubActive(currentUser?.subscription));
+          if (currentUser?.is_admin || currentUser?.email?.toLowerCase() === "contact@officialdukaan.in") {
+            nav("/admin");
+            return;
+          }
+          const hasActiveSub = Boolean(isSubActive(currentUser?.subscription));
           if (!hasActiveSub) {
             nav("/subscribe");
           } else {

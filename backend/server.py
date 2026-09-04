@@ -124,10 +124,12 @@ def _set_cookie(resp: Response, token: str):
     )
 
 
+ADMIN_EMAIL = "contact@officialdukaan.in"
+
 async def get_admin_user(request: Request) -> dict:
     user = await _get_current_user(request)
-    if not user.get("is_admin"):
-        raise HTTPException(status_code=403, detail="Admin only")
+    if (user.get("email") or "").lower() != ADMIN_EMAIL:
+        raise HTTPException(status_code=403, detail="Admin only. Only contact@officialdukaan.in is authorized.")
     return user
 
 
@@ -849,7 +851,7 @@ async def login(body: LoginIn, response: Response):
             "id": uid,
             "name": user.get("name", ""),
             "email": email,
-            "is_admin": bool(user.get("is_admin")),
+            "is_admin": email.lower() == ADMIN_EMAIL,
             "is_verified": is_verified
         }
     }

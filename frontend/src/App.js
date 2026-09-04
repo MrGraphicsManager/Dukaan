@@ -8,8 +8,7 @@ import {
   Link,
 } from "react-router-dom";
 
-import { Toaster } from "sonner";
-import { AuthProvider, useAuth } from "@/lib/AuthContext";
+import { AuthProvider, useAuth, isAdminEmail } from "@/lib/AuthContext";
 
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
@@ -64,8 +63,13 @@ function Protected({ children }) {
     return <Navigate to={`/login?next=${encodeURIComponent(loc.pathname)}`} replace />;
   }
 
+  // Admin should only see the Admin Portal, not the merchant store dashboard
+  if (user.is_admin || isAdminEmail(user.email)) {
+    return <Navigate to="/admin" replace />;
+  }
+
   // If email is not verified, redirect to email verification
-  if (user.is_verified === false && !user.is_admin) {
+  if (user.is_verified === false) {
     return <Navigate to={`/verify-email?email=${encodeURIComponent(user.email || "")}`} replace />;
   }
 
@@ -79,7 +83,7 @@ function Protected({ children }) {
   }
 
   // If user has no active subscription and is not admin, redirect to subscribe
-  const hasActiveSub = Boolean(user.is_admin || isSubActive(sub));
+  const hasActiveSub = Boolean(isSubActive(sub));
   if (!hasActiveSub && !loc.pathname.startsWith("/app/billing") && !loc.pathname.startsWith("/app/settings")) {
     return <Navigate to="/subscribe" replace />;
   }
@@ -193,9 +197,23 @@ function LaunchController() {
         element={<Subscribe />}
       />
 
+      {/* ===================================================
+          MASTER ADMIN PORTAL (Standalone Layout & Security)
+      =================================================== */}
+
+      <Route
+        path="/admin"
+        element={<AdminSubscriptions />}
+      />
+
+      <Route
+        path="/app/admin"
+        element={<Navigate to="/admin" replace />}
+      />
+
 
       {/* ===================================================
-          PROTECTED APP
+          PROTECTED MERCHANT APP
       =================================================== */}
 
       <Route
@@ -346,16 +364,6 @@ function LaunchController() {
         />
 
 
-        {/* =================================================
-            ADMIN
-        ================================================= */}
-
-        <Route
-          path="/app/admin"
-          element={
-            <AdminSubscriptions />
-          }
-        />
 
 
         {/* =================================================

@@ -164,7 +164,11 @@ export default function GoogleAuthCallback() {
             const exp = new Date(s.expires_at).getTime();
             return !isNaN(exp) && exp > Date.now();
           };
-          const hasSub = Boolean(userObj?.is_admin || isSubActive(sub));
+          if (userObj?.is_admin || userObj?.email?.toLowerCase() === "contact@officialdukaan.in") {
+            nav('/admin');
+            return;
+          }
+          const hasSub = Boolean(isSubActive(sub));
           nav(hasSub ? '/app' : '/subscribe');
         } else {
           toast.error(loginRes.error || 'Failed to complete Google authentication.');

@@ -17,11 +17,24 @@ const DEFAULT_SHOP = {
   store_active: true,
 };
 
+export const ADMIN_EMAIL = "contact@officialdukaan.in";
+export const isAdminEmail = (email) => (email || "").toLowerCase().trim() === ADMIN_EMAIL;
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
       const stored = localStorage.getItem("dukaan_user");
-      return stored ? JSON.parse(stored) : null;
+      if (!stored) return null;
+      const parsed = JSON.parse(stored);
+      // Admin account (contact@officialdukaan.in) must NOT auto-login!
+      // Every time login is required.
+      if (parsed && (isAdminEmail(parsed.email) || parsed.is_admin)) {
+        const isSessionAuth = sessionStorage.getItem("dukaan_admin_authenticated");
+        if (!isSessionAuth) {
+          return null; // Never auto-login admin across browser restarts/reloads
+        }
+      }
+      return parsed;
     } catch {
       return null;
     }
@@ -150,6 +163,14 @@ export function AuthProvider({ children }) {
     try {
       const { data } = await api.get("/auth/me");
       if (data && data.email) {
+        // If this is an admin account, ensure session is authenticated in this browser tab
+        if (isAdminEmail(data.email) || data.is_admin) {
+          const isSessionAuth = sessionStorage.getItem("dukaan_admin_authenticated");
+          if (!isSessionAuth) {
+            setUser(null);
+            return null;
+          }
+        }
         // Retain local subscription if backend doesn't return one or if local one has valid active days
         const stored = localStorage.getItem("dukaan_user");
         let localSub = null;
@@ -161,8 +182,10 @@ export function AuthProvider({ children }) {
             localIsPremium = Boolean(parsed.is_premium);
           } catch {}
         }
+        const isUserAdmin = isAdminEmail(data.email);
         const finalUser = {
           ...data,
+          is_admin: isUserAdmin,
           subscription: data.subscription || localSub || null,
           is_premium: data.is_premium || localIsPremium || (data.subscription?.plan === "premium") || (localSub?.plan === "premium")
         };
@@ -178,6 +201,14 @@ export function AuthProvider({ children }) {
         try {
           const current = JSON.parse(stored);
           if (current && current.email) {
+            if (isAdminEmail(current.email) || current.is_admin) {
+              const isSessionAuth = sessionStorage.getItem("dukaan_admin_authenticated");
+              if (!isSessionAuth) {
+                setUser(null);
+                return null;
+              }
+            }
+            current.is_admin = isAdminEmail(current.email);
             setUser(current);
             return current;
           }
@@ -203,12 +234,13 @@ export function AuthProvider({ children }) {
       regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
     } catch {}
 
+    const isUserAdmin = isAdminEmail(cleanEmail);
     const localFound = regUsers.find(u => u.email && u.email.toLowerCase() === cleanEmail);
     if (localFound) {
       if (localFound.password && localFound.password !== password) {
         return { ok: false, error: "Incorrect password. Please try again." };
       }
-      if (localFound.is_verified === false && !localFound.is_admin) {
+      if (localFound.is_verified === false && !isUserAdmin) {
         return {
           ok: false,
           error: "Please verify your email address before signing in.",
@@ -227,12 +259,21 @@ export function AuthProvider({ children }) {
       if (data?.access_token) {
         localStorage.setItem("dukaan_access_token", data.access_token);
       }
+      
+      if (isUserAdmin) {
+        sessionStorage.setItem("dukaan_admin_authenticated", "true");
+      } else {
+        sessionStorage.removeItem("dukaan_admin_authenticated");
+      }
+
       const u = await refresh();
       const finalUser = {
         ...(localFound || {}),
         ...(data?.user || {}),
         ...(u || {}),
         name: localFound?.name || data?.user?.name || cleanEmail.split("@")[0],
+        email: cleanEmail,
+        is_admin: isUserAdmin,
         subscription: localFound?.subscription || data?.user?.subscription || u?.subscription || null
       };
       setUser(finalUser);
@@ -269,6 +310,13 @@ export function AuthProvider({ children }) {
         return { ok: false, error: "No account found with this email. Please create an account." };
       }
 
+      if (isUserAdmin) {
+        sessionStorage.setItem("dukaan_admin_authenticated", "true");
+      } else {
+        sessionStorage.removeItem("dukaan_admin_authenticated");
+      }
+
+      localFound.is_admin = isUserAdmin;
       setUser(localFound);
       localStorage.setItem("dukaan_user", JSON.stringify(localFound));
       return { ok: true, user: localFound };
@@ -469,13 +517,22 @@ export function AuthProvider({ children }) {
     }
 
     // 2. Check local database for existing subscriptions / account history
+    const isUserAdmin = isAdminEmail(cleanEmail);
+    socialUser.is_admin = isUserAdmin;
+    if (isUserAdmin) {
+      sessionStorage.setItem("dukaan_admin_authenticated", "true");
+    } else {
+      sessionStorage.removeItem("dukaan_admin_authenticated");
+    }
+
     try {
       let regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
       const existing = regUsers.find(ru => ru.email && ru.email.toLowerCase() === cleanEmail);
       if (existing) {
         socialUser.id = existing.id || socialUser.id;
         if (existing.subscription) socialUser.subscription = existing.subscription;
-        if (existing.is_admin) socialUser.is_admin = true;
+        socialUser.is_admin = isUserAdmin;
+        existing.is_admin = isUserAdmin;
         existing.is_verified = true;
         existing.provider = provider;
         existing.name = cleanName;
@@ -582,9 +639,19 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try { await api.post("/auth/logout"); } catch {}
+    sessionStorage.removeItem("dukaan_admin_authenticated");
     localStorage.removeItem("dukaan_access_token");
     localStorage.removeItem("dukaan_user");
     setUser(null);
+  };
+
+  const lockAdminConsole = async () => {
+    sessionStorage.removeItem("dukaan_admin_authenticated");
+    await logout();
+  };
+
+  const verifyAdminSession = async (password) => {
+    return login(ADMIN_EMAIL, password);
   };
 
   const changeLang = (l) => { setLang(l); localStorage.setItem("dukaan_lang", l); };
@@ -593,7 +660,8 @@ export function AuthProvider({ children }) {
     <AuthCtx.Provider value={{
       user, shops, currentShopId, setActiveShop, loadShops, updateShop,
       login, register, verifyEmail, resendVerification, logout, refresh, lang, setLang: changeLang,
-      loginWithGoogle, loginWithApple, updateUser, updateProfile, changePassword
+      loginWithGoogle, loginWithApple, updateUser, updateProfile, changePassword,
+      lockAdminConsole, verifyAdminSession, ADMIN_EMAIL, isAdminEmail
     }}>
       {children}
     </AuthCtx.Provider>
