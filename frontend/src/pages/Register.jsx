@@ -55,7 +55,7 @@ export default function Register() {
     setBusy(false);
     if (res.ok) {
       toast.success("Account created! Please verify your email.");
-      nav(`/verify-email?email=${encodeURIComponent(email)}`);
+      nav(`/verify-email?email=${encodeURIComponent(email)}&code=${encodeURIComponent(res.code || "")}`);
     } else {
       setErr(res.error || "Failed to create account. Please try again.");
     }

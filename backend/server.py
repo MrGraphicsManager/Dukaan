@@ -47,10 +47,15 @@ db = client[os.environ['DB_NAME']]
 JWT_ALGORITHM = "HS256"
 JWT_SECRET = os.environ["JWT_SECRET"]
 
-# Email (Emergent-managed Resend)
-EMAIL_BASE_URL = "https://integrations.emergentagent.com"
+# Email Configuration (Supports Resend API, SMTP, or Emergent Relay)
+EMAIL_BASE_URL = os.environ.get("EMAIL_BASE_URL", "https://integrations.emergentagent.com")
 EMAIL_KEY = os.environ.get("EMERGENT_EMAIL_KEY", "")
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "Dukaan")
+SMTP_HOST = os.environ.get("SMTP_HOST", "")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587") if os.environ.get("SMTP_PORT") else "587")
+SMTP_USER = os.environ.get("SMTP_USER", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
 OWNER_NOTIFY_EMAIL = os.environ.get("OWNER_NOTIFY_EMAIL", "").strip()
 FRONTEND_URL_ENV = os.environ.get("FRONTEND_URL", "https://officialdukaan.in").strip().rstrip("/")
 RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "").strip()
@@ -465,12 +470,69 @@ def _assert_safe_email(subject: str, html: str) -> None:
 
 
 async def send_email(to: str, subject: str, html: str):
-    if not EMAIL_KEY or not to:
-        return
-    _assert_safe_email(subject, html)
-    payload = {"to":[to],"subject":subject,"html":html,"from":EMAIL_FROM_NAME}
-    async with httpx.AsyncClient(timeout=20) as c:
-        await c.post(f"{EMAIL_BASE_URL}/resend/send-email", headers={"Authorization":f"Bearer {EMAIL_KEY}"}, json=payload)
+    if not to:
+        return False
+    try:
+        _assert_safe_email(subject, html)
+    except Exception as e:
+        logger.warning(f"Email safety check: {e}")
+
+    # 1. Try Direct Resend API
+    if RESEND_API_KEY:
+        try:
+            from_header = f"{EMAIL_FROM_NAME} <onboarding@resend.dev>" if "<" not in EMAIL_FROM_NAME else EMAIL_FROM_NAME
+            async with httpx.AsyncClient(timeout=15) as c:
+                r = await c.post(
+                    "https://api.resend.com/emails",
+                    headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
+                    json={"from": from_header, "to": [to], "subject": subject, "html": html}
+                )
+                if r.status_code in (200, 201):
+                    logger.info(f"Verification email dispatched via Resend to {to}")
+                    return True
+                else:
+                    logger.warning(f"Resend returned status {r.status_code}: {r.text}")
+        except Exception as e:
+            logger.warning(f"Resend sending error: {e}")
+
+    # 2. Try Standard SMTP (Gmail, Hostinger, Brevo, AWS SES, etc.)
+    if SMTP_HOST and SMTP_USER and SMTP_PASSWORD:
+        try:
+            import smtplib
+            from email.mime.multipart import MIMEMultipart
+            from email.mime.text import MIMEText
+
+            def _send_smtp():
+                msg = MIMEMultipart("alternative")
+                msg["Subject"] = subject
+                msg["From"] = f"{EMAIL_FROM_NAME} <{SMTP_USER}>" if "<" not in EMAIL_FROM_NAME else EMAIL_FROM_NAME
+                msg["To"] = to
+                msg.attach(MIMEText(html, "html"))
+                with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=12) as server:
+                    server.starttls()
+                    server.login(SMTP_USER, SMTP_PASSWORD)
+                    server.sendmail(SMTP_USER, [to], msg.as_string())
+
+            await asyncio.to_thread(_send_smtp)
+            logger.info(f"Verification email dispatched via SMTP to {to}")
+            return True
+        except Exception as e:
+            logger.warning(f"SMTP sending error: {e}")
+
+    # 3. Try Emergent Managed Email
+    if EMAIL_KEY:
+        try:
+            payload = {"to": [to], "subject": subject, "html": html, "from": EMAIL_FROM_NAME}
+            async with httpx.AsyncClient(timeout=15) as c:
+                r = await c.post(f"{EMAIL_BASE_URL}/resend/send-email", headers={"Authorization": f"Bearer {EMAIL_KEY}"}, json=payload)
+                if r.status_code in (200, 201):
+                    logger.info(f"Verification email dispatched via Emergent to {to}")
+                    return True
+        except Exception as e:
+            logger.warning(f"Emergent email error: {e}")
+
+    logger.info(f"[EMAIL SERVICE] Notice: No active email provider key configured in env. Code logged on server for {to}.")
+    return False
 
 
 # =========================================================

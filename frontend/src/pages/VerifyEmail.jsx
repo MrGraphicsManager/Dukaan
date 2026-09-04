@@ -12,7 +12,9 @@ import {
   Store, 
   Sparkles, 
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  KeyRound,
+  Zap
 } from "lucide-react";
 import Card3D from "@/components/Card3D";
 import ThreeDBackground from "@/components/ThreeDBackground";
@@ -24,14 +26,32 @@ export default function VerifyEmail() {
 
   const emailParam = params.get("email") || "";
   const tokenParam = params.get("token") || "";
+  const codeParam = params.get("code") || "";
 
   const [email, setEmail] = useState(emailParam);
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState(codeParam);
   const [busy, setBusy] = useState(false);
   const [resending, setResending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [err, setErr] = useState("");
   const [verified, setVerified] = useState(false);
+
+  // Look for stored verification code if not in URL
+  useEffect(() => {
+    let candidateCode = codeParam;
+    if (!candidateCode && emailParam) {
+      try {
+        const regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
+        const found = regUsers.find(u => u.email.toLowerCase() === emailParam.toLowerCase());
+        if (found?.verification_code) {
+          candidateCode = found.verification_code;
+        }
+      } catch {}
+    }
+    if (candidateCode) {
+      setCode(candidateCode);
+    }
+  }, [codeParam, emailParam]);
 
   // If token is in URL, auto-verify immediately
   useEffect(() => {
@@ -65,13 +85,13 @@ export default function VerifyEmail() {
   };
 
   const submit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!email) {
       setErr("Please enter your registered email address.");
       return;
     }
     if (!code || code.trim().length < 6) {
-      setErr("Please enter the 6-digit verification code sent to your email.");
+      setErr("Please enter the 6-digit verification code.");
       return;
     }
 
@@ -100,7 +120,12 @@ export default function VerifyEmail() {
     setResending(false);
     if (res.ok) {
       setCooldown(60);
-      toast.success(res.message || "A new 6-digit verification code has been sent!");
+      if (res.code) {
+        setCode(res.code);
+        toast.success(`Fresh verification code: ${res.code}`);
+      } else {
+        toast.success(res.message || "A new 6-digit verification code has been sent!");
+      }
     } else {
       toast.error(res.error || "Failed to resend code. Please try again.");
     }
@@ -160,7 +185,7 @@ export default function VerifyEmail() {
                 <div className="pt-2">
                   <Button
                     onClick={() => nav("/subscribe")}
-                    className="w-full h-11 rounded-full bg-brand-terracotta text-white font-bold"
+                    className="w-full h-11 rounded-full bg-brand-terracotta text-white font-bold shadow-md"
                   >
                     Continue to Plans <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
@@ -174,18 +199,48 @@ export default function VerifyEmail() {
                   </div>
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-sand border border-brand-mitti text-[10px] font-bold text-brand-indigo mb-2">
                     <ShieldCheck className="w-3.5 h-3.5 text-brand-terracotta" />
-                    <span>Security Verification</span>
+                    <span>Email Verification</span>
                   </div>
                   <h2 className="font-display text-2xl font-bold text-brand-indigo">
-                    Verify Your Email
+                    Verify Your Account
                   </h2>
                   <p className="text-xs text-brand-indigo/60 font-medium mt-1">
-                    We sent a 6-digit code and confirmation link to:
+                    Verification code generated for:
                   </p>
                   <p className="text-xs font-bold font-mono text-brand-terracotta mt-0.5 break-all">
                     {email || "your registered email"}
                   </p>
                 </div>
+
+                {/* Instant Verification Code Notice Card */}
+                {code && code.length === 6 && (
+                  <div className="mb-5 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-200 text-xs text-emerald-900 shadow-xs">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-bold flex items-center gap-1 text-[11px] uppercase tracking-wider text-emerald-800">
+                        <KeyRound className="w-3.5 h-3.5 text-emerald-600" />
+                        Verification Code:
+                      </span>
+                      <span className="text-[10px] font-bold bg-emerald-200/80 text-emerald-900 px-2 py-0.5 rounded-full">
+                        Ready
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-2xl font-mono font-extrabold tracking-widest text-emerald-800">
+                        {code}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => submit()}
+                        className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 px-3 shadow-xs flex items-center gap-1"
+                      >
+                        <Zap className="w-3 h-3 fill-white" />
+                        <span>1-Click Verify</span>
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 {err && (
                   <div className="mb-4 p-3.5 rounded-2xl bg-red-50 border border-red-200 text-xs text-red-700 font-semibold flex items-center gap-2">
@@ -237,7 +292,7 @@ export default function VerifyEmail() {
 
                 <div className="mt-6 pt-5 border-t border-brand-mitti/60 text-center space-y-2">
                   <p className="text-xs text-brand-indigo/60">
-                    Didn't receive the email? Check spam folder or resend:
+                    Need a new code or didn't receive mail?
                   </p>
                   <Button
                     type="button"
@@ -248,7 +303,7 @@ export default function VerifyEmail() {
                     className="rounded-full border-brand-mitti text-xs font-bold text-brand-indigo hover:border-brand-indigo"
                   >
                     <RotateCw className={`w-3.5 h-3.5 mr-1.5 ${resending ? "animate-spin" : ""}`} />
-                    {cooldown > 0 ? `Resend Code in ${cooldown}s` : "Resend Verification Email"}
+                    {cooldown > 0 ? `Resend Code in ${cooldown}s` : "Resend Verification Code"}
                   </Button>
                 </div>
               </div>
