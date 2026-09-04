@@ -427,6 +427,31 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // 5B. GOOGLE CODE EXCHANGE
+    if (path === "/auth/google-exchange" && event.httpMethod === "POST") {
+      const code = body.code;
+      const redirect_uri = body.redirect_uri || `${FRONTEND_URL}/auth/google/callback`;
+      if (!code) {
+        return { statusCode: 400, headers, body: JSON.stringify({ detail: "Missing code" }) };
+      }
+      try {
+        const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            code,
+            client_id: process.env.REACT_APP_GOOGLE_CLIENT_ID || "682420913410-dfarb0n3e5a44vsh32fh1hh5j4ig0n6r.apps.googleusercontent.com",
+            redirect_uri,
+            grant_type: "authorization_code"
+          }).toString()
+        });
+        const tokenData = await tokenRes.json();
+        return { statusCode: tokenRes.status || 200, headers, body: JSON.stringify(tokenData) };
+      } catch (err) {
+        return { statusCode: 500, headers, body: JSON.stringify({ detail: err.message }) };
+      }
+    }
+
     // 6. GENERIC SEND EMAIL
     if (path === "/send-email" && event.httpMethod === "POST") {
       const { to, subject, html } = body;

@@ -1,72 +1,138 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
+import { api } from '@/lib/api';
 import { toast } from 'sonner';
+
+function decodeGoogleJwt(jwt) {
+  if (!jwt || typeof jwt !== 'string') return null;
+  const parts = jwt.split('.');
+  if (parts.length < 2) return null;
+  try {
+    let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4 !== 0) {
+      base64 += '=';
+    }
+    const binaryStr = atob(base64);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
+    const decoded = new TextDecoder('utf-8').decode(bytes);
+    return JSON.parse(decoded);
+  } catch (e1) {
+    try {
+      let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      while (base64.length % 4 !== 0) base64 += '=';
+      return JSON.parse(decodeURIComponent(escape(atob(base64))));
+    } catch (e2) {
+      console.warn('JWT Decode failed:', e1, e2);
+      return null;
+    }
+  }
+}
 
 export default function GoogleAuthCallback() {
   const nav = useNavigate();
   const location = useLocation();
   const { loginWithGoogle } = useAuth();
   const [statusText, setStatusText] = useState('Connecting to Google Accounts...');
+  const processedRef = useRef(false);
 
   useEffect(() => {
+    if (processedRef.current) return;
+    processedRef.current = true;
+
     const processGoogleAuth = async () => {
       try {
-        const hash = window.location.hash.substring(1);
-        const search = window.location.search.substring(1);
-        const params = new URLSearchParams(hash || search);
+        const getParam = (key) => {
+          const sources = [
+            window.location.hash.replace(/^#/, ''),
+            window.location.search.replace(/^\?/, ''),
+            (location.hash || '').replace(/^#/, ''),
+            (location.search || '').replace(/^\?/, '')
+          ];
+          for (const src of sources) {
+            if (!src) continue;
+            const p = new URLSearchParams(src);
+            const val = p.get(key);
+            if (val) return val;
+          }
+          const m = window.location.href.match(new RegExp('[#?&]' + key + '=([^&]+)'));
+          if (m) {
+            try { return decodeURIComponent(m[1]); } catch(e) { return m[1]; }
+          }
+          return null;
+        };
 
-        const accessToken = params.get('access_token');
-        const idToken = params.get('id_token');
-        const error = params.get('error');
+        const error = getParam('error');
+        const errorDesc = getParam('error_description');
 
         if (error) {
-          toast.error('Google Sign-In cancelled or error: ' + error);
+          toast.error('Google Sign-In cancelled or error: ' + (errorDesc || error));
           nav('/login');
           return;
+        }
+
+        let idToken = getParam('id_token') || getParam('credential');
+        let accessToken = getParam('access_token');
+        const code = getParam('code');
+
+        // If Google returned authorization code, exchange it via serverless endpoint
+        if (code && !idToken && !accessToken) {
+          setStatusText('Exchanging authorization code with Google...');
+          try {
+            const redirectUri = `${window.location.origin}/auth/google/callback`;
+            const { data } = await api.post('/auth/google-exchange', { code, redirect_uri: redirectUri });
+            if (data?.id_token) idToken = data.id_token;
+            if (data?.access_token) accessToken = data.access_token;
+          } catch (e) {
+            console.warn('Code exchange error:', e);
+          }
         }
 
         let email = '';
         let name = 'Google User';
         let avatar = '';
 
+        // 1. Decode ID Token JWT with robust UTF-8 support
         if (idToken) {
-          try {
-            const base64Url = idToken.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(
-              atob(base64)
-                .split('')
-                .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-                .join('')
-            );
-            const payload = JSON.parse(jsonPayload);
-            email = payload.email;
-            name = payload.name || payload.given_name || 'Google User';
-            avatar = payload.picture || '';
-          } catch (e) {
-            console.warn('Could not parse Google ID Token locally:', e);
+          const payload = decodeGoogleJwt(idToken);
+          if (payload) {
+            email = payload.email || email;
+            name = payload.name || payload.given_name || name;
+            avatar = payload.picture || avatar;
           }
         }
 
+        // 2. Query Google UserInfo API if access_token is present and profile needs enrichment
         if (accessToken && (!email || !avatar)) {
           setStatusText('Retrieving your Google profile...');
-          try {
-            const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-              headers: { Authorization: 'Bearer ' + accessToken },
-            });
-            if (res.ok) {
-              const profile = await res.json();
-              email = profile.email || email;
-              name = profile.name || profile.given_name || name;
-              avatar = profile.picture || avatar;
+          const endpoints = [
+            'https://www.googleapis.com/oauth2/v3/userinfo',
+            'https://openidconnect.googleapis.com/v1/userinfo',
+            'https://www.googleapis.com/userinfo/v2/me'
+          ];
+          for (const ep of endpoints) {
+            try {
+              const res = await fetch(ep, {
+                headers: { Authorization: 'Bearer ' + accessToken },
+              });
+              if (res.ok) {
+                const profile = await res.json();
+                if (profile.email) email = profile.email;
+                if (profile.name) name = profile.name || profile.given_name;
+                if (profile.picture) avatar = profile.picture;
+                if (email) break;
+              }
+            } catch (e) {
+              console.warn('Could not fetch userinfo from Google API endpoint:', ep, e);
             }
-          } catch (e) {
-            console.warn('Could not fetch userinfo from Google API:', e);
           }
         }
 
         if (!email) {
+          console.error('Google Auth Failed. Current URL was:', window.location.href);
           toast.error('Could not retrieve email from Google. Please try signing in again.');
           nav('/login');
           return;

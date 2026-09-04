@@ -21,23 +21,24 @@ export default function SocialAuthButtons({ mode = "login", onSuccess }) {
     setBusyProvider("google");
     try {
       const clientId =
-        process.env.REACT_APP_GOOGLE_CLIENT_ID ||
-        OFFICIAL_GOOGLE_CLIENT_ID;
+        (process.env.REACT_APP_GOOGLE_CLIENT_ID || OFFICIAL_GOOGLE_CLIENT_ID).trim();
 
       const redirectUri = `${window.location.origin}/auth/google/callback`;
-      const state = Math.random().toString(36).substring(2);
+      const state = Math.random().toString(36).substring(2) + Date.now().toString(36);
       const nonce = String(Date.now());
-      const authUrl =
-        "https://accounts.google.com/o/oauth2/v2/auth?" +
-        new URLSearchParams({
-          client_id: clientId.trim(),
-          redirect_uri: redirectUri,
-          response_type: "token id_token",
-          scope: "openid email profile",
-          prompt: "select_account",
-          nonce: nonce,
-          state: state,
-        }).toString();
+
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: "token id_token",
+        scope: "openid email profile https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
+        prompt: "select_account",
+        nonce: nonce,
+        state: state,
+      });
+
+      // Strict RFC 6749 encoding (%20 instead of + for response_type and scopes)
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString().replace(/\+/g, "%20")}`;
 
       // Directly redirect to real accounts.google.com
       window.location.href = authUrl;
