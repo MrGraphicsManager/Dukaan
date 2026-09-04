@@ -275,7 +275,7 @@ export function AuthProvider({ children }) {
         const idx = regUsers.findIndex(ru => ru.email.toLowerCase() === cleanEmail);
         if (idx >= 0) {
           const u = regUsers[idx];
-          if (u.verification_code === cleanInput || u.verification_token === cleanInput || cleanInput.length === 6) {
+          if (u.verification_code && (u.verification_code === cleanInput || u.verification_token === cleanInput)) {
             u.is_verified = true;
             regUsers[idx] = u;
             localStorage.setItem("dukaan_registered_users", JSON.stringify(regUsers));

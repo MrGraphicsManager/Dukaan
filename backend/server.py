@@ -40,12 +40,12 @@ from whatsapp_integration import reminder_loop
 # =========================================================
 # Setup
 # =========================================================
-mongo_url = os.environ['MONGO_URL']
+mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+db = client[os.environ.get('DB_NAME', 'dukaan')]
 
 JWT_ALGORITHM = "HS256"
-JWT_SECRET = os.environ["JWT_SECRET"]
+JWT_SECRET = os.environ.get("JWT_SECRET", "dukaan_secret_jwt_key_2026")
 
 # Email Configuration (Supports Resend API, SMTP, or Emergent Relay)
 EMAIL_BASE_URL = os.environ.get("EMAIL_BASE_URL", "https://integrations.emergentagent.com")
@@ -505,13 +505,37 @@ async def send_email(to: str, subject: str, html: str):
             def _send_smtp():
                 msg = MIMEMultipart("alternative")
                 msg["Subject"] = subject
-                msg["From"] = f"{EMAIL_FROM_NAME} <{SMTP_USER}>" if "<" not in EMAIL_FROM_NAME else EMAIL_FROM_NAME
+                from_addr = f"{EMAIL_FROM_NAME} <{SMTP_USER}>" if "<" not in EMAIL_FROM_NAME else EMAIL_FROM_NAME
+                msg["From"] = from_addr
                 msg["To"] = to
                 msg.attach(MIMEText(html, "html"))
-                with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=12) as server:
-                    server.starttls()
-                    server.login(SMTP_USER, SMTP_PASSWORD)
-                    server.sendmail(SMTP_USER, [to], msg.as_string())
+                
+                port = int(SMTP_PORT or 465)
+                # Try primary host first, then alternative host as fallback
+                candidate_hosts = [SMTP_HOST]
+                if "secureserver.net" in SMTP_HOST:
+                    candidate_hosts.append("smtp.titan.email")
+                elif "titan.email" in SMTP_HOST:
+                    candidate_hosts.append("smtpout.secureserver.net")
+
+                last_err = None
+                for host in candidate_hosts:
+                    try:
+                        if port == 465:
+                            with smtplib.SMTP_SSL(host, port, timeout=15) as server:
+                                server.login(SMTP_USER, SMTP_PASSWORD)
+                                server.sendmail(SMTP_USER, [to], msg.as_string())
+                        else:
+                            with smtplib.SMTP(host, port, timeout=15) as server:
+                                server.starttls()
+                                server.login(SMTP_USER, SMTP_PASSWORD)
+                                server.sendmail(SMTP_USER, [to], msg.as_string())
+                        return True
+                    except Exception as err:
+                        last_err = err
+                        logger.warning(f"SMTP attempt on {host}:{port} failed: {err}")
+                if last_err:
+                    raise last_err
 
             await asyncio.to_thread(_send_smtp)
             logger.info(f"Verification email dispatched via SMTP to {to}")
