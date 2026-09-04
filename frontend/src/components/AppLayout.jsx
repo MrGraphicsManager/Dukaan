@@ -146,7 +146,7 @@ export default function AppLayout() {
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
-  const isPremium = subscription?.plan === "premium" || user?.subscription?.plan === "premium";
+  const isPremium = subscription?.plan === "premium" || user?.subscription?.plan === "premium" || user?.is_premium || user?.plan === "premium";
   const tierMap = PLAN_TIER || { starter: 1, business: 2, premium: 3 };
   const routeMap = ROUTE_PLAN || {};
   const activePlan = subscription?.plan || user?.subscription?.plan || "starter";
@@ -176,19 +176,27 @@ export default function AppLayout() {
       <header className={`sticky top-0 z-30 backdrop-blur-xl border-b ${isPremium ? "premium-topbar" : "bg-brand-cream/95 border-brand-mitti"}`}>
         <div className="mx-auto max-w-[1400px] px-4 h-16 flex items-center justify-between gap-3">
 
-          {/* Logo */}
+          {/* Logo (Switches to official Premium logo for Premium plan users) */}
           <div className="flex items-center gap-3">
             <button className="md:hidden flex items-center gap-2" onClick={() => nav("/app")} data-testid="topbar-logo" aria-label="Home">
-              <img src="/logo.png" alt="Dukaan" className="h-8 w-auto object-contain" />
+              <img 
+                src={isPremium ? "/logo-premium.png" : "/logo.png"} 
+                alt="Dukaan" 
+                className={`${isPremium ? "h-9 sm:h-10" : "h-8"} w-auto object-contain`} 
+              />
             </button>
             <div className="hidden md:flex items-center gap-2.5">
               <img 
-                src="/logo.png" 
+                src={isPremium ? "/logo-premium.png" : "/logo.png"} 
                 alt="Dukaan" 
-                className="h-9 w-auto object-contain cursor-pointer transition-transform hover:scale-105" 
+                className={`${isPremium ? "h-11 sm:h-12" : "h-9"} w-auto object-contain cursor-pointer transition-transform hover:scale-105 drop-shadow-xs`} 
                 onClick={() => nav("/app")} 
               />
-              {isPremium && <span className="premium-top-label">PREMIUM</span>}
+              {isPremium && (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 text-slate-900 shadow-xs border border-amber-300 font-mono">
+                  PREMIUM MERCHANT
+                </span>
+              )}
             </div>
           </div>
 

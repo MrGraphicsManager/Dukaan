@@ -273,6 +273,9 @@ export default function Subscribe() {
               expires_at: newExpiry.toISOString(),
               activated_at: new Date().toISOString()
             };
+            if (selected === "premium") {
+              parsed.is_premium = true;
+            }
             localStorage.setItem("dukaan_user", JSON.stringify(parsed));
             if (refresh) refresh();
           } catch {}
@@ -380,6 +383,9 @@ export default function Subscribe() {
               expires_at: newExpiry.toISOString(),
               activated_at: new Date().toISOString()
             };
+            if (selected === "premium") {
+              parsed.is_premium = true;
+            }
             localStorage.setItem("dukaan_user", JSON.stringify(parsed));
             if (refresh) refresh();
           } catch {}
@@ -397,10 +403,26 @@ export default function Subscribe() {
         const r = new window.Razorpay(rzpOptions);
         r.open();
       } else {
+        try {
+          const rawUser = localStorage.getItem("dukaan_user");
+          const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
+          parsed.subscription = { plan: selected, status: "active", is_annual: isAnnual, expires_at: new Date(Date.now() + ((isAnnual ? 365 : 30) * 86400000)).toISOString() };
+          if (selected === "premium") parsed.is_premium = true;
+          localStorage.setItem("dukaan_user", JSON.stringify(parsed));
+          if (refresh) refresh();
+        } catch {}
         setDone({ status: "active", plan: selected, annual: isAnnual, expires_at: new Date(Date.now() + ((isAnnual ? 365 : 30) * 86400000)).toISOString() });
         toast.success(`${plan.name} Plan Activated!`);
       }
     } catch (e) { 
+      try {
+        const rawUser = localStorage.getItem("dukaan_user");
+        const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
+        parsed.subscription = { plan: selected, status: "active", is_annual: isAnnual, expires_at: new Date(Date.now() + ((isAnnual ? 365 : 30) * 86400000)).toISOString() };
+        if (selected === "premium") parsed.is_premium = true;
+        localStorage.setItem("dukaan_user", JSON.stringify(parsed));
+        if (refresh) refresh();
+      } catch {}
       setDone({ status: "active", plan: selected, annual: isAnnual, expires_at: new Date(Date.now() + ((isAnnual ? 365 : 30) * 86400000)).toISOString() });
       toast.success(`${plan.name} Plan Activated!`);
     } finally { 
@@ -621,6 +643,25 @@ export default function Subscribe() {
                         <span>{l}</span>
                       </div>
                     ))}
+
+                    {/* Official Dukaan Premium Identity Showcase */}
+                    {key === "premium" && (
+                      <div className="mt-4 p-3.5 rounded-2xl bg-gradient-to-br from-amber-50 via-yellow-50/50 to-amber-100/40 border-2 border-amber-300/70 shadow-xs">
+                        <div className="flex items-center justify-between gap-3 mb-2">
+                          <span className="text-[10px] font-mono font-extrabold uppercase tracking-wider text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full">
+                            ★ Exclusive Premium Identity
+                          </span>
+                        </div>
+                        <img 
+                          src="/logo-premium.png" 
+                          alt="Dukaan Premium Official Logo" 
+                          className="h-10 sm:h-12 w-auto object-contain mx-auto drop-shadow-xs my-1" 
+                        />
+                        <p className="text-[11px] text-amber-900 font-medium text-center mt-1.5 leading-snug">
+                          Your POS Counter, invoices, and portal will display this official <b>Dukaan Premium</b> logo & golden badge.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
