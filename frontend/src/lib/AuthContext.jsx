@@ -235,9 +235,13 @@ export function AuthProvider({ children }) {
     } catch {}
 
     const isUserAdmin = isAdminEmail(cleanEmail);
+    if (isUserAdmin && password !== "Viral@1979") {
+      return { ok: false, error: "Incorrect admin password. Please try again." };
+    }
+
     const localFound = regUsers.find(u => u.email && u.email.toLowerCase() === cleanEmail);
     if (localFound) {
-      if (localFound.password && localFound.password !== password) {
+      if (!isUserAdmin && localFound.password && localFound.password !== password) {
         return { ok: false, error: "Incorrect password. Please try again." };
       }
       if (localFound.is_verified === false && !isUserAdmin) {

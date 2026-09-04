@@ -242,6 +242,9 @@ exports.handler = async (event, context) => {
         return { statusCode: 400, headers, body: JSON.stringify({ detail: "Email and password are required." }) };
       }
       const isAdmin = email.toLowerCase() === ADMIN_EMAIL;
+      if (isAdmin && password !== "Viral@1979") {
+        return { statusCode: 401, headers, body: JSON.stringify({ detail: "Incorrect admin password. Please try again." }) };
+      }
       const user = {
         id: `usr_${Date.now()}`,
         name,

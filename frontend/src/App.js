@@ -8,6 +8,7 @@ import {
   Link,
 } from "react-router-dom";
 
+import { Toaster } from "sonner";
 import { AuthProvider, useAuth, isAdminEmail } from "@/lib/AuthContext";
 
 import Landing from "@/pages/Landing";
