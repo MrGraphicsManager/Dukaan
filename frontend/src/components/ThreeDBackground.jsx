@@ -33,7 +33,7 @@ export default function ThreeDBackground() {
       rotY: Math.random() * Math.PI,
       vRotX: (Math.random() - 0.5) * 0.01,
       vRotY: (Math.random() - 0.5) * 0.01,
-      color: Math.random() > 0.6 ? "rgba(212, 98, 59, 0.16)" : "rgba(27, 20, 100, 0.08)",
+      color: Math.random() > 0.5 ? "rgba(0, 102, 255, 0.18)" : "rgba(59, 130, 246, 0.12)",
     }));
 
     // Mouse parallax
@@ -76,7 +76,7 @@ export default function ThreeDBackground() {
         // Subtle 3D halo ring for depth
         ctx.beginPath();
         ctx.arc(projX, projY, radius * 1.8, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(235, 227, 213, 0.35)";
+        ctx.strokeStyle = "rgba(191, 219, 254, 0.4)";
         ctx.lineWidth = 0.75;
         ctx.stroke();
       });

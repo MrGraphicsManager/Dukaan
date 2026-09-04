@@ -144,8 +144,8 @@ export default function Landing() {
       ========================================================= */}
       <header className="sticky top-0 z-30 bg-brand-cream/85 backdrop-blur-xl border-b border-brand-mitti shadow-xs">
         <div className="mx-auto max-w-6xl px-5 h-20 flex items-center justify-between">
-          <Link to="/" className="font-display text-3xl font-bold tracking-tight flex items-center gap-2 text-brand-indigo" data-testid="landing-logo">
-            <span>Dukaan</span>
+          <Link to="/" className="flex items-center gap-2.5" data-testid="landing-logo">
+            <img src="/logo.png" alt="Dukaan" className="h-9 sm:h-10 w-auto object-contain" />
           </Link>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-brand-indigo/80">
@@ -640,8 +640,8 @@ export default function Landing() {
           FOOTER
       ========================================================= */}
       <footer className="border-t border-brand-mitti bg-white py-12 text-center relative z-10">
-        <div className="font-display text-3xl font-bold mb-3 text-brand-indigo">Dukaan</div>
-        <p className="text-xs text-brand-indigo/60 mb-6">Run Your Dukaan. Smarter.</p>
+        <img src="/logo.png" alt="Dukaan" className="h-9 mx-auto mb-3 object-contain" />
+        <p className="text-xs text-brand-indigo/60 mb-6 font-medium">Run Your Dukaan. Smarter.</p>
         <div className="flex flex-wrap items-center justify-center gap-6 md:gap-8 mb-8 text-sm font-medium">
           <a href="#features" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Features</a>
           <a href="#pricing" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Pricing Plans</a>

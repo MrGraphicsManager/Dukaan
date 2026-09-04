@@ -422,9 +422,8 @@ export default function Subscribe() {
       ========================================================= */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b-2 border-brand-mitti">
         <div className="mx-auto max-w-7xl px-5 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-brand-indigo">
-            <Store className="w-6 h-6 text-brand-terracotta" />
-            <span className="font-display text-2xl font-bold tracking-tight">Dukaan</span>
+          <Link to="/" className="flex items-center gap-2">
+            <img src="/logo.png" alt="Dukaan" className="h-8 w-auto object-contain" />
           </Link>
 
           <div className="flex items-center gap-3">

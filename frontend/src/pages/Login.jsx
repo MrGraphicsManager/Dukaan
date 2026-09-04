@@ -24,6 +24,7 @@ import {
 import Card3D from "@/components/Card3D";
 import ThreeDBackground from "@/components/ThreeDBackground";
 import OnboardingLoader from "@/components/OnboardingLoader";
+import SocialAuthButtons from "@/components/SocialAuthButtons";
 
 export default function Login() {
   const { login } = useAuth();
@@ -83,32 +84,33 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-[#FAF6F0] font-sans selection:bg-brand-terracotta/20 flex flex-col justify-between">
+    <div className="min-h-screen relative overflow-hidden bg-slate-50 font-sans selection:bg-blue-500/20 flex flex-col justify-between">
       
       {/* 3D Particle Ambient Canvas */}
       <ThreeDBackground />
 
       {/* Ambient 3D Glowing Orbs */}
-      <div className="absolute -top-32 -left-32 w-96 h-96 bg-brand-terracotta/15 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-32 -right-32 w-[30rem] h-[30rem] bg-brand-indigo/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -top-32 -left-32 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -right-32 w-[30rem] h-[30rem] bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Top Brand Navbar */}
       <header className="relative z-20 max-w-7xl mx-auto w-full px-6 py-6 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 rounded-2xl bg-brand-indigo text-white grid place-items-center shadow-md group-hover:scale-105 transition-transform">
-            <Store className="w-5 h-5 text-amber-400" />
-          </div>
-          <div>
-            <div className="font-display font-bold text-2xl text-brand-indigo tracking-tight">Dukaan</div>
-            <div className="text-[10px] text-brand-indigo/50 uppercase tracking-widest font-mono font-bold">Smart Retail OS</div>
-          </div>
+        <Link to="/" className="flex items-center gap-3 group">
+          <img 
+            src="/logo.png" 
+            alt="Dukaan" 
+            className="h-9 sm:h-10 w-auto object-contain transition-transform group-hover:scale-105" 
+          />
+          <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase tracking-widest bg-blue-50 text-blue-700 border border-blue-200">
+            Retail OS
+          </span>
         </Link>
 
         <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-brand-indigo/60 hidden sm:inline">New to Dukaan?</span>
+          <span className="text-xs font-semibold text-slate-500 hidden sm:inline">New to Dukaan?</span>
           <Link 
             to="/register" 
-            className="text-xs font-bold px-4 py-2 rounded-full border-2 border-brand-mitti text-brand-indigo hover:border-brand-indigo bg-white/60 backdrop-blur-md shadow-xs active:scale-95 transition-all"
+            className="text-xs font-bold px-4 py-2 rounded-full border-2 border-blue-200 text-blue-700 hover:border-blue-600 bg-white/80 backdrop-blur-md shadow-xs active:scale-95 transition-all"
           >
             Create Account
           </Link>
@@ -125,19 +127,19 @@ export default function Login() {
           <div className="hidden lg:flex lg:col-span-6 flex-col justify-center space-y-8 animate-fade-up">
             
             <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/80 border border-brand-mitti shadow-xs backdrop-blur-md">
-                <Sparkles className="w-3.5 h-3.5 text-brand-terracotta" />
-                <span className="text-xs font-bold text-brand-indigo uppercase tracking-wider font-mono">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/80 border border-blue-200 shadow-xs backdrop-blur-md">
+                <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                <span className="text-xs font-bold text-blue-800 uppercase tracking-wider font-mono">
                   Retail Command Center
                 </span>
               </div>
-              <h1 className="font-display text-5xl xl:text-6xl font-extrabold text-brand-indigo leading-[1.1] tracking-tight">
+              <h1 className="font-display text-5xl xl:text-6xl font-extrabold text-slate-900 leading-[1.1] tracking-tight">
                 Run your shop.<br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-terracotta via-amber-600 to-brand-terracotta">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-sky-500 to-indigo-600">
                   Smarter & Faster.
                 </span>
               </h1>
-              <p className="text-base text-brand-indigo/70 max-w-lg font-medium leading-relaxed">
+              <p className="text-base text-slate-600 max-w-lg font-medium leading-relaxed">
                 Log in to access high-speed POS billing, digital customer khata, WhatsApp payment reminders, and multi-year tax reports.
               </p>
             </div>
@@ -147,52 +149,52 @@ export default function Login() {
               
               {/* Main 3D Showcase Card */}
               <Card3D depth={18} className="w-full max-w-md">
-                <div className="bg-gradient-to-br from-white via-white/95 to-brand-sand/50 p-6 rounded-3xl border-2 border-white/80 shadow-2xl backdrop-blur-xl relative overflow-hidden">
+                <div className="bg-gradient-to-br from-white via-white/95 to-blue-50/50 p-6 rounded-3xl border-2 border-white/80 shadow-2xl backdrop-blur-xl relative overflow-hidden">
                   
                   {/* Decorative background grid line */}
-                  <div className="absolute inset-0 bg-[radial-gradient(#1B1464_1px,transparent_1px)] [background-size:16px_16px] opacity-5 pointer-events-none" />
+                  <div className="absolute inset-0 bg-[radial-gradient(#2563EB_1px,transparent_1px)] [background-size:16px_16px] opacity-5 pointer-events-none" />
                   
                   {/* Terminal Header */}
-                  <div className="flex items-center justify-between pb-4 border-b border-brand-mitti">
+                  <div className="flex items-center justify-between pb-4 border-b border-slate-200">
                     <div className="flex items-center gap-2">
                       <span className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
-                      <span className="text-xs font-bold text-brand-indigo font-mono uppercase tracking-wider">
+                      <span className="text-xs font-bold text-slate-800 font-mono uppercase tracking-wider">
                         COUNTER 01 · READY
                       </span>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-sand text-brand-indigo border border-brand-mitti">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                       F1 Billing Active
                     </span>
                   </div>
 
                   {/* Bill Simulation Preview */}
-                  <div className="mt-4 p-4 rounded-2xl bg-brand-sand/60 border border-brand-mitti/70 space-y-2">
+                  <div className="mt-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="font-medium text-brand-indigo/70">Walk-in Customer Memo</span>
-                      <span className="font-mono font-bold text-brand-indigo">#OD-8821</span>
+                      <span className="font-medium text-slate-600">Walk-in Customer Memo</span>
+                      <span className="font-mono font-bold text-slate-900">#OD-8821</span>
                     </div>
                     <div className="flex justify-between items-baseline">
-                      <span className="text-xs font-semibold text-brand-indigo">Total Collected</span>
+                      <span className="text-xs font-semibold text-slate-700">Total Collected</span>
                       <span className="font-display font-extrabold text-2xl text-emerald-700">₹450.00</span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 pt-1 border-t border-brand-mitti/50">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 pt-1 border-t border-slate-200">
                       <CheckCircle2 className="w-3.5 h-3.5" /> Paid via UPI · E-Receipt Dispatched
                     </div>
                   </div>
 
                   {/* 3 Live Mini Stats */}
                   <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                    <div className="p-2 rounded-xl bg-white border border-brand-mitti shadow-2xs">
-                      <div className="text-[10px] uppercase font-bold text-brand-indigo/50">Speed</div>
-                      <div className="font-mono font-bold text-brand-indigo text-xs">0.8s / Bill</div>
+                    <div className="p-2 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                      <div className="text-[10px] uppercase font-bold text-slate-400">Speed</div>
+                      <div className="font-mono font-bold text-slate-800 text-xs">0.8s / Bill</div>
                     </div>
-                    <div className="p-2 rounded-xl bg-white border border-brand-mitti shadow-2xs">
+                    <div className="p-2 rounded-xl bg-white border border-slate-200 shadow-2xs">
                       <div className="text-[10px] uppercase font-bold text-emerald-600">Recovery</div>
                       <div className="font-mono font-bold text-emerald-700 text-xs">92% Khata</div>
                     </div>
-                    <div className="p-2 rounded-xl bg-white border border-brand-mitti shadow-2xs">
-                      <div className="text-[10px] uppercase font-bold text-brand-terracotta">Stock</div>
-                      <div className="font-mono font-bold text-brand-terracotta text-xs">Live Sync</div>
+                    <div className="p-2 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                      <div className="text-[10px] uppercase font-bold text-blue-600">Stock</div>
+                      <div className="font-mono font-bold text-blue-600 text-xs">Live Sync</div>
                     </div>
                   </div>
 
@@ -200,21 +202,21 @@ export default function Login() {
               </Card3D>
 
               {/* Floating Hologram Soundbox Pill */}
-              <div className="absolute -bottom-4 right-6 bg-gradient-to-r from-brand-indigo to-[#2A2375] text-white px-4 py-2.5 rounded-2xl shadow-xl border-2 border-brand-indigo/40 flex items-center gap-2.5 animate-bounce">
-                <Volume2 className="w-4 h-4 text-amber-400" />
+              <div className="absolute -bottom-4 right-6 bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-4 py-2.5 rounded-2xl shadow-xl border-2 border-blue-400/40 flex items-center gap-2.5 animate-bounce">
+                <Volume2 className="w-4 h-4 text-amber-300" />
                 <span className="text-xs font-mono font-bold">Soundbox: ₹450 Prapt Hue!</span>
               </div>
 
             </div>
 
             {/* Security Guarantee */}
-            <div className="flex items-center gap-6 text-xs font-medium text-brand-indigo/70 pt-2">
+            <div className="flex items-center gap-6 text-xs font-medium text-slate-600 pt-2">
               <div className="flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
                 <span>256-Bit Encrypted Khata</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-brand-terracotta" />
+                <CheckCircle2 className="w-4 h-4 text-blue-600" />
                 <span>GST & Thermal Ready</span>
               </div>
             </div>
@@ -227,23 +229,40 @@ export default function Login() {
           <div className="lg:col-span-6 w-full max-w-md mx-auto animate-fade-up">
             
             <Card3D depth={12}>
-              <div className="bg-white/95 backdrop-blur-xl p-8 sm:p-10 rounded-3xl border-2 border-brand-mitti shadow-2xl relative overflow-hidden">
+              <div className="bg-white/95 backdrop-blur-xl p-8 sm:p-10 rounded-3xl border-2 border-slate-200 shadow-2xl relative overflow-hidden">
                 
                 {/* Top Subtle Light Bar */}
-                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-terracotta via-amber-500 to-brand-indigo" />
+                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-600 via-sky-400 to-indigo-600" />
 
                 {/* Form Header */}
-                <div className="mb-7">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-sand border border-brand-mitti text-[11px] font-bold text-brand-indigo mb-2">
-                    <Store className="w-3.5 h-3.5 text-brand-terracotta" />
+                <div className="mb-6">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[11px] font-bold text-blue-700 mb-2">
+                    <Sparkles className="w-3.5 h-3.5 text-blue-600" />
                     <span>Owner Portal</span>
                   </div>
-                  <h2 className="font-display text-3xl font-bold text-brand-indigo tracking-tight">
+                  <h2 className="font-display text-3xl font-bold text-slate-900 tracking-tight">
                     Welcome Back
                   </h2>
-                  <p className="text-xs text-brand-indigo/60 font-medium mt-1">
+                  <p className="text-xs text-slate-500 font-medium mt-1">
                     Sign in to open your shop counter and billing register.
                   </p>
+                </div>
+
+                {/* 1-Click Social Sign In (Google & Apple) */}
+                <div className="mb-5">
+                  <SocialAuthButtons mode="login" />
+                </div>
+
+                {/* Divider */}
+                <div className="relative my-5">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-200" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-3 text-slate-400 font-semibold font-mono tracking-wider">
+                      Or continue with email
+                    </span>
+                  </div>
                 </div>
 
                 {/* Error Banner */}
@@ -257,7 +276,7 @@ export default function Login() {
                       <div className="pt-1 pl-4">
                         <Link 
                           to={`/verify-email?email=${encodeURIComponent(email)}`} 
-                          className="text-xs font-bold text-brand-terracotta underline hover:text-brand-terracotta/80 block"
+                          className="text-xs font-bold text-blue-600 underline hover:text-blue-700 block"
                         >
                           Click here to enter your verification code →
                         </Link>
@@ -267,7 +286,7 @@ export default function Login() {
                       <div className="pt-1 pl-4">
                         <Link 
                           to="/register" 
-                          className="text-xs font-bold text-brand-terracotta underline hover:text-brand-terracotta/80 block"
+                          className="text-xs font-bold text-blue-600 underline hover:text-blue-700 block"
                         >
                           Create a new account now →
                         </Link>
@@ -281,18 +300,18 @@ export default function Login() {
                   
                   {/* Email Field */}
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-brand-indigo/70">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-slate-700">
                       Shop Email
                     </Label>
                     <div className="relative">
-                      <Mail className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-brand-indigo/40" />
+                      <Mail className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                       <Input
                         type="email"
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="owner@yourdukaan.com"
-                        className="pl-11 pr-4 h-12 rounded-2xl border-2 border-brand-mitti focus-visible:border-brand-terracotta bg-brand-sand/40 text-sm font-medium text-brand-indigo"
+                        className="pl-11 pr-4 h-12 rounded-2xl border-2 border-slate-200 focus-visible:border-blue-600 bg-slate-50/70 text-sm font-medium text-slate-900"
                       />
                     </div>
                   </div>
@@ -300,30 +319,30 @@ export default function Login() {
                   {/* Password Field */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <Label className="text-xs font-bold uppercase tracking-wider text-brand-indigo/70">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-slate-700">
                         Password
                       </Label>
                       <Link 
                         to="/forgot-password" 
-                        className="text-xs font-bold text-brand-terracotta hover:underline"
+                        className="text-xs font-bold text-blue-600 hover:underline"
                       >
                         Forgot?
                       </Link>
                     </div>
                     <div className="relative">
-                      <Lock className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-brand-indigo/40" />
+                      <Lock className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                       <Input
                         type={showPassword ? "text" : "password"}
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="pl-11 pr-11 h-12 rounded-2xl border-2 border-brand-mitti focus-visible:border-brand-terracotta bg-brand-sand/40 text-sm font-medium text-brand-indigo font-mono"
+                        className="pl-11 pr-11 h-12 rounded-2xl border-2 border-slate-200 focus-visible:border-blue-600 bg-slate-50/70 text-sm font-medium text-slate-900 font-mono"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-brand-indigo/40 hover:text-brand-indigo p-1"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -336,18 +355,18 @@ export default function Login() {
                       id="remember"
                       checked={rememberMe}
                       onCheckedChange={(checked) => setRememberMe(!!checked)}
-                      className="border-2 border-brand-mitti data-[state=checked]:bg-brand-indigo data-[state=checked]:border-brand-indigo rounded-md"
+                      className="border-2 border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md"
                     />
-                    <Label htmlFor="remember" className="text-xs font-semibold text-brand-indigo/70 cursor-pointer select-none">
+                    <Label htmlFor="remember" className="text-xs font-semibold text-slate-600 cursor-pointer select-none">
                       Keep me logged in on this device
                     </Label>
                   </div>
 
-                  {/* 3D Main Submit Button */}
+                  {/* Main Submit Button */}
                   <Button
                     type="submit"
                     disabled={busy}
-                    className="w-full h-13 rounded-full bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-sm shadow-glow active:scale-95 transition-all flex items-center justify-center gap-2 mt-3"
+                    className="w-full h-13 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md shadow-blue-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 mt-3"
                   >
                     <span>{busy ? "Authenticating..." : "Log in to Dukaan"}</span>
                     <ArrowRight className="w-4 h-4" />
@@ -356,9 +375,9 @@ export default function Login() {
                 </form>
 
                 {/* Register Footer */}
-                <div className="pt-6 mt-6 border-t border-brand-mitti text-center text-xs font-semibold text-brand-indigo/70">
+                <div className="pt-6 mt-6 border-t border-slate-200 text-center text-xs font-semibold text-slate-600">
                   <span>Don't have a shop account? </span>
-                  <Link to="/register" className="text-brand-terracotta font-bold hover:underline">
+                  <Link to="/register" className="text-blue-600 font-bold hover:underline">
                     Create your free shop
                   </Link>
                 </div>

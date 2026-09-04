@@ -4,46 +4,46 @@
 @tailwind components;
 @tailwind utilities;
 
-body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;background:#FDF8F3;color:#1B1464}
-@layer base{ :root{--background:40 48% 97%;--foreground:244 58% 24%;--card:0 0% 100%;--card-foreground:244 58% 24%;--popover:0 0% 100%;--popover-foreground:244 58% 24%;--primary:17 51% 53%;--primary-foreground:0 0% 100%;--secondary:244 58% 24%;--secondary-foreground:0 0% 100%;--muted:38 33% 88%;--muted-foreground:34 6% 46%;--accent:244 33% 60%;--accent-foreground:0 0% 100%;--destructive:0 74% 51%;--destructive-foreground:0 0% 100%;--border:36 24% 84%;--input:36 24% 84%;--ring:17 51% 53%;--radius:.75rem;--chart-1:17 51% 53%;--chart-2:244 58% 24%;--chart-3:158 46% 33%;--chart-4:38 60% 56%;--chart-5:244 33% 60%} }
+body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;background:#F8FAFC;color:#0A1B39}
+@layer base{ :root{--background:210 50% 98%;--foreground:222 47% 11%;--card:0 0% 100%;--card-foreground:222 47% 11%;--popover:0 0% 100%;--popover-foreground:222 47% 11%;--primary:217 100% 50%;--primary-foreground:0 0% 100%;--secondary:222 47% 11%;--secondary-foreground:0 0% 100%;--muted:214 32% 91%;--muted-foreground:215 16% 47%;--accent:217 91% 60%;--accent-foreground:0 0% 100%;--destructive:0 84% 60%;--destructive-foreground:0 0% 100%;--border:214 32% 91%;--input:214 32% 91%;--ring:217 100% 50%;--radius:.75rem;--chart-1:217 100% 50%;--chart-2:222 47% 11%;--chart-3:158 46% 33%;--chart-4:217 91% 60%;--chart-5:224 76% 48%} }
 @layer base{*{@apply border-border}body{@apply bg-background text-foreground}h1,h2,h3{font-family:'DM Serif Display',serif;letter-spacing:-.01em}.font-display{font-family:'DM Serif Display',serif}}
-@layer utilities{.noise{background-image:radial-gradient(rgba(27,20,100,.03) 1px,transparent 1px),radial-gradient(rgba(212,98,59,.03) 1px,transparent 1px);background-size:22px 22px,40px 40px;background-position:0 0,11px 11px}.ledger-lines{background-image:linear-gradient(to bottom,transparent 31px,rgba(27,20,100,.06) 32px);background-size:100% 32px}}
+@layer utilities{.noise{background-image:radial-gradient(rgba(10,27,57,.03) 1px,transparent 1px),radial-gradient(rgba(0,102,255,.03) 1px,transparent 1px);background-size:22px 22px,40px 40px;background-position:0 0,11px 11px}.ledger-lines{background-image:linear-gradient(to bottom,transparent 31px,rgba(10,27,57,.06) 32px);background-size:100% 32px}}
 input,select,textarea{font-size:16px}
 [data-debug-wrapper="true"]{display:contents!important}
 
-/* Dukaan Premium — keep the original Dukaan colour language, with premium navigation moved to the bottom. */
-[data-testid="premium-dashboard"]{--premium-gold:#D4A24C;max-width:1180px;margin:0 auto;padding-bottom:2rem;color:#1B1464}
-.premium-app-shell{min-height:100vh;background:#FDF8F3;color:#1B1464}
-.premium-topbar{background:rgba(253,248,243,.96);border-color:#EBE3D5;color:#1B1464}
-.premium-top-label{color:#8D6E12;border:1px solid rgba(212,162,76,.35);background:rgba(212,162,76,.12);border-radius:999px;padding:3px 9px;font-size:10px;font-weight:800;letter-spacing:.14em}
-.premium-control{color:#1B1464;background:#fff;border-color:#EBE3D5}
-.premium-control:hover{background:#F3EEE5}
-.premium-avatar{background:#1B1464;color:#fff}
+/* Dukaan Premium — Blue & White clean theme */
+[data-testid="premium-dashboard"]{--premium-gold:#0066FF;max-width:1180px;margin:0 auto;padding-bottom:2rem;color:#0A1B39}
+.premium-app-shell{min-height:100vh;background:#F8FAFC;color:#0A1B39}
+.premium-topbar{background:rgba(255,255,255,.96);border-color:#E2E8F0;color:#0A1B39}
+.premium-top-label{color:#0052CC;border:1px solid rgba(0,102,255,.35);background:rgba(0,102,255,.08);border-radius:999px;padding:3px 9px;font-size:10px;font-weight:800;letter-spacing:.14em}
+.premium-control{color:#0A1B39;background:#fff;border-color:#E2E8F0}
+.premium-control:hover{background:#F0F6FF}
+.premium-avatar{background:#0066FF;color:#fff}
 .premium-sidebar-hidden{display:none!important}
 .premium-main{padding-bottom:110px!important}
 
-/* Premium navigation: same original colours, only repositioned into a bottom dock. */
-.premium-bottom-nav{position:fixed;left:16px;right:16px;bottom:14px;z-index:50;border:1px solid #EBE3D5;border-radius:18px;background:rgba(255,255,255,.97);box-shadow:0 12px 32px rgba(27,20,100,.14);backdrop-filter:blur(16px)}
+/* Premium navigation: Blue active states with clean white dock */
+.premium-bottom-nav{position:fixed;left:16px;right:16px;bottom:14px;z-index:50;border:1px solid #E2E8F0;border-radius:18px;background:rgba(255,255,255,.97);box-shadow:0 12px 32px rgba(10,27,57,.12);backdrop-filter:blur(16px)}
 .premium-bottom-inner{display:flex;align-items:stretch;justify-content:center;overflow-x:auto;scrollbar-width:none;padding:7px}
 .premium-bottom-inner::-webkit-scrollbar{display:none}
-.premium-bottom-item{min-width:88px;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:10px 12px;border-radius:12px;color:rgba(27,20,100,.68);font-size:11px;font-weight:700;transition:.2s ease}
-.premium-bottom-item:hover{color:#1B1464;background:#F3EEE5}
-.premium-bottom-active{color:#fff!important;background:#D4623B!important;box-shadow:0 5px 14px rgba(212,98,59,.22)}
+.premium-bottom-item{min-width:88px;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:10px 12px;border-radius:12px;color:rgba(10,27,57,.68);font-size:11px;font-weight:700;transition:.2s ease}
+.premium-bottom-item:hover{color:#0066FF;background:#F0F6FF}
+.premium-bottom-active{color:#fff!important;background:#0066FF!important;box-shadow:0 5px 14px rgba(0,102,255,.28)!important}
 
-/* Premium dashboard keeps the original light cream / navy / terracotta pattern. */
-[data-testid="premium-dashboard"] .bg-white{background:#fff!important;color:#1B1464!important;border-color:#EBE3D5!important;box-shadow:0 8px 24px rgba(27,20,100,.08)!important}
-[data-testid="premium-dashboard"]>section:first-of-type{background:#2D2D3F!important;border:1px solid #2D2D3F;box-shadow:0 14px 35px rgba(27,20,100,.18)}
-[data-testid="premium-dashboard"] .bg-brand-indigo{background:#2D2D3F!important;border-color:#2D2D3F}
-[data-testid="premium-dashboard"] .bg-brand-mitti\/30{background:#FDF8F3!important}
-[data-testid="premium-dashboard"] .border-brand-mitti,[data-testid="premium-dashboard"] .divide-brand-mitti{border-color:#EBE3D5!important}
-[data-testid="premium-dashboard"] .text-brand-indigo,[data-testid="premium-dashboard"] .text-brand-indigo\/70,[data-testid="premium-dashboard"] .text-brand-indigo\/65,[data-testid="premium-dashboard"] .text-brand-indigo\/60,[data-testid="premium-dashboard"] .text-brand-indigo\/55{color:rgba(27,20,100,.68)!important}
-[data-testid="premium-dashboard"] .text-brand-indigo\/50{color:rgba(27,20,100,.5)!important}
-[data-testid="premium-dashboard"] .text-brand-terracotta{color:#D4623B!important}
-[data-testid="premium-dashboard"] .text-brand-leaf{color:#2D7A5C!important}
-[data-testid="premium-dashboard"] .bg-brand-terracotta{background:#D4623B!important}
+/* Premium dashboard Blue & White styling */
+[data-testid="premium-dashboard"] .bg-white{background:#fff!important;color:#0A1B39!important;border-color:#E2E8F0!important;box-shadow:0 8px 24px rgba(10,27,57,.06)!important}
+[data-testid="premium-dashboard"]>section:first-of-type{background:#0A1B39!important;border:1px solid #0A1B39;box-shadow:0 14px 35px rgba(0,102,255,.15)}
+[data-testid="premium-dashboard"] .bg-brand-indigo{background:#0A1B39!important;border-color:#0A1B39}
+[data-testid="premium-dashboard"] .bg-brand-mitti\/30{background:#F0F6FF!important}
+[data-testid="premium-dashboard"] .border-brand-mitti,[data-testid="premium-dashboard"] .divide-brand-mitti{border-color:#DBEAFE!important}
+[data-testid="premium-dashboard"] .text-brand-indigo,[data-testid="premium-dashboard"] .text-brand-indigo\/70,[data-testid="premium-dashboard"] .text-brand-indigo\/65,[data-testid="premium-dashboard"] .text-brand-indigo\/60,[data-testid="premium-dashboard"] .text-brand-indigo\/55{color:rgba(10,27,57,.68)!important}
+[data-testid="premium-dashboard"] .text-brand-indigo\/50{color:rgba(10,27,57,.5)!important}
+[data-testid="premium-dashboard"] .text-brand-terracotta{color:#0066FF!important}
+[data-testid="premium-dashboard"] .text-brand-leaf{color:#10B981!important}
+[data-testid="premium-dashboard"] .bg-brand-terracotta{background:#0066FF!important}
 [data-testid="premium-dashboard"] .rounded-xl{transition:transform .2s ease,box-shadow .2s ease}
-[data-testid="premium-dashboard"] .rounded-xl:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(27,20,100,.12)}
-[data-testid="premium-dashboard"] button:focus-visible{outline:2px solid #D4A24C;outline-offset:2px}
+[data-testid="premium-dashboard"] .rounded-xl:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(0,102,255,.12)}
+[data-testid="premium-dashboard"] button:focus-visible{outline:2px solid #0066FF;outline-offset:2px}
 
 /* Premium onboarding */
 .premium-onboarding-shell{position:relative;isolation:isolate;overflow:hidden;padding:4px 0 12px}

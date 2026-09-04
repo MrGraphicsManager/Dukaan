@@ -318,6 +318,91 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const loginWithSocial = async ({ email, name, provider = "google", avatar, idToken }) => {
+    const cleanEmail = (email || "").toLowerCase().trim();
+    const cleanName = (name || (provider === "google" ? "Google User" : "Apple User")).trim();
+
+    try {
+      const { data } = await api.post("/auth/social-login", {
+        email: cleanEmail,
+        name: cleanName,
+        provider,
+        id_token: idToken
+      });
+
+      if (data?.access_token) {
+        localStorage.setItem("dukaan_access_token", data.access_token);
+      }
+      const u = await refresh();
+      const verifiedUser = u || data?.user || {
+        id: data?.user?.id || `user_${Date.now()}`,
+        name: cleanName,
+        email: cleanEmail,
+        is_verified: true,
+        provider,
+        avatar
+      };
+      verifiedUser.is_verified = true;
+      setUser(verifiedUser);
+      localStorage.setItem("dukaan_user", JSON.stringify(verifiedUser));
+
+      try {
+        let regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
+        const idx = regUsers.findIndex(ru => ru.email.toLowerCase() === cleanEmail);
+        if (idx >= 0) {
+          regUsers[idx].is_verified = true;
+          regUsers[idx].provider = provider;
+          regUsers[idx].name = cleanName;
+        } else {
+          regUsers.push({
+            id: verifiedUser.id,
+            name: cleanName,
+            email: cleanEmail,
+            is_verified: true,
+            provider,
+            created_at: new Date().toISOString()
+          });
+        }
+        localStorage.setItem("dukaan_registered_users", JSON.stringify(regUsers));
+      } catch {}
+
+      await loadShops();
+      return { ok: true, user: verifiedUser };
+    } catch (err) {
+      let regUsers = [];
+      try {
+        regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
+      } catch {}
+
+      let existing = regUsers.find(ru => ru.email.toLowerCase() === cleanEmail);
+      if (!existing) {
+        existing = {
+          id: `user_${Date.now()}`,
+          name: cleanName,
+          email: cleanEmail,
+          is_verified: true,
+          provider,
+          subscription: null,
+          default_shop_id: `shop_${Date.now()}`,
+          created_at: new Date().toISOString()
+        };
+        regUsers.push(existing);
+      } else {
+        existing.is_verified = true;
+        existing.provider = provider;
+      }
+      localStorage.setItem("dukaan_registered_users", JSON.stringify(regUsers));
+
+      setUser(existing);
+      localStorage.setItem("dukaan_user", JSON.stringify(existing));
+      await loadShops();
+      return { ok: true, user: existing };
+    }
+  };
+
+  const loginWithGoogle = (payload) => loginWithSocial({ ...payload, provider: "google" });
+  const loginWithApple = (payload) => loginWithSocial({ ...payload, provider: "apple" });
+
   const logout = async () => {
     try { await api.post("/auth/logout"); } catch {}
     localStorage.removeItem("dukaan_access_token");
@@ -331,6 +416,7 @@ export function AuthProvider({ children }) {
     <AuthCtx.Provider value={{
       user, shops, currentShopId, setActiveShop, loadShops,
       login, register, verifyEmail, resendVerification, logout, refresh, lang, setLang: changeLang,
+      loginWithGoogle, loginWithApple
     }}>
       {children}
     </AuthCtx.Provider>

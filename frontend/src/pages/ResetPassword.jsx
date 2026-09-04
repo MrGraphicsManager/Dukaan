@@ -104,18 +104,27 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-[#FAF6F0] font-sans selection:bg-brand-terracotta/20 flex flex-col justify-between">
+    <div className="min-h-screen relative overflow-hidden bg-slate-50 font-sans selection:bg-blue-500/20 flex flex-col justify-between">
       <ThreeDBackground />
 
-      <div className="absolute -top-32 -right-32 w-96 h-96 bg-brand-terracotta/15 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-32 -left-32 w-[30rem] h-[30rem] bg-brand-indigo/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -top-32 -right-32 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -left-32 w-[30rem] h-[30rem] bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Header */}
       <header className="relative z-20 max-w-7xl mx-auto w-full px-6 py-6 flex items-center justify-between">
-        <Link to="/" className="font-display text-3xl font-bold text-brand-indigo">Dukaan</Link>
+        <Link to="/" className="flex items-center gap-3 group">
+          <img 
+            src="/logo.png" 
+            alt="Dukaan" 
+            className="h-9 sm:h-10 w-auto object-contain transition-transform group-hover:scale-105" 
+          />
+          <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase tracking-widest bg-blue-50 text-blue-700 border border-blue-200">
+            Retail OS
+          </span>
+        </Link>
         <Link 
           to="/login" 
-          className="text-xs font-bold px-4 py-2 rounded-full border border-brand-mitti text-brand-indigo hover:border-brand-indigo bg-white/60 backdrop-blur-md shadow-xs"
+          className="text-xs font-bold px-4 py-2 rounded-full border-2 border-blue-200 text-blue-700 hover:border-blue-600 bg-white/80 backdrop-blur-md shadow-xs active:scale-95 transition-all"
         >
           Back to Login
         </Link>
@@ -124,18 +133,18 @@ export default function ResetPassword() {
       {/* Main Card */}
       <main className="relative z-20 max-w-md mx-auto w-full px-6 py-6 my-auto animate-fade-up">
         <Card3D depth={12}>
-          <div className="bg-white/95 backdrop-blur-xl p-8 sm:p-10 rounded-3xl border-2 border-brand-mitti shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-terracotta via-amber-500 to-brand-indigo" />
+          <div className="bg-white/95 backdrop-blur-xl p-8 sm:p-10 rounded-3xl border-2 border-slate-200 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-600 via-sky-400 to-indigo-600" />
 
             <div className="mb-6">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-sand border border-brand-mitti text-[10px] font-bold text-brand-indigo mb-2">
-                <ShieldCheck className="w-3.5 h-3.5 text-brand-terracotta" />
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[10px] font-bold text-blue-700 mb-2">
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
                 <span>Password Reset</span>
               </div>
-              <h1 className="font-display text-2xl font-bold text-brand-indigo">
+              <h1 className="font-display text-2xl font-bold text-slate-900">
                 Set New Password
               </h1>
-              <p className="text-xs text-brand-indigo/60 font-medium mt-1">
+              <p className="text-xs text-slate-500 font-medium mt-1">
                 Enter your security details and choose a strong new password.
               </p>
             </div>
@@ -253,7 +262,7 @@ export default function ResetPassword() {
                     onChange={(e) => setPw2(e.target.value)} 
                     placeholder="••••••••"
                     required 
-                    className="pl-11 pr-4 h-12 rounded-2xl border-2 border-brand-mitti bg-brand-sand/40 text-sm font-medium font-mono"
+                    className="pl-11 pr-4 h-12 rounded-2xl border-2 border-slate-200 bg-slate-50/70 text-sm font-medium font-mono"
                   />
                 </div>
               </div>
@@ -261,7 +270,7 @@ export default function ResetPassword() {
               <Button 
                 data-testid="reset-submit" 
                 disabled={busy || !isPasswordValid || pw !== pw2} 
-                className="w-full h-12 rounded-full bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-xs shadow-md active:scale-95 transition-all mt-3 flex items-center justify-center gap-2"
+                className="w-full h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/25 active:scale-95 transition-all mt-3 flex items-center justify-center gap-2"
               >
                 <span>{busy ? "Saving New Password..." : "Update Password & Log In"}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -272,7 +281,7 @@ export default function ResetPassword() {
         </Card3D>
       </main>
 
-      <footer className="relative z-20 max-w-7xl mx-auto w-full px-6 py-4 text-center text-xs text-brand-indigo/50">
+      <footer className="relative z-20 max-w-7xl mx-auto w-full px-6 py-4 text-center text-xs text-slate-400">
         © 2026 Dukaan Technologies Private Limited. All rights reserved.
       </footer>
     </div>

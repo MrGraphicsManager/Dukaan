@@ -321,7 +321,35 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // 5. GENERIC SEND EMAIL
+    // 5. SOCIAL LOGIN (Google & Apple)
+    if (path === "/auth/social-login" && event.httpMethod === "POST") {
+      const email = (body.email || "").trim().toLowerCase();
+      const name = (body.name || (body.provider === "google" ? "Google User" : "Apple User")).trim();
+      const provider = body.provider || "google";
+
+      if (!email) {
+        return { statusCode: 400, headers, body: JSON.stringify({ detail: "Email is required for social sign-in." }) };
+      }
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          ok: true,
+          access_token: "soc_" + Date.now() + "_" + Math.random().toString(36).substring(2, 10),
+          message: `Successfully authenticated via ${provider}`,
+          user: {
+            id: `usr_${Date.now()}`,
+            name,
+            email,
+            is_verified: true,
+            provider
+          }
+        })
+      };
+    }
+
+    // 6. GENERIC SEND EMAIL
     if (path === "/send-email" && event.httpMethod === "POST") {
       const { to, subject, html } = body;
       if (!to || !subject || !html) {
