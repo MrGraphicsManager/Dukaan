@@ -46,6 +46,7 @@ import {
   Award,
   MessageSquare,
   Tag,
+  Copy,
   ShieldAlert,
   Share2,
   Smartphone,
@@ -221,6 +222,21 @@ export default function AdminSubscriptions() {
 
   // Feature #33: White-Label Custom Domains
   const [customDomains, setCustomDomains] = useState([]);
+
+  // Feature #3: Promo & Coupon Codes Studio
+  const [promoList, setPromoList] = useState([]);
+  const [promoModal, setPromoModal] = useState({
+    open: false,
+    code: "",
+    discount_type: "percent",
+    discount_percent: 20,
+    discount_flat: 100,
+    max_discount: 500,
+    min_amount: 0,
+    max_uses: 500,
+    expires_at: "2027-12-31",
+    active: true
+  });
 
   // Feature #13: Dynamic Pricing
   const [dynamicPricing, setDynamicPricing] = useState({
@@ -448,6 +464,15 @@ export default function AdminSubscriptions() {
         setCustomDomains(localCd);
       }
 
+      // 10. Promo & Coupon Codes (Real cloud-persisted coupons)
+      const promoRes = await api.get("/promo-codes").catch(() => null);
+      if (promoRes?.data && Array.isArray(promoRes.data)) {
+        setPromoList(promoRes.data);
+      } else {
+        const localPromos = JSON.parse(localStorage.getItem("dukaan_promo_codes") || "[]");
+        setPromoList(localPromos);
+      }
+
       // 11. Platform Config
       api.get("/platform/config").then(res => {
         if (res?.data) {
@@ -592,6 +617,7 @@ export default function AdminSubscriptions() {
 
     try {
       await api.post("/admin/users/freeze", { email: targetEmail, is_frozen: nextFreeze });
+      await api.post("/platform/force-update").catch(() => {});
     } catch {}
 
     try {
@@ -613,6 +639,7 @@ export default function AdminSubscriptions() {
     const nextVerified = !currentVerified;
     try {
       await api.post("/admin/users/verify", { email: targetEmail, is_verified: nextVerified });
+      await api.post("/platform/force-update").catch(() => {});
     } catch {}
 
     try {
@@ -723,6 +750,89 @@ export default function AdminSubscriptions() {
     setSoundboxModal({ open: false, shop_name: "", model: "4G 3W Audio Soundbox", sim: "Jio IoT" });
   };
 
+  // --- FEATURE #3: Coupon Codes Studio Handlers ---
+  const handleCreatePromoCode = async (e) => {
+    e.preventDefault();
+    const code = (promoModal.code || "").trim().toUpperCase();
+    if (!code) {
+      toast.error("Please enter a coupon code name.");
+      return;
+    }
+
+    const discountType = promoModal.discount_type === "flat" ? "flat" : "percent";
+    const newPromo = {
+      code,
+      discount_type: discountType,
+      discount_percent: discountType === "percent" ? (Number(promoModal.discount_percent) || 20) : 0,
+      discount_flat: discountType === "flat" ? (Number(promoModal.discount_flat) || 100) : 0,
+      max_discount: Number(promoModal.max_discount) || 500,
+      min_amount: Number(promoModal.min_amount) || 0,
+      max_uses: Number(promoModal.max_uses) || 500,
+      usage_count: 0,
+      active: true,
+      expires_at: promoModal.expires_at || "2027-12-31",
+      created_at: new Date().toISOString()
+    };
+
+    try {
+      await api.post("/promo-codes", newPromo);
+      await api.post("/platform/force-update").catch(() => {});
+    } catch (err) {
+      console.warn("Backend save failed, saved locally:", err);
+    }
+
+    const updated = [newPromo, ...promoList.filter(p => p.code !== code)];
+    setPromoList(updated);
+    try { localStorage.setItem("dukaan_promo_codes", JSON.stringify(updated)); } catch {}
+
+    const discDesc = discountType === "percent" 
+      ? `${newPromo.discount_percent}% off (max ₹${newPromo.max_discount})` 
+      : `₹${newPromo.discount_flat} flat off`;
+
+    addAuditLog("CREATE_COUPON_CODE", code, discDesc);
+    toast.success(`🎉 Coupon "${code}" is now live across merchant checkout!`);
+    setPromoModal({
+      open: false,
+      code: "",
+      discount_type: "percent",
+      discount_percent: 20,
+      discount_flat: 100,
+      max_discount: 500,
+      min_amount: 0,
+      max_uses: 500,
+      expires_at: "2027-12-31",
+      active: true
+    });
+  };
+
+  const handleTogglePromoCode = async (code) => {
+    const promo = promoList.find(p => p.code === code);
+    if (!promo) return;
+    const nextActive = !promo.active;
+    const updatedPromo = { ...promo, active: nextActive };
+    try {
+      await api.post("/promo-codes", updatedPromo);
+      await api.post("/platform/force-update").catch(() => {});
+    } catch {}
+    const updated = promoList.map(p => p.code === code ? updatedPromo : p);
+    setPromoList(updated);
+    try { localStorage.setItem("dukaan_promo_codes", JSON.stringify(updated)); } catch {}
+    toast.success(`Coupon ${code} is now ${nextActive ? "Active" : "Paused"}.`);
+    addAuditLog("TOGGLE_COUPON_STATUS", code, nextActive ? "Activated" : "Paused");
+  };
+
+  const handleDeletePromoCode = async (code) => {
+    try {
+      await api.delete(`/promo-codes/${encodeURIComponent(code)}`);
+      await api.post("/platform/force-update").catch(() => {});
+    } catch {}
+    const updated = promoList.filter(p => p.code !== code);
+    setPromoList(updated);
+    try { localStorage.setItem("dukaan_promo_codes", JSON.stringify(updated)); } catch {}
+    addAuditLog("DELETE_COUPON_CODE", code, "Deactivated and removed coupon code");
+    toast.info(`Coupon code "${code}" removed.`);
+  };
+
   // --- FEATURE #13: Save Dynamic Pricing ---
   const handleSaveDynamicPricing = async () => {
     const payload = {
@@ -736,6 +846,7 @@ export default function AdminSubscriptions() {
 
     try {
       await api.post("/platform/config", payload).catch(() => {});
+      await api.post("/platform/force-update").catch(() => {});
       localStorage.setItem("dukaan_pricing_config", JSON.stringify(payload));
       addAuditLog("UPDATE_PRICING", "PLATFORM", `Starter: ₹${dynamicPricing.starter_annual}, Business: ₹${dynamicPricing.business_annual}, Premium: ₹${dynamicPricing.premium_annual}`);
       toast.success("Platform subscription pricing & free trial days updated!");
@@ -1492,7 +1603,7 @@ export default function AdminSubscriptions() {
             {[
               { id: "overview", label: "Executive Overview & Pulse", icon: Activity },
               { id: "users", label: `Merchants & Leaderboard (${usersList.length})`, icon: Users },
-              { id: "monetization", label: `Monetization & Plans (${rows.length})`, icon: CreditCard },
+              { id: "monetization", label: `Monetization, Plans & Coupons (${rows.length})`, icon: CreditCard },
               { id: "controls", label: "Platform & Hardware Controls", icon: Settings },
               { id: "support", label: `Support & Feedback Desk (${supportTickets.length})`, icon: MessageSquare },
               { id: "reports", label: "Tax & Financial Reports", icon: FileSpreadsheet },
@@ -2109,7 +2220,159 @@ export default function AdminSubscriptions() {
           {activeTab === "monetization" && (
             <div className="space-y-6 animate-fade-up">
               
+              {/* Feature #3: Promo & Coupon Codes Studio */}
+              <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-5 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
+                  <div>
+                    <h2 className="text-base font-bold font-display text-white flex items-center gap-2">
+                      <Tag className="w-5 h-5 text-indigo-400" />
+                      <span>Checkout Promo & Coupon Codes Studio (#3)</span>
+                    </h2>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Create & control promotional discount vouchers. All active codes sync instantly to merchant checkout on /subscribe
+                    </p>
+                  </div>
 
+                  <Button
+                    size="sm"
+                    onClick={() => setPromoModal(prev => ({ ...prev, open: true }))}
+                    className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs h-9 px-4 shadow-sm"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1.5" /> + Create Coupon Code
+                  </Button>
+                </div>
+
+                {/* Stat Counters */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Total Vouchers</div>
+                      <div className="text-lg font-bold text-white mt-0.5 font-display">{promoList.length}</div>
+                    </div>
+                    <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 grid place-items-center">
+                      <Tag className="w-4 h-4" />
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Live & Active</div>
+                      <div className="text-lg font-bold text-emerald-400 mt-0.5 font-display">
+                        {promoList.filter(p => p.active).length}
+                      </div>
+                    </div>
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 grid place-items-center">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Total Redemptions</div>
+                      <div className="text-lg font-bold text-amber-400 mt-0.5 font-display">
+                        {promoList.reduce((acc, p) => acc + (p.usage_count || 0), 0)}
+                      </div>
+                    </div>
+                    <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 grid place-items-center">
+                      <Zap className="w-4 h-4" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Coupons Cards Grid */}
+                {promoList.length === 0 ? (
+                  <div className="p-8 rounded-2xl border border-dashed border-slate-800 text-center text-slate-500 text-xs">
+                    No coupon codes created yet. Click <b className="text-slate-300">"+ Create Coupon Code"</b> to publish instant discounts for merchants upgrading plans.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                    {promoList.map((p) => {
+                      const isFlat = p.discount_type === "flat";
+                      const discountText = isFlat ? `₹${p.discount_flat || 0} FLAT OFF` : `${p.discount_percent || 0}% OFF`;
+                      return (
+                        <div
+                          key={p.code}
+                          className={`p-4 rounded-2xl border transition-all flex flex-col justify-between gap-3 ${
+                            p.active
+                              ? "bg-slate-900 border-slate-800 hover:border-slate-700"
+                              : "bg-slate-900/50 border-slate-800/60 opacity-60"
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-mono font-extrabold text-sm text-white px-2.5 py-1 rounded-lg bg-indigo-500/20 border border-indigo-500/30 tracking-wider">
+                                {p.code}
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                  p.active
+                                    ? "bg-emerald-950/80 text-emerald-400 border border-emerald-800/40"
+                                    : "bg-amber-950/80 text-amber-400 border border-amber-800/40"
+                                }`}
+                              >
+                                {p.active ? "Active" : "Paused"}
+                              </span>
+                            </div>
+
+                            <div className="mt-3">
+                              <div className="text-base font-extrabold text-white font-display">
+                                {discountText}
+                              </div>
+                              <div className="text-[11px] text-slate-400 mt-0.5 space-y-0.5">
+                                {!isFlat && <div>Max Cap: ₹{p.max_discount || 500}</div>}
+                                <div>{p.min_amount > 0 ? `Min Plan Amount: ₹${p.min_amount}` : "No minimum requirement"}</div>
+                                <div>Expires: {p.expires_at || "2027-12-31"}</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
+                            <div className="text-[10px] font-mono text-slate-400">
+                              Used: <b className="text-white">{p.usage_count || 0}</b> / {p.max_uses || "∞"}
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(p.code);
+                                  toast.success(`Copied code "${p.code}" to clipboard!`);
+                                }}
+                                className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+                                title="Copy Code"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleTogglePromoCode(p.code)}
+                                className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-colors ${
+                                  p.active
+                                    ? "bg-amber-950/40 text-amber-300 hover:bg-amber-900/50"
+                                    : "bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/50"
+                                }`}
+                                title={p.active ? "Pause code" : "Activate code"}
+                              >
+                                {p.active ? "Pause" : "Activate"}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeletePromoCode(p.code)}
+                                className="p-1.5 rounded-lg bg-rose-950/30 text-rose-400 hover:bg-rose-900/50 transition-colors"
+                                title="Delete Coupon"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
               {/* Subscriptions Table + Feature #4 WhatsApp Reminders */}
               <div className="space-y-4">
@@ -3036,6 +3299,148 @@ export default function AdminSubscriptions() {
       <footer className="border-t border-slate-800 bg-slate-950 py-4 px-6 text-center text-xs font-mono text-slate-500">
         Dukaan OS Master Executive Console • Authorized Access Only • Single Approved ID: {ADMIN_EMAIL}
       </footer>
+
+      {/* MODAL: FEATURE #3 CREATE PROMO / COUPON CODE */}
+      <Dialog open={promoModal.open} onOpenChange={o => !o && setPromoModal(prev => ({ ...prev, open: false }))}>
+        <DialogContent className="max-w-md bg-slate-900 text-slate-100 border border-slate-800 rounded-3xl p-6 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold font-display text-white flex items-center gap-2">
+              <Tag className="w-5 h-5 text-indigo-400" />
+              <span>Create New Coupon Code (#3)</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleCreatePromoCode} className="space-y-4 mt-3">
+            <div>
+              <Label className="text-xs font-bold text-slate-300">Coupon Code Name *</Label>
+              <Input
+                type="text"
+                required
+                placeholder="e.g. DIWALI50, FESTIVE30, FLAT100"
+                value={promoModal.code}
+                onChange={e => setPromoModal(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                className="mt-1.5 bg-slate-800 border-slate-700 text-white font-mono uppercase text-xs rounded-xl"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs font-bold text-slate-300">Discount Type</Label>
+              <div className="grid grid-cols-2 gap-2 mt-1.5">
+                <button
+                  type="button"
+                  onClick={() => setPromoModal(prev => ({ ...prev, discount_type: "percent" }))}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold transition-all ${
+                    promoModal.discount_type === "percent"
+                      ? "bg-indigo-600 text-white"
+                      : "bg-slate-800 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  Percentage (%)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPromoModal(prev => ({ ...prev, discount_type: "flat" }))}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold transition-all ${
+                    promoModal.discount_type === "flat"
+                      ? "bg-indigo-600 text-white"
+                      : "bg-slate-800 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  Flat Amount (₹)
+                </button>
+              </div>
+            </div>
+
+            {promoModal.discount_type === "percent" ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs font-bold text-slate-300">Discount (%) *</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="100"
+                    required
+                    value={promoModal.discount_percent}
+                    onChange={e => setPromoModal(prev => ({ ...prev, discount_percent: e.target.value }))}
+                    className="mt-1.5 bg-slate-800 border-slate-700 text-white text-xs rounded-xl"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-bold text-slate-300">Max Discount Cap (₹) *</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    required
+                    value={promoModal.max_discount}
+                    onChange={e => setPromoModal(prev => ({ ...prev, max_discount: e.target.value }))}
+                    className="mt-1.5 bg-slate-800 border-slate-700 text-white text-xs rounded-xl"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div>
+                <Label className="text-xs font-bold text-slate-300">Flat Discount Amount (₹) *</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  required
+                  value={promoModal.discount_flat}
+                  onChange={e => setPromoModal(prev => ({ ...prev, discount_flat: e.target.value }))}
+                  className="mt-1.5 bg-slate-800 border-slate-700 text-white text-xs rounded-xl"
+                />
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs font-bold text-slate-300">Min Plan Amount (₹)</Label>
+                <Input
+                  type="number"
+                  value={promoModal.min_amount}
+                  onChange={e => setPromoModal(prev => ({ ...prev, min_amount: e.target.value }))}
+                  className="mt-1.5 bg-slate-800 border-slate-700 text-white text-xs rounded-xl"
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-bold text-slate-300">Max Redemptions</Label>
+                <Input
+                  type="number"
+                  value={promoModal.max_uses}
+                  onChange={e => setPromoModal(prev => ({ ...prev, max_uses: e.target.value }))}
+                  className="mt-1.5 bg-slate-800 border-slate-700 text-white text-xs rounded-xl"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs font-bold text-slate-300">Expiry Date</Label>
+              <Input
+                type="date"
+                value={promoModal.expires_at}
+                onChange={e => setPromoModal(prev => ({ ...prev, expires_at: e.target.value }))}
+                className="mt-1.5 bg-slate-800 border-slate-700 text-white text-xs rounded-xl"
+              />
+            </div>
+
+            <DialogFooter className="mt-6 flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPromoModal(prev => ({ ...prev, open: false }))}
+                className="rounded-xl border-slate-700 bg-slate-800 text-slate-300 hover:text-white text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs"
+              >
+                Publish Coupon Code
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* MODAL: GRANT SUBSCRIPTION */}
       <Dialog open={grantModal.open} onOpenChange={o => !o && setGrantModal(prev => ({ ...prev, open: false }))}>

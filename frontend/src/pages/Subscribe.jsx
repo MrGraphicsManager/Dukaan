@@ -501,6 +501,7 @@ export default function Subscribe() {
               razorpay_signature: value.razorpay_signature,
               plan: selected,
               annual: isAnnual,
+              promo_code: appliedPromo?.code || null,
               expires_at: newExpiry.toISOString()
             }); 
             if (apiRes.data?.access_token) {

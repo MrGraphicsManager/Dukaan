@@ -41,11 +41,12 @@ let globalPlatformConfig = {
   frozen_merchants: {},
   verified_merchants: {
     "support@officialdukaan.in": true
-  }
+  },
+  promo_codes: []
 };
 
-const CLOUD_STATE_ID = process.env.DUKAAN_CLOUD_STATE_ID || "ff808181a067127101a06df9da67143f";
-const CLOUD_STATE_URL = `https://api.restful-api.dev/objects/${CLOUD_STATE_ID}`;
+const SYNC_BUS_TOPIC = process.env.DUKAAN_SYNC_BUS_TOPIC || "dukaan_platform_sync_prod_99482";
+const SYNC_BUS_URL = `https://ntfy.sh/${SYNC_BUS_TOPIC}`;
 
 let registeredUsersList = [
   {
@@ -79,54 +80,69 @@ let registeredUsersList = [
 let lastCloudFetchTime = 0;
 async function getPersistentState(force = false) {
   const now = Date.now();
-  if (!force && (now - lastCloudFetchTime < 1500)) {
+  if (!force && (now - lastCloudFetchTime < 2000)) {
     return globalPlatformConfig;
   }
   try {
-    const res = await fetch(CLOUD_STATE_URL, { signal: AbortSignal.timeout(3000) });
+    const res = await fetch(`${SYNC_BUS_URL}/raw?poll=1&limit=1`, { signal: AbortSignal.timeout(3000) });
     if (res.ok) {
-      const json = await res.json();
-      if (json && json.data) {
-        lastCloudFetchTime = now;
-        if (typeof json.data.maintenance_mode === "boolean") {
-          globalPlatformConfig.maintenance_mode = json.data.maintenance_mode;
-        }
-        if (typeof json.data.announcement === "string") {
-          globalPlatformConfig.announcement = json.data.announcement;
-        }
-        if (typeof json.data.ota_version === "number") {
-          globalPlatformConfig.ota_version = json.data.ota_version;
-        }
-        if (typeof json.data.kill_switch_active === "boolean") {
-          globalPlatformConfig.kill_switch_active = json.data.kill_switch_active;
-        }
-        if (json.data.granted_subscriptions) {
-          globalPlatformConfig.granted_subscriptions = {
-            ...globalPlatformConfig.granted_subscriptions,
-            ...json.data.granted_subscriptions
-          };
-        }
-        if (json.data.frozen_merchants) {
-          globalPlatformConfig.frozen_merchants = {
-            ...globalPlatformConfig.frozen_merchants,
-            ...json.data.frozen_merchants
-          };
-        }
-        if (json.data.verified_merchants) {
-          globalPlatformConfig.verified_merchants = {
-            ...globalPlatformConfig.verified_merchants,
-            ...json.data.verified_merchants
-          };
-        }
-        if (Array.isArray(json.data.registered_users)) {
-          for (const u of json.data.registered_users) {
-            if (!u || !u.email) continue;
-            const em = u.email.toLowerCase();
-            const idx = registeredUsersList.findIndex(x => x.email.toLowerCase() === em);
-            if (idx >= 0) {
-              registeredUsersList[idx] = { ...registeredUsersList[idx], ...u };
-            } else {
-              registeredUsersList.push(u);
+      const rawText = await res.text();
+      if (rawText && rawText.trim()) {
+        const json = JSON.parse(rawText.trim());
+        if (json) {
+          lastCloudFetchTime = now;
+          if (typeof json.maintenance_mode === "boolean") {
+            globalPlatformConfig.maintenance_mode = json.maintenance_mode;
+          }
+          if (typeof json.announcement === "string") {
+            globalPlatformConfig.announcement = json.announcement;
+          }
+          if (typeof json.ota_version === "number") {
+            globalPlatformConfig.ota_version = json.ota_version;
+          }
+          if (typeof json.kill_switch_active === "boolean") {
+            globalPlatformConfig.kill_switch_active = json.kill_switch_active;
+          }
+          if (json.granted_subscriptions) {
+            globalPlatformConfig.granted_subscriptions = {
+              ...globalPlatformConfig.granted_subscriptions,
+              ...json.granted_subscriptions
+            };
+          }
+          if (json.frozen_merchants) {
+            globalPlatformConfig.frozen_merchants = {
+              ...globalPlatformConfig.frozen_merchants,
+              ...json.frozen_merchants
+            };
+          }
+          if (json.verified_merchants) {
+            globalPlatformConfig.verified_merchants = {
+              ...globalPlatformConfig.verified_merchants,
+              ...json.verified_merchants
+            };
+          }
+          if (json.pricing) {
+            globalPlatformConfig.pricing = { ...globalPlatformConfig.pricing, ...json.pricing };
+          }
+          if (typeof json.trial_days === "number") {
+            globalPlatformConfig.trial_days = json.trial_days;
+          }
+          if (Array.isArray(json.promo_codes) && json.promo_codes.length > 0) {
+            promoCodes = json.promo_codes;
+            globalPlatformConfig.promo_codes = json.promo_codes;
+          } else {
+            globalPlatformConfig.promo_codes = promoCodes;
+          }
+          if (Array.isArray(json.registered_users)) {
+            for (const u of json.registered_users) {
+              if (!u || !u.email) continue;
+              const em = u.email.toLowerCase();
+              const idx = registeredUsersList.findIndex(x => x.email.toLowerCase() === em);
+              if (idx >= 0) {
+                registeredUsersList[idx] = { ...registeredUsersList[idx], ...u };
+              } else {
+                registeredUsersList.push(u);
+              }
             }
           }
         }
@@ -146,22 +162,23 @@ async function savePersistentState(extraConfig = {}) {
   };
   try {
     const payload = {
-      name: "dukaan_platform_state",
-      data: {
-        maintenance_mode: globalPlatformConfig.maintenance_mode,
-        announcement: globalPlatformConfig.announcement,
-        ota_version: globalPlatformConfig.ota_version,
-        kill_switch_active: globalPlatformConfig.kill_switch_active,
-        granted_subscriptions: globalPlatformConfig.granted_subscriptions || {},
-        frozen_merchants: globalPlatformConfig.frozen_merchants || {},
-        verified_merchants: globalPlatformConfig.verified_merchants || {},
-        registered_users: registeredUsersList
-      }
+      maintenance_mode: globalPlatformConfig.maintenance_mode,
+      announcement: globalPlatformConfig.announcement,
+      ota_version: globalPlatformConfig.ota_version,
+      kill_switch_active: globalPlatformConfig.kill_switch_active,
+      granted_subscriptions: globalPlatformConfig.granted_subscriptions || {},
+      frozen_merchants: globalPlatformConfig.frozen_merchants || {},
+      verified_merchants: globalPlatformConfig.verified_merchants || {},
+      pricing: globalPlatformConfig.pricing,
+      trial_days: globalPlatformConfig.trial_days,
+      promo_codes: promoCodes,
+      registered_users: registeredUsersList.slice(0, 30),
+      updated_at: globalPlatformConfig.updated_at
     };
-    await fetch(CLOUD_STATE_URL, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
+    await fetch(SYNC_BUS_URL, {
+      method: "POST",
       body: JSON.stringify(payload),
+      headers: { "Title": "Dukaan Platform Sync", "Priority": "high" },
       signal: AbortSignal.timeout(3500)
     });
   } catch (e) {
@@ -192,7 +209,45 @@ function recordRegisteredUser(userObj) {
   }
 }
 
-let promoCodes = [];
+let promoCodes = [
+  {
+    code: "WELCOME50",
+    discount_type: "percent",
+    discount_percent: 50,
+    max_discount: 1000,
+    min_amount: 0,
+    usage_count: 0,
+    max_uses: 500,
+    active: true,
+    expires_at: "2027-12-31",
+    created_at: new Date().toISOString()
+  },
+  {
+    code: "SUPER20",
+    discount_type: "percent",
+    discount_percent: 20,
+    max_discount: 500,
+    min_amount: 0,
+    usage_count: 0,
+    max_uses: 1000,
+    active: true,
+    expires_at: "2027-12-31",
+    created_at: new Date().toISOString()
+  },
+  {
+    code: "FLAT100",
+    discount_type: "flat",
+    discount_flat: 100,
+    discount_percent: 0,
+    max_discount: 100,
+    min_amount: 149,
+    usage_count: 0,
+    max_uses: 250,
+    active: true,
+    expires_at: "2027-12-31",
+    created_at: new Date().toISOString()
+  }
+];
 let supportTickets = [];
 let merchantFeedbacks = [];
 let referralCodes = [];
@@ -798,9 +853,19 @@ exports.handler = async (event, context) => {
         is_annual: isAnnual,
         razorpay_order_id: body.razorpay_order_id,
         razorpay_payment_id: body.razorpay_payment_id || `pay_rzp_${Date.now()}`,
+        promo_code: body.promo_code || null,
         expires_at,
         activated_at: new Date().toISOString()
       };
+
+      const appliedPromoCode = (body.promo_code || "").trim().toUpperCase();
+      if (appliedPromoCode) {
+        const pIdx = promoCodes.findIndex(p => p.code === appliedPromoCode);
+        if (pIdx >= 0) {
+          promoCodes[pIdx].usage_count = (promoCodes[pIdx].usage_count || 0) + 1;
+          savePersistentState().catch(() => {});
+        }
+      }
 
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       let user = parseToken(authHeader) || {};
@@ -1209,12 +1274,100 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // 15. PROMO CODES (Disabled)
-    if (path === "/promo-codes" && event.httpMethod === "GET") {
-      return { statusCode: 200, headers, body: JSON.stringify([]) };
+    // 15. PROMO & COUPON CODES ENGINE (Cloud-synced & live across checkout)
+    if ((path === "/promo-codes" || path === "/admin/coupon-codes") && event.httpMethod === "GET") {
+      await getPersistentState();
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(promoCodes)
+      };
     }
+
+    if ((path === "/promo-codes" || path === "/admin/coupon-codes") && event.httpMethod === "POST") {
+      await getPersistentState();
+      const codeUpper = (body.code || "").trim().toUpperCase();
+      if (!codeUpper) {
+        return { statusCode: 400, headers, body: JSON.stringify({ detail: "Coupon code name is required." }) };
+      }
+      const discountType = body.discount_type === "flat" ? "flat" : "percent";
+      const existingIdx = promoCodes.findIndex(p => p.code === codeUpper);
+      const newPromo = {
+        code: codeUpper,
+        discount_type: discountType,
+        discount_percent: discountType === "percent" ? (Number(body.discount_percent) || 20) : 0,
+        discount_flat: discountType === "flat" ? (Number(body.discount_flat) || Number(body.discount_amount) || 100) : 0,
+        max_discount: Number(body.max_discount) || 500,
+        min_amount: Number(body.min_amount) || 0,
+        max_uses: Number(body.max_uses) || 500,
+        usage_count: existingIdx >= 0 ? (promoCodes[existingIdx].usage_count || 0) : 0,
+        active: body.active !== undefined ? !!body.active : true,
+        expires_at: body.expires_at || "2027-12-31",
+        created_at: existingIdx >= 0 ? (promoCodes[existingIdx].created_at || new Date().toISOString()) : new Date().toISOString()
+      };
+      if (existingIdx >= 0) {
+        promoCodes[existingIdx] = newPromo;
+      } else {
+        promoCodes.unshift(newPromo);
+      }
+      globalPlatformConfig.promo_codes = promoCodes;
+      globalPlatformConfig.ota_version = (globalPlatformConfig.ota_version || 1) + 1;
+      await savePersistentState();
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, promo: newPromo, promoCodes }) };
+    }
+
+    if (path.startsWith("/promo-codes/") && event.httpMethod === "DELETE") {
+      await getPersistentState();
+      const codeToDelete = decodeURIComponent(path.replace("/promo-codes/", "")).trim().toUpperCase();
+      promoCodes = promoCodes.filter(p => p.code !== codeToDelete);
+      globalPlatformConfig.promo_codes = promoCodes;
+      globalPlatformConfig.ota_version = (globalPlatformConfig.ota_version || 1) + 1;
+      await savePersistentState();
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, deleted: codeToDelete, promoCodes }) };
+    }
+
     if (path === "/promo-codes/validate" && event.httpMethod === "POST") {
-      return { statusCode: 400, headers, body: JSON.stringify({ valid: false, detail: "Coupon codes have been disabled." }) };
+      await getPersistentState();
+      const codeUpper = (body.code || "").trim().toUpperCase();
+      const amount = Number(body.amount) || 0;
+      const promo = promoCodes.find(p => p.code === codeUpper);
+      if (!promo) {
+        return { statusCode: 400, headers, body: JSON.stringify({ valid: false, detail: "Invalid coupon code." }) };
+      }
+      if (!promo.active) {
+        return { statusCode: 400, headers, body: JSON.stringify({ valid: false, detail: "This coupon code is currently paused or inactive." }) };
+      }
+      if (promo.expires_at && new Date(promo.expires_at).getTime() < Date.now()) {
+        return { statusCode: 400, headers, body: JSON.stringify({ valid: false, detail: "This coupon code has expired." }) };
+      }
+      if (promo.max_uses && (promo.usage_count || 0) >= promo.max_uses) {
+        return { statusCode: 400, headers, body: JSON.stringify({ valid: false, detail: "This coupon has reached its maximum redemption limit." }) };
+      }
+      if (amount < promo.min_amount) {
+        return { statusCode: 400, headers, body: JSON.stringify({ valid: false, detail: `Minimum order amount for this code is ₹${promo.min_amount}.` }) };
+      }
+
+      let discount = 0;
+      if (promo.discount_type === "flat") {
+        discount = Math.min(amount, promo.discount_flat || 0);
+      } else {
+        const perc = Number(promo.discount_percent) || 0;
+        discount = Math.min((amount * perc) / 100, promo.max_discount || amount);
+      }
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          valid: true,
+          code: promo.code,
+          discount_type: promo.discount_type || "percent",
+          discount_percent: promo.discount_percent || 0,
+          discount_flat: promo.discount_flat || 0,
+          discount_amount: Math.round(discount),
+          final_amount: Math.max(0, Math.round(amount - discount))
+        })
+      };
     }
 
     // 16. IN-APP CUSTOMER SUPPORT DESK

@@ -119,7 +119,7 @@ function useNotifications() {
 ========================================================= */
 
 export default function AppLayout() {
-  const { user, shops, currentShopId, setActiveShop, logout, lang, setLang } = useAuth();
+  const { user, shops, currentShopId, setActiveShop, logout, lang, setLang, refresh: refreshAuth } = useAuth();
   const nav = useNavigate();
   const activeShop = (shops || []).find(s => s?.id === currentShopId) || shops?.[0] || { name: "Apni Dukaan" };
   const currentShop = activeShop;
@@ -185,7 +185,8 @@ export default function AppLayout() {
   const [platformConfig, setPlatformConfig] = useState(() => {
     return {
       maintenance_mode: localStorage.getItem("dukaan_platform_maintenance") === "true",
-      announcement: localStorage.getItem("dukaan_platform_announcement") || ""
+      announcement: localStorage.getItem("dukaan_platform_announcement") || "",
+      frozen_merchants: {}
     };
   });
   const [dismissedAnnouncement, setDismissedAnnouncement] = useState("");
@@ -198,7 +199,8 @@ export default function AppLayout() {
       if (res?.data) {
         setPlatformConfig({
           maintenance_mode: !!res.data.maintenance_mode,
-          announcement: res.data.announcement || ""
+          announcement: res.data.announcement || "",
+          frozen_merchants: res.data.frozen_merchants || {}
         });
         if (res.data.maintenance_mode) {
           localStorage.setItem("dukaan_platform_maintenance", "true");
@@ -211,10 +213,35 @@ export default function AppLayout() {
           localStorage.removeItem("dukaan_platform_announcement");
         }
 
+        // Feature 9 & 10: Real-time Freeze & Verification Sync for current merchant
+        if (user?.email) {
+          const em = user.email.toLowerCase();
+          const isFrozenCloud = Boolean(res.data.frozen_merchants?.[em]);
+          if (isFrozenCloud) {
+            localStorage.setItem(`dukaan_store_frozen_${user.email}`, "true");
+          } else {
+            localStorage.removeItem(`dukaan_store_frozen_${user.email}`);
+          }
+          if (res.data.verified_merchants && res.data.verified_merchants[em] !== undefined) {
+            const isVerifiedCloud = Boolean(res.data.verified_merchants[em]);
+            const stored = localStorage.getItem("dukaan_user");
+            if (stored) {
+              try {
+                const u = JSON.parse(stored);
+                if (u.is_verified !== isVerifiedCloud) {
+                  u.is_verified = isVerifiedCloud;
+                  localStorage.setItem("dukaan_user", JSON.stringify(u));
+                  if (typeof refreshAuth === "function") refreshAuth();
+                }
+              } catch {}
+            }
+          }
+        }
+
         // Feature 14: Global Force Update / OTA Cache Refresh
         if (res.data.ota_version) {
           const currentOta = parseInt(localStorage.getItem("dukaan_ota_version") || "0", 10);
-          if (res.data.ota_version > currentOta) {
+          if (res.data.ota_version > currentOta && !isMasterAdmin) {
             localStorage.setItem("dukaan_ota_version", String(res.data.ota_version));
             console.log("OTA Update received. Reloading application cache...");
             setTimeout(() => {
@@ -252,7 +279,7 @@ export default function AppLayout() {
         }
       }
     } catch (_) {}
-  }, [isMasterAdmin, inspectorSession]);
+  }, [isMasterAdmin, inspectorSession, user?.email, refreshAuth]);
 
   useEffect(() => {
     checkPlatformConfig();
@@ -263,15 +290,50 @@ export default function AppLayout() {
       if (document.visibilityState === "visible") checkPlatformConfig();
     };
     document.addEventListener("visibilitychange", onVis);
+
+    // Instant Zero-Latency Real-Time Push Sync via SSE
+    let eventSource;
+    try {
+      if (typeof window !== "undefined" && window.EventSource) {
+        eventSource = new EventSource("https://ntfy.sh/dukaan_platform_sync_prod_99482/sse");
+        eventSource.onmessage = (e) => {
+          try {
+            const payload = JSON.parse(e.data);
+            if (payload && payload.message) {
+              const busData = JSON.parse(payload.message);
+              if (busData) {
+                if (typeof busData.maintenance_mode === "boolean") {
+                  setPlatformConfig(prev => ({
+                    ...prev,
+                    maintenance_mode: busData.maintenance_mode,
+                    announcement: busData.announcement || "",
+                    frozen_merchants: busData.frozen_merchants || {}
+                  }));
+                }
+                checkPlatformConfig();
+              }
+            }
+          } catch {}
+        };
+      }
+    } catch (_) {}
+
     return () => {
       clearInterval(interval);
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVis);
+      if (eventSource) {
+        try { eventSource.close(); } catch (_) {}
+      }
     };
   }, [checkPlatformConfig]);
 
   // Feature 9: Store Freeze & Fraud Security Shield
-  const isStoreFrozen = !isMasterAdmin && !inspectorSession && (user?.is_frozen || localStorage.getItem(`dukaan_store_frozen_${user?.email}`) === "true");
+  const isStoreFrozen = !isMasterAdmin && !inspectorSession && (
+    user?.is_frozen || 
+    localStorage.getItem(`dukaan_store_frozen_${user?.email}`) === "true" ||
+    (user?.email && platformConfig.frozen_merchants?.[user.email.toLowerCase()])
+  );
   if (isStoreFrozen) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
