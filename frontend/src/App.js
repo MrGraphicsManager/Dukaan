@@ -17,6 +17,7 @@ import Register from "@/pages/Register";
 import VerifyEmail from "@/pages/VerifyEmail";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
+import GoogleAuthCallback from "@/pages/GoogleAuthCallback";
 
 import AppLayout from "@/components/AppLayout";
 import SubGate from "@/components/SubGate";
@@ -156,6 +157,16 @@ function LaunchController() {
       <Route
         path="/reset-password"
         element={<ResetPassword />}
+      />
+
+      <Route
+        path="/auth/google/callback"
+        element={<GoogleAuthCallback />}
+      />
+
+      <Route
+        path="/auth/callback"
+        element={<GoogleAuthCallback />}
       />
 
       <Route

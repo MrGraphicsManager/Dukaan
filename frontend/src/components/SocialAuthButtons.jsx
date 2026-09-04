@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { UserPlus, ChevronDown } from "lucide-react";
+import { UserPlus, ChevronDown, Settings, Check, ExternalLink } from "lucide-react";
 
 export default function SocialAuthButtons({ mode = "login", onSuccess }) {
   const { loginWithGoogle, loginWithApple } = useAuth();
@@ -14,11 +14,24 @@ export default function SocialAuthButtons({ mode = "login", onSuccess }) {
   const [showPrompt, setShowPrompt] = useState(false);
   const [activeProvider, setActiveProvider] = useState("google");
   const [showCustomInput, setShowCustomInput] = useState(false);
+  const [showApiSetup, setShowApiSetup] = useState(false);
   const [customEmail, setCustomEmail] = useState("");
   const [customName, setCustomName] = useState("");
   const [googleAccounts, setGoogleAccounts] = useState([]);
+  
+  const [googleClientId, setGoogleClientId] = useState(() => {
+    try {
+      return (
+        process.env.REACT_APP_GOOGLE_CLIENT_ID ||
+        localStorage.getItem("dukaan_google_client_id") ||
+        ""
+      );
+    } catch {
+      return "";
+    }
+  });
 
-  // Load accounts matching user's Google Chooser screenshot + any local saved accounts
+  // Load accounts matching user screenshot + local accounts
   useEffect(() => {
     try {
       const baseAccounts = [
@@ -45,7 +58,6 @@ export default function SocialAuthButtons({ mode = "login", onSuccess }) {
         },
       ];
 
-      // Merge with any account already saved in Dukaan
       const savedUser = JSON.parse(localStorage.getItem("dukaan_user") || "null");
       const reg = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
 
@@ -90,13 +102,54 @@ export default function SocialAuthButtons({ mode = "login", onSuccess }) {
     }
   }, []);
 
+  // Launch official Google OAuth 2.0 on accounts.google.com
+  const launchRealGoogleOAuth = (cid) => {
+    const clientId = (cid || googleClientId || "").trim();
+    if (!clientId) {
+      toast.error("Google Client ID is required.");
+      return;
+    }
+    try {
+      localStorage.setItem("dukaan_google_client_id", clientId);
+    } catch {}
+
+    const redirectUri = `${window.location.origin}/auth/google/callback`;
+    const state = Math.random().toString(36).substring(2);
+    const nonce = String(Date.now());
+    const authUrl =
+      "https://accounts.google.com/o/oauth2/v2/auth?" +
+      new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: "token id_token",
+        scope: "openid email profile",
+        prompt: "select_account",
+        nonce: nonce,
+        state: state,
+      }).toString();
+
+    window.location.href = authUrl;
+  };
+
   const handleGoogleClick = async () => {
     setBusyProvider("google");
     try {
-      const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
-      if (googleClientId && window.google?.accounts?.id) {
+      const activeClientId =
+        googleClientId ||
+        process.env.REACT_APP_GOOGLE_CLIENT_ID ||
+        localStorage.getItem("dukaan_google_client_id") ||
+        window.DUKAAN_GOOGLE_CLIENT_ID;
+
+      // If official Google Client ID is configured, redirect straight to accounts.google.com
+      if (activeClientId && activeClientId.includes(".apps.googleusercontent.com")) {
+        launchRealGoogleOAuth(activeClientId);
+        return;
+      }
+
+      // If GSI library is loaded with client ID
+      if (activeClientId && window.google?.accounts?.id) {
         window.google.accounts.id.initialize({
-          client_id: googleClientId,
+          client_id: activeClientId,
           callback: async (response) => {
             try {
               const base64Url = response.credential.split(".")[1];
@@ -132,9 +185,10 @@ export default function SocialAuthButtons({ mode = "login", onSuccess }) {
         return;
       }
 
-      // Open authentic Google Account Chooser screen
+      // Open authentic Google Account Chooser screen + API connection option
       setActiveProvider("google");
       setShowCustomInput(false);
+      setShowApiSetup(false);
       setCustomEmail("");
       setCustomName("");
       setShowPrompt(true);
@@ -150,6 +204,7 @@ export default function SocialAuthButtons({ mode = "login", onSuccess }) {
     try {
       setActiveProvider("apple");
       setShowCustomInput(false);
+      setShowApiSetup(false);
       setCustomEmail("");
       setCustomName("");
       setShowPrompt(true);
@@ -227,7 +282,6 @@ export default function SocialAuthButtons({ mode = "login", onSuccess }) {
           disabled={busyProvider !== null}
           className="w-full h-11 px-4 rounded-xl bg-white hover:bg-slate-50 active:bg-slate-100 border border-[#dadce0] hover:border-[#c4c7c5] text-[#3c4043] font-medium text-sm shadow-xs hover:shadow-sm transition-all duration-150 flex items-center justify-center gap-3 relative cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed select-none"
         >
-          {/* Official 4-color Google G Icon (Strict 18x18 sizing) */}
           <svg
             width="18"
             height="18"
@@ -255,7 +309,7 @@ export default function SocialAuthButtons({ mode = "login", onSuccess }) {
           </svg>
           <span className="tracking-normal font-medium text-sm text-[#3c4043]">
             {busyProvider === "google"
-              ? "Connecting..."
+              ? "Connecting to Google..."
               : mode === "register"
               ? "Sign up with Google"
               : "Sign in with Google"}
@@ -271,7 +325,6 @@ export default function SocialAuthButtons({ mode = "login", onSuccess }) {
           disabled={busyProvider !== null}
           className="w-full h-11 px-4 rounded-xl bg-black hover:bg-[#1a1a1a] active:bg-[#262626] border border-black text-white font-medium text-sm shadow-xs hover:shadow-sm transition-all duration-150 flex items-center justify-center gap-3 relative cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed select-none"
         >
-          {/* Official Apple Logo SVG (Strict 16x16 sizing) */}
           <svg
             width="16"
             height="16"
@@ -301,33 +354,89 @@ export default function SocialAuthButtons({ mode = "login", onSuccess }) {
           {activeProvider === "google" ? (
             <div>
               {/* Top Row: Google 'G' Icon + Sign in with Google */}
-              <div className="flex items-center gap-2.5 mb-7">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  className="shrink-0"
-                  style={{ width: "20px", height: "20px", minWidth: "20px", minHeight: "20px" }}
+              <div className="flex items-center justify-between mb-7">
+                <div className="flex items-center gap-2.5">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    className="shrink-0"
+                    style={{ width: "20px", height: "20px", minWidth: "20px", minHeight: "20px" }}
+                  >
+                    <path
+                      fill="#4285F4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                    />
+                  </svg>
+                  <span className="text-sm font-medium text-slate-700">Sign in with Google</span>
+                </div>
+
+                {/* API Setup Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setShowApiSetup(!showApiSetup)}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100/70 px-2.5 py-1 rounded-full border border-blue-200 transition-colors"
                 >
-                  <path
-                    fill="#4285F4"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                  />
-                </svg>
-                <span className="text-sm font-medium text-slate-700">Sign in with Google</span>
+                  <Settings className="w-3.5 h-3.5" />
+                  <span>{showApiSetup ? "Hide API Config" : "Connect Google API"}</span>
+                </button>
               </div>
+
+              {/* Collapsible Google Cloud API Settings Box */}
+              {showApiSetup && (
+                <div className="mb-6 p-4 rounded-2xl bg-slate-50 border-2 border-blue-200 space-y-3 animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-blue-600" />
+                      Google Cloud OAuth 2.0 Client ID (Live API)
+                    </span>
+                    <a
+                      href="https://console.cloud.google.com/apis/credentials"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] text-blue-600 hover:underline flex items-center gap-1 font-semibold"
+                    >
+                      <span>Google Cloud Console</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                  <p className="text-[11.5px] text-slate-600 leading-relaxed">
+                    Paste your Google OAuth Client ID here to connect live authentication directly to <b>accounts.google.com</b>:
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      value={googleClientId}
+                      onChange={(e) => setGoogleClientId(e.target.value)}
+                      placeholder="e.g. 119434437228-xxx.apps.googleusercontent.com"
+                      className="h-10 text-xs font-mono rounded-xl bg-white border border-slate-300"
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => launchRealGoogleOAuth(googleClientId)}
+                      className="h-10 px-4 rounded-xl bg-[#1a73e8] hover:bg-[#1557b0] text-white font-medium text-xs shrink-0"
+                    >
+                      Connect & Launch
+                    </Button>
+                  </div>
+                  <div className="text-[10.5px] text-slate-500 space-y-0.5 pt-1 border-t border-slate-200">
+                    <div><b>Authorized Origin:</b> <code className="bg-white px-1.5 py-0.5 rounded text-blue-700">https://officialdukaan.in</code></div>
+                    <div><b>Authorized Redirect URI:</b> <code className="bg-white px-1.5 py-0.5 rounded text-blue-700">https://officialdukaan.in/auth/google/callback</code></div>
+                  </div>
+                </div>
+              )}
 
               {/* Main Dual-Column Grid (Exactly like accounts.google.com/v3/signin/accountchooser) */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
@@ -428,7 +537,7 @@ export default function SocialAuthButtons({ mode = "login", onSuccess }) {
                           type="text"
                           value={customName}
                           onChange={(e) => setCustomName(e.target.value)}
-                          placeholder="e.g. Ramesh Patel (Apna Supermarket)"
+                          placeholder="e.g. Ramesh Patel"
                           className="h-11 rounded-lg border border-slate-300 focus-visible:border-[#1a73e8] text-sm text-slate-900"
                         />
                       </div>
