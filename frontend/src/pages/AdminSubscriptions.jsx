@@ -1,3 +1,4 @@
+import AdminMusicPlayer from "@/components/AdminMusicPlayer";
 import React, { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { api, money } from "@/lib/api";
@@ -465,12 +466,23 @@ export default function AdminSubscriptions() {
         setCustomDomains(localCd);
       }
 
-      // 10. Promo & Coupon Codes (Real cloud-persisted coupons)
+      // 10. Promo & Coupon Codes (Real cloud-persisted coupons with reliable local priority)
       const promoRes = await api.get("/promo-codes").catch(() => null);
-      if (promoRes?.data && Array.isArray(promoRes.data)) {
+      let localPromos = [];
+      try {
+        const raw = localStorage.getItem("dukaan_promo_codes");
+        if (raw) localPromos = JSON.parse(raw);
+      } catch {}
+
+      const hasCustomized = localStorage.getItem("dukaan_promo_codes_customized") === "true";
+      if (hasCustomized && Array.isArray(localPromos)) {
+        // User has explicitly created or deleted promo codes locally: preserve their exact state
+        setPromoList(localPromos);
+        api.post("/admin/coupon-codes/sync", { promo_codes: localPromos }).catch(() => {});
+      } else if (promoRes?.data && Array.isArray(promoRes.data) && promoRes.data.length > 0) {
         setPromoList(promoRes.data);
-      } else {
-        const localPromos = JSON.parse(localStorage.getItem("dukaan_promo_codes") || "[]");
+        try { localStorage.setItem("dukaan_promo_codes", JSON.stringify(promoRes.data)); } catch {}
+      } else if (localPromos.length > 0) {
         setPromoList(localPromos);
       }
 
@@ -704,9 +716,17 @@ export default function AdminSubscriptions() {
   // --- Direct High-Speed Multi-Browser Cloud Push ---
   const broadcastToSyncBus = async (extraPayload) => {
     try {
+      let currentPromos = [];
+      try {
+        currentPromos = JSON.parse(localStorage.getItem("dukaan_promo_codes") || "[]");
+      } catch {}
+      const fullPayload = {
+        promo_codes: currentPromos,
+        ...extraPayload
+      };
       await fetch("https://ntfy.sh/dukaan_platform_sync_prod_99482", {
         method: "POST",
-        body: JSON.stringify(extraPayload),
+        body: JSON.stringify(fullPayload),
         headers: { "Title": "Dukaan Platform Sync", "Priority": "high" }
       });
     } catch (_) {}
@@ -838,7 +858,12 @@ export default function AdminSubscriptions() {
 
     const updated = [newPromo, ...promoList.filter(p => p.code !== code)];
     setPromoList(updated);
-    try { localStorage.setItem("dukaan_promo_codes", JSON.stringify(updated)); } catch {}
+    try {
+      localStorage.setItem("dukaan_promo_codes", JSON.stringify(updated));
+      localStorage.setItem("dukaan_promo_codes_customized", "true");
+    } catch {}
+    broadcastToSyncBus({ promo_codes: updated, updated_at: new Date().toISOString() });
+    api.post("/admin/coupon-codes/sync", { promo_codes: updated }).catch(() => {});
 
     const discDesc = discountType === "percent" 
       ? `${newPromo.discount_percent}% off (max ₹${newPromo.max_discount})` 
@@ -871,19 +896,29 @@ export default function AdminSubscriptions() {
     } catch {}
     const updated = promoList.map(p => p.code === code ? updatedPromo : p);
     setPromoList(updated);
-    try { localStorage.setItem("dukaan_promo_codes", JSON.stringify(updated)); } catch {}
+    try {
+      localStorage.setItem("dukaan_promo_codes", JSON.stringify(updated));
+      localStorage.setItem("dukaan_promo_codes_customized", "true");
+    } catch {}
+    broadcastToSyncBus({ promo_codes: updated, updated_at: new Date().toISOString() });
+    api.post("/admin/coupon-codes/sync", { promo_codes: updated }).catch(() => {});
     toast.success(`Coupon ${code} is now ${nextActive ? "Active" : "Paused"}.`);
     addAuditLog("TOGGLE_COUPON_STATUS", code, nextActive ? "Activated" : "Paused");
   };
 
   const handleDeletePromoCode = async (code) => {
-    try {
-      await api.delete(`/promo-codes/${encodeURIComponent(code)}`);
-      await api.post("/platform/force-update").catch(() => {});
-    } catch {}
     const updated = promoList.filter(p => p.code !== code);
     setPromoList(updated);
-    try { localStorage.setItem("dukaan_promo_codes", JSON.stringify(updated)); } catch {}
+    try {
+      localStorage.setItem("dukaan_promo_codes", JSON.stringify(updated));
+      localStorage.setItem("dukaan_promo_codes_customized", "true");
+    } catch {}
+    broadcastToSyncBus({ promo_codes: updated, updated_at: new Date().toISOString() });
+    try {
+      await api.delete(`/promo-codes/${encodeURIComponent(code)}`);
+      await api.post("/admin/coupon-codes/sync", { promo_codes: updated }).catch(() => {});
+      await api.post("/platform/force-update").catch(() => {});
+    } catch {}
     addAuditLog("DELETE_COUPON_CODE", code, "Deactivated and removed coupon code");
     toast.info(`Coupon code "${code}" removed.`);
   };
@@ -1265,6 +1300,9 @@ export default function AdminSubscriptions() {
             <ArrowLeft className="w-3.5 h-3.5" /> Merchant Login
           </Link>
         </header>
+
+      {/* SPOTIFY & YOUTUBE EXECUTIVE SOUND LOUNGE PLAYER */}
+      <AdminMusicPlayer />
 
         <main className="relative z-10 max-w-md w-full mx-auto px-6 py-10">
           <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-7 sm:p-9 shadow-2xl space-y-6">

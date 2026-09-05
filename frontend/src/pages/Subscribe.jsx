@@ -171,6 +171,37 @@ export default function Subscribe() {
     if (!rawCode) return toast.error("Please enter a promo code.");
     const baseAmount = isAnnual ? plan.annual : plan.monthly;
     setValidatingPromo(true);
+
+    const applyPromoObj = (found) => {
+      if (!found.active && found.active !== undefined) {
+        toast.error("This coupon code is currently paused or inactive.");
+        return false;
+      }
+      if (found.min_amount && baseAmount < Number(found.min_amount)) {
+        toast.error(`Minimum order amount for this code is ₹${found.min_amount}.`);
+        return false;
+      }
+      let disc = 0;
+      if (found.discount_type === "flat") {
+        disc = Math.min(baseAmount, Number(found.discount_flat) || 100);
+      } else {
+        const perc = Number(found.discount_percent) || 20;
+        disc = Math.min((baseAmount * perc) / 100, Number(found.max_discount) || baseAmount);
+      }
+      disc = Math.round(disc);
+      const finalAmt = Math.max(0, baseAmount - disc);
+      setAppliedPromo({
+        valid: true,
+        code: found.code,
+        discount_amount: disc,
+        final_amount: finalAmt,
+        discount_type: found.discount_type || "percent",
+        discount_value: found.discount_type === "flat" ? (found.discount_flat || 100) : (found.discount_percent || 20)
+      });
+      toast.success(`🎉 Code "${found.code}" applied! You save ₹${disc}`);
+      return true;
+    };
+
     try {
       const res = await api.post("/promo-codes/validate", {
         code: rawCode,
@@ -179,18 +210,29 @@ export default function Subscribe() {
       if (res.data?.valid) {
         setAppliedPromo(res.data);
         toast.success(`🎉 Code "${res.data.code}" applied! You save ₹${res.data.discount_amount}`);
-      } else {
-        toast.error(res.data?.detail || "Invalid promo code.");
+        setValidatingPromo(false);
+        return;
       }
     } catch (e) {
-      if (rawCode === "DIWALI50") {
-        const disc = Math.round(baseAmount * 0.5);
-        setAppliedPromo({ valid: true, code: "DIWALI50", discount_amount: disc, final_amount: baseAmount - disc });
-        toast.success(`🎉 Code "DIWALI50" applied! You save ₹${disc}`);
-      } else if (rawCode === "WELCOME20") {
-        const disc = Math.round(baseAmount * 0.2);
-        setAppliedPromo({ valid: true, code: "WELCOME20", discount_amount: disc, final_amount: baseAmount - disc });
-        toast.success(`🎉 Code "WELCOME20" applied! You save ₹${disc}`);
+      // 1. Check user-created promo codes in localStorage
+      let localPromos = [];
+      try {
+        localPromos = JSON.parse(localStorage.getItem("dukaan_promo_codes") || "[]");
+      } catch {}
+
+      const found = localPromos.find(p => p.code && p.code.trim().toUpperCase() === rawCode);
+      if (found && applyPromoObj(found)) {
+        setValidatingPromo(false);
+        return;
+      }
+
+      // 2. Preset standard fallback codes
+      if (rawCode === "DIWALI50" || rawCode === "WELCOME50") {
+        applyPromoObj({ code: rawCode, discount_type: "percent", discount_percent: 50, max_discount: 1000, active: true });
+      } else if (rawCode === "WELCOME20" || rawCode === "SUPER20") {
+        applyPromoObj({ code: rawCode, discount_type: "percent", discount_percent: 20, max_discount: 500, active: true });
+      } else if (rawCode === "FLAT100") {
+        applyPromoObj({ code: rawCode, discount_type: "flat", discount_flat: 100, active: true });
       } else {
         toast.error(e.response?.data?.detail || "Invalid or expired promo code.");
       }

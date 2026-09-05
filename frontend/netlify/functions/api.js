@@ -84,7 +84,7 @@ async function getPersistentState(force = false) {
     return globalPlatformConfig;
   }
   try {
-    const res = await fetch(`${SYNC_BUS_URL}/raw?poll=1&limit=1`, { signal: AbortSignal.timeout(3000) });
+    const res = await fetch(`${SYNC_BUS_URL}/raw?poll=1&limit=10`, { signal: AbortSignal.timeout(3000) });
     if (res.ok) {
       const rawText = await res.text();
       if (rawText && rawText.trim()) {
@@ -128,12 +128,19 @@ async function getPersistentState(force = false) {
           if (typeof json.trial_days === "number") {
             globalPlatformConfig.trial_days = json.trial_days;
           }
-          if (Array.isArray(json.promo_codes) && json.promo_codes.length > 0) {
-            promoCodes = json.promo_codes;
-            globalPlatformConfig.promo_codes = json.promo_codes;
-          } else {
-            globalPlatformConfig.promo_codes = promoCodes;
-          }
+        }
+
+        // Scan backwards through messages for the latest valid promo_codes array
+        for (let i = lines.length - 1; i >= 0; i--) {
+          try {
+            const j = JSON.parse(lines[i]);
+            if (Array.isArray(j.promo_codes)) {
+              promoCodes = j.promo_codes;
+              globalPlatformConfig.promo_codes = j.promo_codes;
+              break;
+            }
+          } catch (_) {}
+        }
           if (Array.isArray(json.registered_users)) {
             for (const u of json.registered_users) {
               if (!u || !u.email) continue;
@@ -1421,6 +1428,18 @@ exports.handler = async (event, context) => {
       globalPlatformConfig.ota_version = (globalPlatformConfig.ota_version || 1) + 1;
       await savePersistentState();
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true, deleted: codeToDelete, promoCodes }) };
+    }
+
+    if ((path === "/admin/coupon-codes/sync" || path === "/promo-codes/sync") && event.httpMethod === "POST") {
+      await getPersistentState();
+      if (Array.isArray(body.promo_codes)) {
+        promoCodes = body.promo_codes;
+        globalPlatformConfig.promo_codes = promoCodes;
+        globalPlatformConfig.ota_version = (globalPlatformConfig.ota_version || 1) + 1;
+        await savePersistentState();
+        return { statusCode: 200, headers, body: JSON.stringify({ ok: true, promoCodes }) };
+      }
+      return { statusCode: 400, headers, body: JSON.stringify({ detail: "Invalid promo_codes array" }) };
     }
 
     if (path === "/promo-codes/validate" && event.httpMethod === "POST") {
