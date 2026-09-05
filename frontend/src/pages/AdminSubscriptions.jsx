@@ -276,6 +276,7 @@ export default function AdminSubscriptions() {
 
   // Feature #30: Kill Switch Confirmation Modal
   const [killSwitchModalOpen, setKillSwitchModalOpen] = useState(false);
+  const [killSwitchActive, setKillSwitchActive] = useState(false);
 
   // Grant Subscription Modal
   const [grantModal, setGrantModal] = useState({
@@ -478,6 +479,9 @@ export default function AdminSubscriptions() {
         if (res?.data) {
           if (typeof res.data.maintenance_mode === "boolean") {
             setMaintenanceMode(res.data.maintenance_mode);
+          }
+          if (typeof res.data.kill_switch_active === "boolean") {
+            setKillSwitchActive(res.data.kill_switch_active);
           }
           if (typeof res.data.announcement === "string") {
             setAnnouncement(res.data.announcement);
@@ -959,11 +963,28 @@ export default function AdminSubscriptions() {
   const handleExecuteKillSwitch = async () => {
     try {
       await api.post("/platform/kill-switch", { kill_switch_active: true }).catch(() => {});
+      broadcastToSyncBus({ kill_switch_active: true, updated_at: new Date().toISOString() });
+      setKillSwitchActive(true);
       addAuditLog("EMERGENCY_KILL_SWITCH", "ALL_MERCHANTS", "Invalidated all active merchant tokens & sessions");
-      toast.success("Emergency Kill-Switch Executed! All active non-admin sessions have been locked.");
+      toast.success("🚨 Emergency Kill-Switch Executed! All active non-admin sessions have been locked.");
       setKillSwitchModalOpen(false);
     } catch {
       toast.error("Failed to execute kill switch.");
+    }
+  };
+
+  const handleLiftKillSwitch = async () => {
+    try {
+      await api.post("/platform/kill-switch", { kill_switch_active: false }).catch(() => {});
+      await api.post("/platform/config", { kill_switch_active: false, maintenance_mode: false }).catch(() => {});
+      broadcastToSyncBus({ kill_switch_active: false, maintenance_mode: false, updated_at: new Date().toISOString() });
+      localStorage.removeItem("dukaan_platform_maintenance");
+      setKillSwitchActive(false);
+      setMaintenanceMode(false);
+      addAuditLog("LIFT_KILL_SWITCH", "ALL_MERCHANTS", "Lifted emergency lockdown. Restored normal merchant access.");
+      toast.success("🟢 Emergency Lockdown Lifted! Merchant stores are now operational & normal.");
+    } catch {
+      toast.error("Failed to lift kill switch.");
     }
   };
 
@@ -2940,18 +2961,42 @@ export default function AdminSubscriptions() {
                   </div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-rose-950/20 border border-rose-900/50 flex items-center justify-between">
+                <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                  killSwitchActive ? "bg-rose-950/40 border-rose-600" : "bg-rose-950/20 border-rose-900/50"
+                }`}>
                   <div>
-                    <div className="text-xs font-bold text-rose-300">Security Lockdown</div>
-                    <div className="text-[11px] text-slate-400">Forces immediate re-login for all active non-admin accounts</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-rose-300">Platform Security Status:</span>
+                      <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full ${
+                        killSwitchActive ? "bg-rose-500 text-white animate-pulse" : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                      }`}>
+                        {killSwitchActive ? "🔴 LOCKDOWN ACTIVE" : "🟢 NORMAL LIVE OPERATION"}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-1">
+                      {killSwitchActive
+                        ? "Non-admin accounts are locked out. Click 'Lift Lockdown' below to restore normal access."
+                        : "All merchant stores are functioning normally across the network."}
+                    </div>
                   </div>
 
-                  <Button
-                    onClick={() => setKillSwitchModalOpen(true)}
-                    className="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl h-9 px-4"
-                  >
-                    🚨 Trigger Kill Switch
-                  </Button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {killSwitchActive ? (
+                      <Button
+                        onClick={handleLiftKillSwitch}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl h-9 px-4 shadow-lg shadow-emerald-600/30"
+                      >
+                        🟢 Lift Lockdown & Restore Access
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => setKillSwitchModalOpen(true)}
+                        className="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl h-9 px-4"
+                      >
+                        🚨 Trigger Kill Switch
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
 

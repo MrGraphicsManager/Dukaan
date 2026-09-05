@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useCallback, useMemo } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,8 @@ import {
   CheckCircle2, 
   Sparkles,
   Volume2,
-  TrendingUp
+  TrendingUp,
+  AlertOctagon
 } from "lucide-react";
 import Card3D from "@/components/Card3D";
 import ThreeDBackground from "@/components/ThreeDBackground";
@@ -29,6 +30,11 @@ import SocialAuthButtons from "@/components/SocialAuthButtons";
 export default function Login() {
   const { login } = useAuth();
   const nav = useNavigate();
+  const loc = useLocation();
+  const isEmergencyLockdown = useMemo(() => {
+    return new URLSearchParams(loc.search).get("emergency_lockdown") === "1";
+  }, [loc.search]);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -37,6 +43,32 @@ export default function Login() {
   const [err, setErr] = useState("");
   const [needVerify, setNeedVerify] = useState(false);
   const [showLoader, setShowLoader] = useState(false);
+
+  const handleLoaderComplete = useCallback(() => {
+    let currentUser = null;
+    try {
+      currentUser = JSON.parse(localStorage.getItem("dukaan_user") || "{}");
+    } catch {}
+    const isSubActive = (sub) => {
+      if (!sub) return false;
+      const st = (sub.status || "").toLowerCase();
+      const valid = st === "active" || st === "trial" || sub.is_trial === true;
+      if (!valid) return false;
+      if (!sub.expires_at) return true;
+      const exp = new Date(sub.expires_at).getTime();
+      return !isNaN(exp) && exp > Date.now();
+    };
+    if (currentUser?.is_admin || currentUser?.email?.toLowerCase() === "contact@officialdukaan.in") {
+      nav("/admin");
+      return;
+    }
+    const hasActiveSub = Boolean(isSubActive(currentUser?.subscription));
+    if (!hasActiveSub) {
+      nav("/subscribe");
+    } else {
+      nav("/app");
+    }
+  }, [nav]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -51,6 +83,8 @@ export default function Login() {
       } else {
         localStorage.removeItem("dukaan_remember");
       }
+      // Remove any lingering maintenance/lockdown blocks in localStorage
+      localStorage.removeItem("dukaan_platform_maintenance");
       toast.success("Welcome back to Dukaan!");
       setShowLoader(true);
     } else {
@@ -65,35 +99,7 @@ export default function Login() {
   };
 
   if (showLoader) {
-    return (
-      <OnboardingLoader 
-        onComplete={() => {
-          let currentUser = null;
-          try {
-            currentUser = JSON.parse(localStorage.getItem("dukaan_user") || "{}");
-          } catch {}
-          const isSubActive = (sub) => {
-            if (!sub) return false;
-            const st = (sub.status || "").toLowerCase();
-            const valid = st === "active" || st === "trial" || sub.is_trial === true;
-            if (!valid) return false;
-            if (!sub.expires_at) return true;
-            const exp = new Date(sub.expires_at).getTime();
-            return !isNaN(exp) && exp > Date.now();
-          };
-          if (currentUser?.is_admin || currentUser?.email?.toLowerCase() === "contact@officialdukaan.in") {
-            nav("/admin");
-            return;
-          }
-          const hasActiveSub = Boolean(isSubActive(currentUser?.subscription));
-          if (!hasActiveSub) {
-            nav("/subscribe");
-          } else {
-            nav("/app");
-          }
-        }} 
-      />
-    );
+    return <OnboardingLoader onComplete={handleLoaderComplete} />;
   }
 
   return (
@@ -267,6 +273,19 @@ export default function Login() {
                     Sign in to open your shop counter and billing register.
                   </p>
                 </div>
+
+                {/* Emergency Session Reset Notice */}
+                {isEmergencyLockdown && (
+                  <div className="mb-4 p-3 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-2.5 text-left text-xs text-amber-800 animate-fade-in">
+                    <AlertOctagon className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold">Platform Security Refresh:</span>
+                      <p className="text-[11px] text-amber-700 mt-0.5 leading-relaxed">
+                        An administrative reset occurred. Sign in with your password to reconnect your store.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* 1-Click Social Sign In (Google & Apple) */}
                 <div className="mb-5">

@@ -198,7 +198,9 @@ export default function AppLayout() {
   });
   const [dismissedAnnouncement, setDismissedAnnouncement] = useState("");
 
-  const isMasterAdmin = (user?.email || "").toLowerCase().trim() === "contact@officialdukaan.in";
+  const isMasterAdmin = (user?.email || "").toLowerCase().trim() === "contact@officialdukaan.in" || 
+    Boolean(user?.is_admin) || 
+    (user?.email || "").toLowerCase().trim() === "priyennaik@gmail.com";
 
   const checkPlatformConfig = useCallback(async () => {
     try {
@@ -304,6 +306,8 @@ export default function AppLayout() {
           localStorage.removeItem("dukaan_access_token");
           localStorage.removeItem("dukaan_user");
           window.location.href = "/login?emergency_lockdown=1";
+        } else if (!res.data.kill_switch_active && !res.data.maintenance_mode) {
+          localStorage.removeItem("dukaan_platform_maintenance");
         }
       }
     } catch (_) {}

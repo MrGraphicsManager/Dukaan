@@ -176,7 +176,6 @@ export default function Dashboard() {
   }, [canUseExpiryGuard, storedProducts]);
 
   const loadDashboard = useCallback(async ({ silent = false } = {}) => {
-    if (!currentShopId) return;
     if (silent) setRefreshing(true); else setLoading(true);
     setErr("");
     try {
@@ -309,6 +308,13 @@ export default function Dashboard() {
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const safety = setTimeout(() => {
+      setLoading(false);
+    }, 2500);
+    return () => clearTimeout(safety);
   }, []);
 
   useEffect(() => {

@@ -1320,9 +1320,13 @@ exports.handler = async (event, context) => {
       if (typeof body.payment_alert_chime === "boolean") {
         globalPlatformConfig.payment_alert_chime = body.payment_alert_chime;
       }
+      if (typeof body.kill_switch_active === "boolean") {
+        globalPlatformConfig.kill_switch_active = body.kill_switch_active;
+        globalPlatformConfig.kill_switch_at = body.kill_switch_active ? new Date().toISOString() : null;
+      }
 
       // Auto-bump OTA version on maintenance mode or announcement updates so merchants immediately reload / react!
-      if (modeChanged || body.announcement !== undefined) {
+      if (modeChanged || body.announcement !== undefined || typeof body.kill_switch_active === "boolean") {
         globalPlatformConfig.ota_version = (globalPlatformConfig.ota_version || 1) + 1;
       }
 
@@ -1352,11 +1356,13 @@ exports.handler = async (event, context) => {
     // 14. EMERGENCY SESSION KILL SWITCH
     if (path === "/platform/kill-switch" && event.httpMethod === "POST") {
       await getPersistentState();
-      globalPlatformConfig.kill_switch_active = !globalPlatformConfig.kill_switch_active;
-      globalPlatformConfig.kill_switch_at = globalPlatformConfig.kill_switch_active ? new Date().toISOString() : null;
-      if (globalPlatformConfig.kill_switch_active) {
-        globalPlatformConfig.ota_version = (globalPlatformConfig.ota_version || 1) + 1;
+      if (typeof body.kill_switch_active === "boolean") {
+        globalPlatformConfig.kill_switch_active = body.kill_switch_active;
+      } else {
+        globalPlatformConfig.kill_switch_active = !globalPlatformConfig.kill_switch_active;
       }
+      globalPlatformConfig.kill_switch_at = globalPlatformConfig.kill_switch_active ? new Date().toISOString() : null;
+      globalPlatformConfig.ota_version = (globalPlatformConfig.ota_version || 1) + 1;
       await savePersistentState();
       return {
         statusCode: 200,
