@@ -542,12 +542,13 @@ export default function AppLayout() {
               <Menu className="w-5 h-5 text-brand-indigo" />
             </button>
 
-            <button className="md:hidden flex items-center gap-2" onClick={() => nav("/app")} data-testid="topbar-logo" aria-label="Home">
+            <button className="md:hidden flex items-center gap-1.5" onClick={() => nav("/app")} data-testid="topbar-logo" aria-label="Home">
               <img 
                 src={isPremium ? "/logo-premium.png" : "/logo.png"} 
                 alt="Dukaan" 
                 className={`${isPremium ? "h-8 sm:h-10" : "h-7 sm:h-8"} w-auto object-contain`} 
               />
+              <span className="text-[9px] font-mono font-bold text-brand-indigo/40 tracking-wider">by PEAN</span>
             </button>
             <div className="hidden md:flex items-center gap-2.5">
               <img 
@@ -556,6 +557,9 @@ export default function AppLayout() {
                 className={`${isPremium ? "h-11 sm:h-12" : "h-9"} w-auto object-contain cursor-pointer transition-transform hover:scale-105 drop-shadow-xs`} 
                 onClick={() => nav("/app")} 
               />
+              <span className="text-[10px] font-mono font-bold text-brand-indigo/50 tracking-wider bg-brand-sand px-2 py-0.5 rounded-full border border-brand-mitti">
+                by PEAN
+              </span>
               {isPremium && (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 text-slate-900 shadow-xs border border-amber-300 font-mono">
                   PREMIUM MERCHANT
@@ -790,7 +794,7 @@ export default function AppLayout() {
               </NavLink>
             )}
           </nav>
-          <div className="mt-6 mb-6 px-1">
+          <div className="mt-6 mb-4 px-1">
             <Button
               className="w-full bg-brand-terracotta hover:bg-brand-terracotta/90 text-white rounded-full active:scale-95 transition-all"
               onClick={() => nav("/app/pos")}
@@ -798,6 +802,16 @@ export default function AppLayout() {
             >
               + {t(lang, "new_bill")}
             </Button>
+          </div>
+          {/* PEAN Parent Brand Footnote */}
+          <div className="mt-auto pb-4 pt-3 border-t border-brand-mitti/70 px-2 text-center">
+            <div className="text-[11px] font-bold text-brand-indigo/80 flex items-center justify-center gap-1.5">
+              <span>Dukaan</span>
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-brand-sand font-mono text-brand-indigo/60">POS</span>
+            </div>
+            <div className="text-[10px] text-brand-indigo/50 mt-0.5 font-medium">
+              A Product of <span className="font-bold text-brand-indigo/70">PEAN</span>
+            </div>
           </div>
         </aside>
 
@@ -911,6 +925,11 @@ export default function AppLayout() {
                 <LogOut className="w-3.5 h-3.5 mr-1.5" />
                 {t(lang, "logout")}
               </Button>
+              <div className="pt-2 text-center">
+                <span className="text-[10px] text-brand-indigo/40 font-medium font-mono">
+                  Dukaan POS · A Product of PEAN
+                </span>
+              </div>
             </div>
           </div>
         </div>

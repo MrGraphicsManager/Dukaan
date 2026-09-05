@@ -402,6 +402,13 @@ export default function Login() {
                   </Link>
                 </div>
 
+                {/* PEAN Ecosystem Footnote */}
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-center gap-1.5 text-[11px] text-slate-400 font-medium">
+                  <span>Part of the</span>
+                  <span className="font-bold text-slate-600">PEAN</span>
+                  <span>Ecosystem</span>
+                </div>
+
               </div>
             </Card3D>
 
@@ -411,8 +418,8 @@ export default function Login() {
       </main>
 
       {/* Bottom Footer Note */}
-      <footer className="relative z-20 py-4 text-center text-xs text-brand-indigo/40 font-medium">
-        Dukaan Retail OS · Designed for Indian Small Businesses · 2026
+      <footer className="relative z-20 py-4 text-center text-xs text-brand-indigo/50 font-medium">
+        Dukaan Retail OS · A Product of PEAN · © 2026
       </footer>
 
     </div>

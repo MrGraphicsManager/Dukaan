@@ -434,7 +434,8 @@ export default function POS() {
       `*Grand Total: ₹${b.total}*\n` +
       `Paid Via: ${b.payment_method?.toUpperCase()}\n` +
       `Date: ${new Date().toLocaleDateString("en-IN")}\n\n` +
-      `Thank you for shopping with us! Please visit again. 🙏`;
+      `Thank you for shopping with us! Please visit again. 🙏\n` +
+      `_Powered by Dukaan · A PEAN Product_`;
 
     const url = `https://wa.me/${phone ? `91${phone}` : ""}?text=${encodeURIComponent(msg)}`;
     window.open(url, "_blank");
@@ -514,7 +515,7 @@ export default function POS() {
           <div class="center">Thank you for visiting! 🙏</div>
           ${brandingEnabled ? `
             <div class="center" style="font-size: 9px; margin-top: 12px; color: #555;">
-              *** Powered by officialdukaan.in ***<br/>
+              *** Powered by Dukaan · A PEAN Product ***<br/>
               Smart Thermal POS Engine
             </div>
           ` : ""}

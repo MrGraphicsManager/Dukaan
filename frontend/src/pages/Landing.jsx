@@ -144,8 +144,12 @@ export default function Landing() {
       ========================================================= */}
       <header className="sticky top-0 z-30 bg-brand-cream/85 backdrop-blur-xl border-b border-brand-mitti shadow-xs">
         <div className="mx-auto max-w-6xl px-5 h-20 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5" data-testid="landing-logo">
+          <Link to="/" className="flex items-center gap-2" data-testid="landing-logo">
             <img src="/logo.png" alt="Dukaan" className="h-10 sm:h-12 w-auto object-contain transition-transform hover:scale-105" />
+            <div className="hidden sm:flex flex-col border-l border-brand-mitti pl-2.5">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-brand-indigo/40 font-mono leading-none">by</span>
+              <span className="text-xs font-display font-extrabold tracking-tight text-brand-indigo leading-tight">PEAN</span>
+            </div>
           </Link>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-brand-indigo/80">
@@ -640,7 +644,14 @@ export default function Landing() {
           FOOTER
       ========================================================= */}
       <footer className="border-t border-brand-mitti bg-white py-12 text-center relative z-10">
-        <img src="/logo.png" alt="Dukaan" className="h-9 mx-auto mb-3 object-contain" />
+        <div className="flex items-center justify-center gap-3 mb-3">
+          <img src="/logo.png" alt="Dukaan" className="h-9 object-contain" />
+          <div className="h-6 w-px bg-brand-mitti" />
+          <div className="flex items-center gap-1.5 text-xs font-bold text-brand-indigo/80">
+            <span className="text-brand-indigo/50 text-[10px] font-mono uppercase">A product of</span>
+            <span className="font-display font-black text-sm tracking-tight text-brand-indigo">PEAN</span>
+          </div>
+        </div>
         <p className="text-xs text-brand-indigo/60 mb-6 font-medium">Run Your Dukaan. Smarter.</p>
         <div className="flex flex-wrap items-center justify-center gap-6 md:gap-8 mb-8 text-sm font-medium">
           <a href="#features" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Features</a>
@@ -649,10 +660,14 @@ export default function Landing() {
           <Link to="/privacy-policy" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Privacy Policy</Link>
           <Link to="/refund-policy" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Refund Policy</Link>
         </div>
-        <div className="text-xs text-brand-indigo/50 flex items-center justify-center gap-1">
-          <span>Made with</span>
-          <Heart className="w-3.5 h-3.5 text-brand-terracotta fill-brand-terracotta inline" />
-          <span>for Indian Small Businesses · © 2026 Dukaan</span>
+        <div className="text-xs text-brand-indigo/60 flex flex-col sm:flex-row items-center justify-center gap-2">
+          <span className="flex items-center gap-1">
+            <span>Made with</span>
+            <Heart className="w-3.5 h-3.5 text-brand-terracotta fill-brand-terracotta inline" />
+            <span>for Indian Small Businesses</span>
+          </span>
+          <span className="hidden sm:inline text-brand-indigo/30">·</span>
+          <span>© 2026 Dukaan · A Product of PEAN · All rights reserved</span>
         </div>
       </footer>
 
