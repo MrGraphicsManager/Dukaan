@@ -129,7 +129,8 @@ export default function AdminMusicPlayer() {
   });
   const [inputUrl, setInputUrl] = useState("");
   const [isExpanded, setIsExpanded] = useState(() => {
-    return localStorage.getItem("dukaan_admin_music_expanded") === "true";
+    const stored = localStorage.getItem("dukaan_admin_music_expanded");
+    return stored === null ? true : stored === "true";
   });
   const [isPlaying, setIsPlaying] = useState(false);
 

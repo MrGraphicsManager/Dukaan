@@ -1301,9 +1301,6 @@ export default function AdminSubscriptions() {
           </Link>
         </header>
 
-      {/* SPOTIFY & YOUTUBE EXECUTIVE SOUND LOUNGE PLAYER */}
-      <AdminMusicPlayer />
-
         <main className="relative z-10 max-w-md w-full mx-auto px-6 py-10">
           <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-7 sm:p-9 shadow-2xl space-y-6">
             <div className="text-center space-y-2">
@@ -1490,6 +1487,9 @@ export default function AdminSubscriptions() {
 
         </div>
       </header>
+
+      {/* SPOTIFY & YOUTUBE EXECUTIVE SOUND LOUNGE PLAYER */}
+      <AdminMusicPlayer />
 
       {/* Live Platform Controls Status Banner */}
       {(maintenanceMode || announcement) && (
