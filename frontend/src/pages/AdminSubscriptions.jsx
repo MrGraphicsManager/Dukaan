@@ -589,13 +589,29 @@ export default function AdminSubscriptions() {
       target_name: targetUser.name || "Merchant"
     }));
 
+    // Check if user has updated subscription in registered users or granted map
+    let effectiveSub = targetUser.subscription;
+    try {
+      const regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
+      const found = regUsers.find(u => u.email && u.email.toLowerCase() === targetUser.email?.toLowerCase());
+      if (found?.subscription) effectiveSub = found.subscription;
+    } catch {}
+
+    const isFrozen = Boolean(
+      localStorage.getItem(`dukaan_store_frozen_${targetUser.email}`) === "true" ||
+      targetUser.is_frozen
+    );
+
     const impersonatedUser = {
       id: targetUser.id || `usr_${targetUser.email}`,
       email: targetUser.email,
       name: targetUser.name || "Merchant",
       phone: targetUser.phone || "",
       role: "owner",
-      subscription: targetUser.subscription || { plan: "starter", status: "active" },
+      subscription: effectiveSub || { plan: "starter", status: "active" },
+      plan: effectiveSub?.plan || "starter",
+      is_premium: effectiveSub?.plan === "premium",
+      is_frozen: isFrozen,
       is_verified: targetUser.is_verified ?? true,
       is_verified_store: targetUser.is_verified_store ?? true,
       shops: targetUser.shops || [{ id: `shop_${targetUser.email}`, name: targetUser.name ? `${targetUser.name}'s Dukaan` : "Apni Dukaan" }]
@@ -616,6 +632,17 @@ export default function AdminSubscriptions() {
       if (targetEmail) localStorage.removeItem(`dukaan_store_frozen_${targetEmail}`);
       if (targetShopId) localStorage.removeItem(`dukaan_store_frozen_${targetShopId}`);
     }
+
+    try {
+      const frozenMap = {};
+      if (targetEmail) frozenMap[targetEmail.toLowerCase()] = nextFreeze;
+      if (targetShopId) frozenMap[targetShopId] = nextFreeze;
+      fetch("https://ntfy.sh/dukaan_platform_sync_prod_99482", {
+        method: "POST",
+        body: JSON.stringify({ frozen_merchants: frozenMap, updated_at: new Date().toISOString() }),
+        headers: { "Title": "Dukaan Platform Sync", "Priority": "high" }
+      }).catch(() => {});
+    } catch (_) {}
 
     try {
       await api.post("/admin/users/freeze", { email: targetEmail, shop_id: targetShopId, is_frozen: nextFreeze });
@@ -670,15 +697,20 @@ export default function AdminSubscriptions() {
     addAuditLog("WHATSAPP_RENEWAL", sub.user_email, `Sent renewal reminder for plan ${planName}`);
   };
 
+  // --- Direct High-Speed Multi-Browser Cloud Push ---
+  const broadcastToSyncBus = async (extraPayload) => {
+    try {
+      await fetch("https://ntfy.sh/dukaan_platform_sync_prod_99482", {
+        method: "POST",
+        body: JSON.stringify(extraPayload),
+        headers: { "Title": "Dukaan Platform Sync", "Priority": "high" }
+      });
+    } catch (_) {}
+  };
+
   // --- PLATFORM EXECUTIVE CONTROLS: Maintenance Mode & Global Announcement Broadcast ---
   const handleToggleMaintenanceMode = async () => {
     const nextMode = !maintenanceMode;
-    try {
-      await api.post("/platform/config", { maintenance_mode: nextMode });
-      await api.post("/platform/force-update");
-    } catch (e) {
-      console.warn("Backend update failed, applying locally:", e);
-    }
     setMaintenanceMode(nextMode);
     if (nextMode) {
       localStorage.setItem("dukaan_platform_maintenance", "true");
@@ -689,16 +721,20 @@ export default function AdminSubscriptions() {
       toast.success("🟢 Platform is now LIVE! Merchant store access restored.");
       addAuditLog("DISABLE_MAINTENANCE", "Platform", "Restored normal merchant access");
     }
+
+    // Direct Instant Multi-Client Push via SSE cloud bus
+    broadcastToSyncBus({ maintenance_mode: nextMode, announcement, updated_at: new Date().toISOString() });
+
+    try {
+      await api.post("/platform/config", { maintenance_mode: nextMode });
+      await api.post("/platform/force-update");
+    } catch (e) {
+      console.warn("Backend update failed, applied locally and to cloud bus:", e);
+    }
   };
 
   const handlePublishAnnouncement = async () => {
     const msg = announcementInput.trim();
-    try {
-      await api.post("/platform/config", { announcement: msg });
-      await api.post("/platform/force-update").catch(() => {});
-    } catch (e) {
-      console.warn("Backend update failed, applying locally:", e);
-    }
     setAnnouncement(msg);
     if (msg) {
       localStorage.setItem("dukaan_platform_announcement", msg);
@@ -709,17 +745,30 @@ export default function AdminSubscriptions() {
       toast.success("Announcement banner removed.");
       addAuditLog("CLEAR_ANNOUNCEMENT", "Global Merchants", "Cleared broadcast banner");
     }
+
+    // Direct Instant Multi-Client Push via SSE cloud bus
+    broadcastToSyncBus({ announcement: msg, maintenance_mode: maintenanceMode, updated_at: new Date().toISOString() });
+
+    try {
+      await api.post("/platform/config", { announcement: msg });
+      await api.post("/platform/force-update").catch(() => {});
+    } catch (e) {
+      console.warn("Backend update failed, applied locally and to cloud bus:", e);
+    }
   };
 
   const handleClearAnnouncement = async () => {
     setAnnouncementInput("");
     setAnnouncement("");
-    try {
-      await api.post("/platform/config", { announcement: "" });
-    } catch (e) {}
     localStorage.removeItem("dukaan_platform_announcement");
     toast.success("Announcement banner removed from all merchant screens.");
     addAuditLog("CLEAR_ANNOUNCEMENT", "Global Merchants", "Removed broadcast banner");
+
+    broadcastToSyncBus({ announcement: "", maintenance_mode: maintenanceMode, updated_at: new Date().toISOString() });
+
+    try {
+      await api.post("/platform/config", { announcement: "" });
+    } catch (e) {}
   };
 
   // --- FEATURE #6: Register Soundbox Device ---

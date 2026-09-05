@@ -1,8 +1,10 @@
 import axios from "axios";
 
-// Use the configured backend URL in deployment; fall back to the live Dukaan API
-// so the production site does not break if the hosting environment variable is missing.
-const BASE = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
+// Ensure the app always talks to the live Netlify serverless API on officialdukaan.in
+// and never redirects to dead or legacy onrender.com endpoints
+const rawEnvUrl = (process.env.REACT_APP_BACKEND_URL || "").trim();
+const isLegacyRender = rawEnvUrl.includes("onrender.com");
+const BASE = (rawEnvUrl && !isLegacyRender) ? rawEnvUrl.replace(/\/$/, "") : "";
 export const API_BASE = BASE ? `${BASE}/api` : "/.netlify/functions/api";
 
 export const api = axios.create({

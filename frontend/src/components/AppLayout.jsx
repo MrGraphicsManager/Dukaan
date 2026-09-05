@@ -195,6 +195,37 @@ export default function AppLayout() {
 
   const checkPlatformConfig = useCallback(async () => {
     try {
+      // Direct high-speed cloud sync bus polling (0ms cache, guaranteed fresh across browsers)
+      try {
+        const busRes = await fetch("https://ntfy.sh/dukaan_platform_sync_prod_99482/raw?poll=1&limit=1", { signal: AbortSignal.timeout(3000) });
+        if (busRes.ok) {
+          const rawText = await busRes.text();
+          if (rawText && rawText.trim()) {
+            const lines = rawText.trim().split('\n').filter(Boolean);
+            for (const line of lines) {
+              try {
+                const busJson = JSON.parse(line);
+                if (busJson) {
+                  if (typeof busJson.maintenance_mode === "boolean") {
+                    setPlatformConfig(prev => ({ ...prev, maintenance_mode: busJson.maintenance_mode }));
+                    if (busJson.maintenance_mode) localStorage.setItem("dukaan_platform_maintenance", "true");
+                    else localStorage.removeItem("dukaan_platform_maintenance");
+                  }
+                  if (typeof busJson.announcement === "string") {
+                    setPlatformConfig(prev => ({ ...prev, announcement: busJson.announcement }));
+                    if (busJson.announcement) localStorage.setItem("dukaan_platform_announcement", busJson.announcement);
+                    else localStorage.removeItem("dukaan_platform_announcement");
+                  }
+                  if (busJson.frozen_merchants) {
+                    setPlatformConfig(prev => ({ ...prev, frozen_merchants: { ...prev.frozen_merchants, ...busJson.frozen_merchants } }));
+                  }
+                }
+              } catch (_) {}
+            }
+          }
+        }
+      } catch (_) {}
+
       const res = await api.get("/platform/config");
       if (res?.data) {
         setPlatformConfig({
@@ -290,7 +321,7 @@ export default function AppLayout() {
         }
       }
     } catch (_) {}
-  }, [isMasterAdmin, inspectorSession, user?.email, refreshAuth]);
+  }, [isMasterAdmin, inspectorSession, user?.email, currentShopId, user?.shop_id, refreshAuth]);
 
   useEffect(() => {
     checkPlatformConfig();
@@ -313,13 +344,19 @@ export default function AppLayout() {
             if (payload && payload.message) {
               const busData = JSON.parse(payload.message);
               if (busData) {
+                setPlatformConfig(prev => ({
+                  ...prev,
+                  ...(typeof busData.maintenance_mode === "boolean" ? { maintenance_mode: busData.maintenance_mode } : {}),
+                  ...(typeof busData.announcement === "string" ? { announcement: busData.announcement } : {}),
+                  ...(busData.frozen_merchants ? { frozen_merchants: { ...prev.frozen_merchants, ...busData.frozen_merchants } } : {})
+                }));
                 if (typeof busData.maintenance_mode === "boolean") {
-                  setPlatformConfig(prev => ({
-                    ...prev,
-                    maintenance_mode: busData.maintenance_mode,
-                    announcement: busData.announcement || "",
-                    frozen_merchants: busData.frozen_merchants || {}
-                  }));
+                  if (busData.maintenance_mode) localStorage.setItem("dukaan_platform_maintenance", "true");
+                  else localStorage.removeItem("dukaan_platform_maintenance");
+                }
+                if (typeof busData.announcement === "string") {
+                  if (busData.announcement) localStorage.setItem("dukaan_platform_announcement", busData.announcement);
+                  else localStorage.removeItem("dukaan_platform_announcement");
                 }
                 checkPlatformConfig();
               }
@@ -348,7 +385,7 @@ export default function AppLayout() {
     (activeShopId && platformConfig.frozen_merchants?.[activeShopId]) ||
     (user?.shop_id && platformConfig.frozen_merchants?.[user.shop_id])
   );
-  const isStoreFrozen = !isMasterAdmin && !inspectorSession && isMerchantFrozen;
+  const isStoreFrozen = isMerchantFrozen;
   if (isStoreFrozen) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
@@ -365,13 +402,29 @@ export default function AppLayout() {
           This store has been temporarily locked by platform security for compliance verification or fraud prevention. 
           Please contact our security operations desk to re-activate your store.
         </p>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-center gap-3">
           <a
             href="mailto:contact@officialdukaan.in?subject=Reactivate%20Frozen%20Store%20Request"
             className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-rose-600/20"
           >
             Contact Security (contact@officialdukaan.in)
           </a>
+          {inspectorSession && (
+            <Button
+              onClick={exitInspector}
+              className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-rose-300 font-bold rounded-xl text-xs border border-slate-700"
+            >
+              Exit Inspector & Return to Admin
+            </Button>
+          )}
+          {(isMasterAdmin || user?.is_admin) && !inspectorSession && (
+            <a
+              href="/admin"
+              className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-rose-300 font-bold rounded-xl text-xs border border-slate-700"
+            >
+              Open Admin Console (/admin)
+            </a>
+          )}
         </div>
       </div>
     );
@@ -397,8 +450,8 @@ export default function AppLayout() {
     error: "bg-red-100 text-red-800",
   };
 
-  // Full-screen Maintenance Mode for merchants (Admins retain access to /admin)
-  if (platformConfig.maintenance_mode && !isMasterAdmin && !inspectorSession) {
+  // Full-screen Maintenance Mode for merchants
+  if (platformConfig.maintenance_mode) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
         <div className="w-20 h-20 rounded-3xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mb-6 shadow-2xl">
@@ -413,13 +466,29 @@ export default function AppLayout() {
         <p className="text-sm text-slate-400 max-w-md mb-6 leading-relaxed">
           Our engineering team is currently deploying an upgrade to enhance system security and speed. All merchant data is safe and transactions will resume momentarily.
         </p>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-center gap-3">
           <Button
             onClick={() => window.location.reload()}
             className="rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs h-10 px-5"
           >
             Check Status Again
           </Button>
+          {inspectorSession && (
+            <Button
+              onClick={exitInspector}
+              className="rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs h-10 px-5 border border-slate-700"
+            >
+              Exit Inspector & Return to Admin
+            </Button>
+          )}
+          {(isMasterAdmin || user?.is_admin) && !inspectorSession && (
+            <a
+              href="/admin"
+              className="rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs h-10 px-5 flex items-center justify-center border border-slate-700"
+            >
+              Open Admin Console (/admin)
+            </a>
+          )}
         </div>
       </div>
     );
