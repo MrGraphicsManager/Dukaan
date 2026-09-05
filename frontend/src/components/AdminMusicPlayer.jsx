@@ -257,6 +257,11 @@ export default function AdminMusicPlayer() {
                 <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                   {parsedMedia?.type === "spotify" ? "Spotify" : "100% Full"}
                 </span>
+                {!isExpanded && parsedMedia && (
+                  <span className="hidden sm:inline-flex text-[9px] font-semibold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 animate-pulse">
+                    Playing in Background 🎵
+                  </span>
+                )}
               </span>
 
               {parsedMedia ? (
@@ -337,9 +342,14 @@ export default function AdminMusicPlayer() {
           </div>
         </div>
 
-        {/* EXPANDED INTERACTIVE PLAYER & INPUT DRAWER */}
-        {isExpanded && (
-          <div className="mt-3 pt-3 border-t border-slate-800/80 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start animate-fade-in">
+        {/* INTERACTIVE PLAYER & INPUT DRAWER (PERSISTENT IN DOM SO AUDIO CONTINUES WHEN HIDDEN) */}
+        <div 
+          className={`transition-all duration-300 ease-in-out ${
+            isExpanded 
+              ? "mt-3 pt-3 border-t border-slate-800/80 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start opacity-100" 
+              : "h-0 max-h-0 overflow-hidden opacity-0 pointer-events-none m-0 p-0 border-0"
+          }`}
+        >
             
             {/* Left Column: Embed Iframe Player */}
             <div className="lg:col-span-7 bg-slate-950 rounded-2xl p-3 border border-slate-800 shadow-2xl overflow-hidden space-y-2.5">
@@ -497,7 +507,6 @@ export default function AdminMusicPlayer() {
             </div>
 
           </div>
-        )}
 
       </div>
     </div>
