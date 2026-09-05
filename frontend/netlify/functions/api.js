@@ -146,6 +146,24 @@ async function getPersistentState(force = false) {
               }
             }
           }
+          if (Array.isArray(json.soundbox_devices)) {
+            globalPlatformConfig.soundbox_devices = json.soundbox_devices;
+          }
+          if (Array.isArray(json.custom_domains)) {
+            globalPlatformConfig.custom_domains = json.custom_domains;
+          }
+          if (Array.isArray(json.support_tickets)) {
+            supportTickets = json.support_tickets;
+          }
+          if (Array.isArray(json.merchant_feedback)) {
+            merchantFeedbacks = json.merchant_feedback;
+          }
+          if (Array.isArray(json.gst_requests)) {
+            gstRequests = json.gst_requests;
+          }
+          if (Array.isArray(json.referral_codes)) {
+            referralCodes = json.referral_codes;
+          }
         }
       }
     }
@@ -174,6 +192,12 @@ async function savePersistentState(extraConfig = {}) {
       trial_days: globalPlatformConfig.trial_days,
       promo_codes: promoCodes,
       registered_users: registeredUsersList.slice(0, 30),
+      soundbox_devices: (globalPlatformConfig.soundbox_devices || []).slice(0, 25),
+      custom_domains: (globalPlatformConfig.custom_domains || []).slice(0, 25),
+      support_tickets: (supportTickets || []).slice(0, 40),
+      merchant_feedback: (merchantFeedbacks || []).slice(0, 40),
+      gst_requests: (gstRequests || []).slice(0, 30),
+      referral_codes: (referralCodes || []).slice(0, 30),
       updated_at: globalPlatformConfig.updated_at
     };
     await fetch(SYNC_BUS_URL, {
@@ -252,6 +276,7 @@ let promoCodes = [
 let supportTickets = [];
 let merchantFeedbacks = [];
 let referralCodes = [];
+let gstRequests = [];
 
 // Core SMTPS socket sender with RFC 822 Base64 Transfer Encoding (100% GoDaddy / Secureserver compliant)
 function sendMailSocket({ host, port, user, pass, to, subject, html }) {
@@ -461,6 +486,22 @@ exports.handler = async (event, context) => {
         console.error("Failed to send verification email:", err);
       }
 
+      if (body.referral_code) {
+        await getPersistentState();
+        const refCode = body.referral_code.trim().toUpperCase();
+        referralCodes.unshift({
+          id: `ref_${Date.now()}`,
+          code: refCode,
+          merchant_name: name || email.split("@")[0],
+          merchant_email: email,
+          commission_rate: 15,
+          total_referrals: 1,
+          earnings: 299,
+          status: "pending",
+          created_at: new Date().toISOString()
+        });
+        await savePersistentState();
+      }
       return {
         statusCode: 200,
         headers,
@@ -964,12 +1005,18 @@ exports.handler = async (event, context) => {
     if (path === "/admin/users/freeze" && event.httpMethod === "POST") {
       await getPersistentState();
       const targetEmail = (body.email || "").trim().toLowerCase();
+      const targetShopId = (body.shop_id || body.merchant_id || "").trim();
       const isFrozen = Boolean(body.is_frozen);
       if (!globalPlatformConfig.frozen_merchants) globalPlatformConfig.frozen_merchants = {};
-      globalPlatformConfig.frozen_merchants[targetEmail] = isFrozen;
+      if (targetEmail) {
+        globalPlatformConfig.frozen_merchants[targetEmail] = isFrozen;
+      }
+      if (targetShopId) {
+        globalPlatformConfig.frozen_merchants[targetShopId] = isFrozen;
+      }
       globalPlatformConfig.ota_version = (globalPlatformConfig.ota_version || 1) + 1;
       await savePersistentState();
-      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, email: targetEmail, is_frozen: isFrozen }) };
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, email: targetEmail, shop_id: targetShopId, is_frozen: isFrozen }) };
     }
 
     if (path === "/admin/users/verify" && event.httpMethod === "POST") {
@@ -1121,18 +1168,61 @@ exports.handler = async (event, context) => {
     }
 
     if (path === "/admin/gst-requests" && event.httpMethod === "GET") {
+      await getPersistentState();
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify([])
+        body: JSON.stringify(gstRequests)
+      };
+    }
+
+    if (path === "/admin/gst-requests" && event.httpMethod === "POST") {
+      await getPersistentState();
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const reqRecord = {
+        id: `gst_${Date.now()}`,
+        shop_id: body.shop_id || (user?.shop_id || "shop_default"),
+        shop_name: body.shop_name || "Apni Dukaan",
+        user_email: body.email || user?.email || "merchant@officialdukaan.in",
+        gstin: (body.gstin || "").trim().toUpperCase(),
+        legal_name: body.legal_name || body.shop_name || "Registered Entity",
+        status: "pending",
+        submitted_at: new Date().toISOString()
+      };
+      gstRequests.unshift(reqRecord);
+      await savePersistentState();
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ ok: true, request: reqRecord, requests: gstRequests })
       };
     }
 
     if (path.startsWith("/admin/gst-requests/") && event.httpMethod === "POST") {
+      await getPersistentState();
+      const parts = path.split("/");
+      const reqId = parts[3];
+      const action = parts[4] || "approve";
+      const idx = gstRequests.findIndex(r => r.id === reqId);
+      if (idx >= 0) {
+        gstRequests[idx].status = action === "approve" ? "approved" : "rejected";
+        gstRequests[idx].processed_at = new Date().toISOString();
+        if (action === "approve" && gstRequests[idx].user_email) {
+          if (!globalPlatformConfig.verified_merchants) globalPlatformConfig.verified_merchants = {};
+          globalPlatformConfig.verified_merchants[gstRequests[idx].user_email.toLowerCase()] = true;
+        }
+        await savePersistentState();
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ ok: true, message: `GST status set to ${action}`, request: gstRequests[idx] })
+        };
+      }
       return {
-        statusCode: 200,
+        statusCode: 404,
         headers,
-        body: JSON.stringify({ ok: true, message: "GST status updated successfully." })
+        body: JSON.stringify({ detail: "GST request not found" })
       };
     }
 
@@ -1373,10 +1463,12 @@ exports.handler = async (event, context) => {
 
     // 16. IN-APP CUSTOMER SUPPORT DESK
     if (path === "/support/tickets" && event.httpMethod === "GET") {
+      await getPersistentState();
       return { statusCode: 200, headers, body: JSON.stringify(supportTickets) };
     }
 
     if (path === "/support/tickets" && event.httpMethod === "POST") {
+      await getPersistentState();
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const newTicket = {
@@ -1391,15 +1483,18 @@ exports.handler = async (event, context) => {
         created_at: new Date().toISOString()
       };
       supportTickets.unshift(newTicket);
+      await savePersistentState();
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true, ticket: newTicket }) };
     }
 
     if (path.startsWith("/support/tickets/") && (event.httpMethod === "PUT" || event.httpMethod === "POST")) {
+      await getPersistentState();
       const ticketId = path.replace("/support/tickets/", "").replace("/status", "");
       const idx = supportTickets.findIndex(t => t.id === ticketId);
       if (idx >= 0) {
         if (body.status) supportTickets[idx].status = body.status;
         if (body.admin_note) supportTickets[idx].admin_note = body.admin_note;
+        await savePersistentState();
         return { statusCode: 200, headers, body: JSON.stringify({ ok: true, ticket: supportTickets[idx] }) };
       }
       return { statusCode: 404, headers, body: JSON.stringify({ detail: "Ticket not found" }) };
@@ -1407,10 +1502,12 @@ exports.handler = async (event, context) => {
 
     // 17. MERCHANT FEEDBACK & NPS RATING WALL
     if (path === "/merchant/feedback" && event.httpMethod === "GET") {
+      await getPersistentState();
       return { statusCode: 200, headers, body: JSON.stringify(merchantFeedbacks) };
     }
 
     if (path === "/merchant/feedback" && event.httpMethod === "POST") {
+      await getPersistentState();
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const newFeedback = {
@@ -1422,19 +1519,23 @@ exports.handler = async (event, context) => {
         created_at: new Date().toISOString()
       };
       merchantFeedbacks.unshift(newFeedback);
+      await savePersistentState();
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true, feedback: newFeedback }) };
     }
 
     // 18. REFERRAL & PARTNER PROGRAM HUB
     if (path === "/admin/referrals" && event.httpMethod === "GET") {
+      await getPersistentState();
       return { statusCode: 200, headers, body: JSON.stringify(referralCodes) };
     }
 
     if (path === "/admin/referrals/approve" && event.httpMethod === "POST") {
+      await getPersistentState();
       const { id } = body;
       const item = referralCodes.find(r => r.id === id);
       if (item) {
         item.status = "approved";
+        await savePersistentState();
         return { statusCode: 200, headers, body: JSON.stringify({ ok: true, referral: item }) };
       }
       return { statusCode: 404, headers, body: JSON.stringify({ detail: "Referral not found" }) };
@@ -1532,10 +1633,12 @@ exports.handler = async (event, context) => {
 
     // 21. HARDWARE SOUNDBOX & QR STANDEES
     if (path === "/admin/soundbox" && event.httpMethod === "GET") {
+      await getPersistentState();
       return { statusCode: 200, headers, body: JSON.stringify(globalPlatformConfig.soundbox_devices || []) };
     }
 
     if (path === "/admin/soundbox" && event.httpMethod === "POST") {
+      await getPersistentState();
       const newDev = {
         id: `SND_${Date.now().toString().slice(-4)}`,
         serial: body.serial || `DUK-SB-${Math.floor(10000 + Math.random() * 90000)}`,
@@ -1543,19 +1646,24 @@ exports.handler = async (event, context) => {
         shop_name: body.shop_name || "New Dukaan",
         battery: "100%",
         status: body.status || "online",
-        sim: body.sim || "Jio IoT"
+        sim: body.sim || "Jio IoT",
+        assigned_email: (body.assigned_email || body.email || "").trim().toLowerCase(),
+        created_at: new Date().toISOString()
       };
       if (!globalPlatformConfig.soundbox_devices) globalPlatformConfig.soundbox_devices = [];
       globalPlatformConfig.soundbox_devices.push(newDev);
+      await savePersistentState();
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true, device: newDev, devices: globalPlatformConfig.soundbox_devices }) };
     }
 
     // 22. CUSTOM DOMAINS / WHITE-LABEL DNS
     if (path === "/admin/custom-domains" && event.httpMethod === "GET") {
+      await getPersistentState();
       return { statusCode: 200, headers, body: JSON.stringify(globalPlatformConfig.custom_domains || []) };
     }
 
     if (path === "/admin/custom-domains" && event.httpMethod === "POST") {
+      await getPersistentState();
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const newDomain = {
@@ -1570,7 +1678,21 @@ exports.handler = async (event, context) => {
       };
       if (!globalPlatformConfig.custom_domains) globalPlatformConfig.custom_domains = [];
       globalPlatformConfig.custom_domains.push(newDomain);
+      await savePersistentState();
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true, domain: newDomain }) };
+    }
+
+    if (path.startsWith("/admin/custom-domains/") && event.httpMethod === "POST") {
+      await getPersistentState();
+      const domainId = path.split("/")[3];
+      const idx = (globalPlatformConfig.custom_domains || []).findIndex(d => d.id === domainId);
+      if (idx >= 0) {
+        globalPlatformConfig.custom_domains[idx].status = body.status || "active";
+        globalPlatformConfig.custom_domains[idx].ssl = "active";
+        await savePersistentState();
+        return { statusCode: 200, headers, body: JSON.stringify({ ok: true, domain: globalPlatformConfig.custom_domains[idx] }) };
+      }
+      return { statusCode: 404, headers, body: JSON.stringify({ detail: "Domain record not found" }) };
     }
 
     return {

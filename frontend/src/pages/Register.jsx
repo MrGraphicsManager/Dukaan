@@ -31,6 +31,7 @@ export default function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -52,7 +53,7 @@ export default function Register() {
     }
 
     setBusy(true);
-    const res = await register(name, email, password);
+    const res = await register(name, email, password, referralCode);
     setBusy(false);
     if (res.ok) {
       toast.success("Account created! Please check your email for the verification code.");
@@ -243,6 +244,25 @@ export default function Register() {
                           <span>1 Special Symbol (!@#$)</span>
                         </div>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Referral Code (Optional) */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="referral" className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                      <span>Partner Referral Code</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Optional</span>
+                    </Label>
+                    <div className="relative">
+                      <BadgePercent className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <Input
+                        id="referral"
+                        type="text"
+                        value={referralCode}
+                        onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                        placeholder="e.g. PARTNER50"
+                        className="pl-11 h-11 rounded-2xl border-2 border-slate-200 focus-visible:border-blue-600 bg-slate-50/70 text-xs font-bold uppercase tracking-wider text-slate-900 placeholder:normal-case placeholder:font-normal"
+                      />
                     </div>
                   </div>
 

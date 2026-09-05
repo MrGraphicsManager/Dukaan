@@ -350,7 +350,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const register = async (name, email, password) => {
+  const register = async (name, email, password, referral_code = "") => {
     const cleanEmail = (email || "").toLowerCase().trim();
     const cleanName = (name || "").trim();
 
@@ -367,7 +367,7 @@ export function AuthProvider({ children }) {
     const localToken = "tok_" + Date.now();
 
     try {
-      const { data } = await api.post("/auth/register", { name: cleanName, email: cleanEmail, password });
+      const { data } = await api.post("/auth/register", { name: cleanName, email: cleanEmail, password, referral_code: (referral_code || "").trim() });
       const newUser = {
         id: data?.user?.id || `user_${Date.now()}`,
         name: cleanName,

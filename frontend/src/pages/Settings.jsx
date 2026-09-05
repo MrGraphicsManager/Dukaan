@@ -34,7 +34,9 @@ import {
   Copy,
   Gift,
   Send,
-  HelpCircle
+  HelpCircle,
+  Radio,
+  FileText
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -354,6 +356,79 @@ export default function Settings() {
     setSavingDomain(false);
     toast.success("Custom domain registered! Please configure your DNS CNAME record.");
   };
+
+  // GST & Tax Compliance State
+  const [gstin, setGstin] = useState(() => localStorage.getItem(`dukaan_gstin_${currentShopId}`) || "");
+  const [gstLegalName, setGstLegalName] = useState(() => localStorage.getItem(`dukaan_gst_name_${currentShopId}`) || "");
+  const [gstStatus, setGstStatus] = useState(() => localStorage.getItem(`dukaan_gst_status_${currentShopId}`) || "not_registered");
+  const [submittingGst, setSubmittingGst] = useState(false);
+  const [pairedSoundbox, setPairedSoundbox] = useState(null);
+
+  const handleSubmitGst = async (e) => {
+    if (e?.preventDefault) e.preventDefault();
+    if (!gstin.trim() || gstin.trim().length < 15) {
+      toast.error("Please enter a valid 15-character GSTIN (e.g. 24ABCDE1234F1Z5).");
+      return;
+    }
+    setSubmittingGst(true);
+    try {
+      await api.post("/admin/gst-requests", {
+        shop_id: currentShopId,
+        shop_name: form.name || "Apni Dukaan",
+        email: user?.email,
+        gstin: gstin.trim().toUpperCase(),
+        legal_name: gstLegalName.trim() || form.name || "Registered Entity"
+      });
+      localStorage.setItem(`dukaan_gstin_${currentShopId}`, gstin.trim().toUpperCase());
+      localStorage.setItem(`dukaan_gst_name_${currentShopId}`, gstLegalName.trim());
+      localStorage.setItem(`dukaan_gst_status_${currentShopId}`, "pending");
+      setGstStatus("pending");
+      toast.success("GST verification request submitted! Admin review in progress.");
+    } catch (_) {
+      toast.error("Failed to submit GST verification request.");
+    } finally {
+      setSubmittingGst(false);
+    }
+  };
+
+  useEffect(() => {
+    // Cloud fetch for paired soundbox
+    api.get("/admin/soundbox").then(res => {
+      if (Array.isArray(res.data)) {
+        const myDev = res.data.find(d => 
+          (d.assigned_email && user?.email && d.assigned_email.toLowerCase() === user.email.toLowerCase()) ||
+          (d.shop_name && form.name && d.shop_name.toLowerCase() === form.name.toLowerCase())
+        );
+        if (myDev) setPairedSoundbox(myDev);
+      }
+    }).catch(() => {});
+
+    // Cloud fetch for GST requests
+    api.get("/admin/gst-requests").then(res => {
+      if (Array.isArray(res.data)) {
+        const myGst = res.data.find(g => 
+          (g.user_email && user?.email && g.user_email.toLowerCase() === user.email.toLowerCase()) ||
+          (g.shop_id && g.shop_id === currentShopId)
+        );
+        if (myGst) {
+          setGstStatus(myGst.status);
+          if (myGst.gstin) setGstin(myGst.gstin);
+          if (myGst.legal_name) setGstLegalName(myGst.legal_name);
+          localStorage.setItem(`dukaan_gst_status_${currentShopId}`, myGst.status);
+        }
+      }
+    }).catch(() => {});
+
+    // Cloud fetch for Support Tickets
+    if (user?.email) {
+      api.get("/support/tickets").then(res => {
+        if (Array.isArray(res.data)) {
+          const myTickets = res.data.filter(t => (t.merchant_email || "").toLowerCase() === user.email.toLowerCase());
+          if (myTickets.length > 0) setTickets(myTickets);
+        }
+      }).catch(() => {});
+    }
+  }, [user?.email, form.name, currentShopId]);
 
   // Feature 20: Merchant Referral Code
   const referralCode = `DUK-${(user?.name || "SHOP").replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 4) || "DUK"}${String(user?.id || "99").slice(-3)}`;
@@ -1022,6 +1097,103 @@ export default function Settings() {
                 <div>Points to / Target: <span className="font-bold text-brand-terracotta">custom.officialdukaan.in</span></div>
               </div>
             </div>
+          </div>
+
+          {/* Card: GSTIN Compliance & Tax Invoicing */}
+          <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-brand-mitti">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-brand-terracotta" />
+                <h3 className="font-heading font-bold text-base text-brand-indigo">GST Compliance & Tax Invoicing</h3>
+              </div>
+              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase ${
+                gstStatus === "approved" ? "bg-emerald-100 text-emerald-800" :
+                gstStatus === "pending" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"
+              }`}>
+                {gstStatus === "approved" ? "Verified GSTIN 🟢" :
+                 gstStatus === "pending" ? "Pending Admin Verification 🟡" : "Not Registered"}
+              </span>
+            </div>
+
+            <p className="text-xs text-brand-indigo/70">
+              Provide your 15-digit GSTIN to enable B2B tax invoicing, HSN summaries, and verified GST badge on customer bills.
+            </p>
+
+            <form onSubmit={handleSubmitGst} className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Legal Entity Name</Label>
+                  <Input
+                    value={gstLegalName}
+                    onChange={(e) => setGstLegalName(e.target.value)}
+                    placeholder="e.g. Ramesh Retail Traders Private Limited"
+                    className="mt-1 h-11 rounded-xl border-brand-mitti text-xs font-semibold"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-bold text-brand-indigo/70 uppercase">15-Digit GSTIN *</Label>
+                  <Input
+                    value={gstin}
+                    onChange={(e) => setGstin(e.target.value.toUpperCase())}
+                    placeholder="e.g. 24ABCDE1234F1Z5"
+                    maxLength={15}
+                    className="mt-1 h-11 rounded-xl border-brand-mitti font-mono text-xs font-bold uppercase"
+                  />
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                disabled={submittingGst || gstStatus === "approved"}
+                className="h-11 px-5 rounded-xl bg-brand-indigo hover:bg-brand-indigo/90 text-white font-bold text-xs"
+              >
+                {submittingGst ? "Submitting Request…" : gstStatus === "approved" ? "GSTIN Verified & Locked" : "Submit for Official Verification"}
+              </Button>
+            </form>
+          </div>
+
+          {/* Card: Hardware Soundbox Status (Feature #6) */}
+          <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-brand-mitti">
+              <div className="flex items-center gap-2">
+                <Radio className="w-4 h-4 text-brand-terracotta" />
+                <h3 className="font-heading font-bold text-base text-brand-indigo">Assigned Hardware Soundbox (Feature #6)</h3>
+              </div>
+              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase ${
+                pairedSoundbox ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"
+              }`}>
+                {pairedSoundbox ? "Paired & Active 🟢" : "No Hardware Paired"}
+              </span>
+            </div>
+
+            {pairedSoundbox ? (
+              <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="text-xs font-bold text-emerald-950 flex items-center gap-2">
+                    <span>{pairedSoundbox.model || "4G 3W Audio Soundbox"}</span>
+                    <span className="text-[10px] bg-emerald-200/80 text-emerald-900 px-2 py-0.5 rounded-md font-mono">{pairedSoundbox.sim || "Jio IoT 4G"}</span>
+                  </div>
+                  <div className="text-[11px] text-emerald-800/80 font-mono mt-0.5">
+                    Serial: {pairedSoundbox.serial} · Battery: {pairedSoundbox.battery || "100%"} · Status: {pairedSoundbox.status || "Online"}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-emerald-700 bg-white px-2.5 py-1 rounded-full border border-emerald-300">
+                    Instant Voice Chime Ready
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 rounded-2xl bg-brand-sand/50 border border-brand-mitti text-xs text-brand-indigo/70 flex items-center justify-between">
+                <span>No physical 4G soundbox registered yet. Contact admin support or order via Dukaan Hardware Desk.</span>
+                <a
+                  href="mailto:contact@officialdukaan.in?subject=Order%20Dukaan%204G%20Soundbox"
+                  className="px-3.5 py-1.5 bg-brand-indigo text-white font-bold rounded-xl text-[11px] hover:bg-brand-indigo/90 shrink-0 ml-3"
+                >
+                  Order Soundbox
+                </a>
+              </div>
+            )}
           </div>
         </div>
       )}

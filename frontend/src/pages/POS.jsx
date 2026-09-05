@@ -360,7 +360,8 @@ export default function POS() {
       toast.success(`Bill #${order.order_no} created successfully!`);
 
       // Soundbox voice announcement (Premium only)
-      if (soundboxEnabled && isPremium) {
+      const isChimeMuted = localStorage.getItem("dukaan_payment_alert_chime") === "false";
+      if (soundboxEnabled && isPremium && !isChimeMuted) {
         playVoiceSoundbox(total, method, lang);
       }
 
@@ -400,7 +401,7 @@ export default function POS() {
       toast.success(`Bill #${mockOrder.order_no} created!`);
 
       // Soundbox voice announcement (Premium only)
-      if (soundboxEnabled && isPremium) {
+      if (soundboxEnabled && isPremium && !isChimeMuted) {
         playVoiceSoundbox(mockOrder.total, method, lang);
       }
 

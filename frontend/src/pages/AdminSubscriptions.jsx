@@ -607,31 +607,33 @@ export default function AdminSubscriptions() {
   };
 
   // --- FEATURE #9: Store Freeze & Fraud Shield ---
-  const handleToggleFreezeStore = async (targetEmail, currentFreezeState) => {
+  const handleToggleFreezeStore = async (targetEmail, currentFreezeState, targetShopId = "") => {
     const nextFreeze = !currentFreezeState;
     if (nextFreeze) {
-      localStorage.setItem(`dukaan_store_frozen_${targetEmail}`, "true");
+      if (targetEmail) localStorage.setItem(`dukaan_store_frozen_${targetEmail}`, "true");
+      if (targetShopId) localStorage.setItem(`dukaan_store_frozen_${targetShopId}`, "true");
     } else {
-      localStorage.removeItem(`dukaan_store_frozen_${targetEmail}`);
+      if (targetEmail) localStorage.removeItem(`dukaan_store_frozen_${targetEmail}`);
+      if (targetShopId) localStorage.removeItem(`dukaan_store_frozen_${targetShopId}`);
     }
 
     try {
-      await api.post("/admin/users/freeze", { email: targetEmail, is_frozen: nextFreeze });
+      await api.post("/admin/users/freeze", { email: targetEmail, shop_id: targetShopId, is_frozen: nextFreeze });
       await api.post("/platform/force-update").catch(() => {});
     } catch {}
 
     try {
       let reg = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
-      const idx = reg.findIndex(u => u.email?.toLowerCase() === targetEmail.toLowerCase());
+      const idx = reg.findIndex(u => u.email?.toLowerCase() === (targetEmail || "").toLowerCase());
       if (idx >= 0) {
         reg[idx].is_frozen = nextFreeze;
         localStorage.setItem("dukaan_registered_users", JSON.stringify(reg));
       }
     } catch {}
 
-    setUsersList(prev => prev.map(u => u.email?.toLowerCase() === targetEmail.toLowerCase() ? { ...u, is_frozen: nextFreeze } : u));
-    addAuditLog(nextFreeze ? "FREEZE_STORE" : "UNFREEZE_STORE", targetEmail, nextFreeze ? "Store frozen for fraud/compliance review" : "Store un-frozen & unlocked");
-    toast.success(nextFreeze ? `Store access frozen for ${targetEmail}` : `Store un-frozen and restored for ${targetEmail}`);
+    setUsersList(prev => prev.map(u => u.email?.toLowerCase() === (targetEmail || "").toLowerCase() ? { ...u, is_frozen: nextFreeze } : u));
+    addAuditLog(nextFreeze ? "FREEZE_STORE" : "UNFREEZE_STORE", targetEmail || targetShopId, nextFreeze ? "Store frozen for fraud/compliance review" : "Store un-frozen & unlocked");
+    toast.success(nextFreeze ? `Store access frozen for ${targetEmail || targetShopId}` : `Store un-frozen and restored for ${targetEmail || targetShopId}`);
   };
 
   // --- FEATURE #10: Gold Verified Dukaan Badge ---
@@ -1381,6 +1383,27 @@ export default function AdminSubscriptions() {
         </div>
       </header>
 
+      {/* Live Platform Controls Status Banner */}
+      {(maintenanceMode || announcement) && (
+        <div className="bg-slate-900 border-b border-slate-800 text-xs px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            {maintenanceMode && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30 text-[11px]">
+                <AlertTriangle className="w-3.5 h-3.5 animate-pulse" />
+                MAINTENANCE MODE ACTIVE (All merchants locked)
+              </span>
+            )}
+            {announcement && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-medium border border-indigo-500/30 text-[11px]">
+                <Bell className="w-3.5 h-3.5 text-indigo-400" />
+                Live Broadcast: <strong className="text-white ml-1 font-bold truncate max-w-md">{announcement}</strong>
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] font-mono text-slate-500">Instant Real-Time Cloud Sync Active</span>
+        </div>
+      )}
+
       {/* MAIN EXECUTIVE CONSOLE BODY */}
       <main className="flex-1 max-w-[1440px] w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
         
@@ -2106,7 +2129,7 @@ export default function AdminSubscriptions() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleToggleFreezeStore(u.email, isFrozen)}
+                              onClick={() => handleToggleFreezeStore(u.email, isFrozen, u.id || u.default_shop_id || u.shop_id)}
                               className={`rounded-xl text-xs font-bold h-8 px-2.5 ${
                                 isFrozen
                                   ? "border-emerald-800 bg-emerald-950/30 text-emerald-400 hover:bg-emerald-950/60"

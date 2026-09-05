@@ -212,11 +212,22 @@ export default function AppLayout() {
         } else {
           localStorage.removeItem("dukaan_platform_announcement");
         }
+        if (typeof res.data.receipt_branding_enabled === "boolean") {
+          localStorage.setItem("dukaan_receipt_branding_enabled", String(res.data.receipt_branding_enabled));
+        }
+        if (typeof res.data.payment_alert_chime === "boolean") {
+          localStorage.setItem("dukaan_payment_alert_chime", String(res.data.payment_alert_chime));
+        }
 
         // Feature 9 & 10: Real-time Freeze & Verification Sync for current merchant
+        const targetShopId = currentShopId || localStorage.getItem("dukaan_shop_id");
         if (user?.email) {
           const em = user.email.toLowerCase();
-          const isFrozenCloud = Boolean(res.data.frozen_merchants?.[em]);
+          const isFrozenCloud = Boolean(
+            res.data.frozen_merchants?.[em] ||
+            (targetShopId && res.data.frozen_merchants?.[targetShopId]) ||
+            (user?.shop_id && res.data.frozen_merchants?.[user.shop_id])
+          );
           if (isFrozenCloud) {
             localStorage.setItem(`dukaan_store_frozen_${user.email}`, "true");
           } else {
@@ -329,11 +340,15 @@ export default function AppLayout() {
   }, [checkPlatformConfig]);
 
   // Feature 9: Store Freeze & Fraud Security Shield
-  const isStoreFrozen = !isMasterAdmin && !inspectorSession && (
+  const activeShopId = currentShopId || localStorage.getItem("dukaan_shop_id");
+  const isMerchantFrozen = Boolean(
     user?.is_frozen || 
     localStorage.getItem(`dukaan_store_frozen_${user?.email}`) === "true" ||
-    (user?.email && platformConfig.frozen_merchants?.[user.email.toLowerCase()])
+    (user?.email && platformConfig.frozen_merchants?.[user.email.toLowerCase()]) ||
+    (activeShopId && platformConfig.frozen_merchants?.[activeShopId]) ||
+    (user?.shop_id && platformConfig.frozen_merchants?.[user.shop_id])
   );
+  const isStoreFrozen = !isMasterAdmin && !inspectorSession && isMerchantFrozen;
   if (isStoreFrozen) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
@@ -608,6 +623,24 @@ export default function AppLayout() {
           </div>
         </div>
       </header>
+
+      {/* Admin Simulation Alert Bar for Master Admin & Store Inspector */}
+      {(isMasterAdmin || inspectorSession) && (platformConfig.maintenance_mode || isMerchantFrozen) && (
+        <div className="bg-amber-500 text-slate-950 px-4 py-2.5 text-xs font-black flex items-center justify-between shadow-md border-b border-amber-600">
+          <div className="mx-auto max-w-[1400px] flex-1 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-slate-950 animate-pulse flex-shrink-0" />
+            <span>
+              [ADMIN SIMULATION ACTIVE] — 
+              {platformConfig.maintenance_mode ? " ⚠️ PLATFORM MAINTENANCE IS ACTIVE (All regular merchants are blocked)." : ""}
+              {isMerchantFrozen ? " 🛡️ STORE SECURITY FREEZE IS ACTIVE for this merchant/shop." : ""}
+              {" (Bypassed for you as Master Admin / Store Inspector)"}
+            </span>
+          </div>
+          <span className="text-[10px] uppercase font-mono tracking-wider bg-slate-950 text-amber-300 px-2 py-0.5 rounded font-bold ml-3">
+            Admin View
+          </span>
+        </div>
+      )}
 
       {/* Global Merchant Broadcast Banner */}
       {platformConfig.announcement && dismissedAnnouncement !== platformConfig.announcement && (
