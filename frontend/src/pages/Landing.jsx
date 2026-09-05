@@ -1,8 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { 
   Receipt, 
   Package, 
@@ -16,59 +15,19 @@ import {
   Bell, 
   Zap, 
   Sparkles,
-  Layers,
   Smartphone,
   CheckCircle2,
-  Heart,
-  Monitor,
   Download,
-  Laptop
+  Laptop,
+  Globe
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
-import InstallAppButton from "@/components/InstallAppButton";
-import Card3D from "@/components/Card3D";
-import ThreeDHeroKiosk from "@/components/ThreeDHeroKiosk";
-import ThreeDCounterModeShowcase from "@/components/ThreeDCounterModeShowcase";
-import ThreeDBackground from "@/components/ThreeDBackground";
 
-const FEATURES = [
-  { 
-    icon: Receipt, 
-    title: "Smart Billing (POS)", 
-    body: "Lightning fast billing for Cash, UPI, and Udhaar. Instant receipt generation and auto-resetting cart.",
-    badge: "Under 2s per bill"
-  },
-  { 
-    icon: Package, 
-    title: "Inventory & Stock", 
-    body: "Live stock tracking, low-stock warnings, purchase price margins, and unlimited-stock mode.",
-    badge: "Real-time updates"
-  },
-  { 
-    icon: Bell, 
-    title: "Instant Stock Alerts", 
-    body: "Never run out of essential Kirana items. Automatic alerts when stock drops below threshold.",
-    badge: "Smart thresholds"
-  },
-  { 
-    icon: Users, 
-    title: "Customer Directory", 
-    body: "Keep track of customer phone numbers, lifetime purchases, ledgers, and visit history.",
-    badge: "Full purchase ledger"
-  },
-  { 
-    icon: Wallet, 
-    title: "Udhaar & WhatsApp", 
-    body: "Send polite WhatsApp payment reminders with one tap. FIFO payment settlement and overdue tracking.",
-    badge: "1-Click WhatsApp"
-  },
-  { 
-    icon: BarChart3, 
-    title: "Business Reports", 
-    body: "Daily, weekly, and monthly sales graphs, top-selling products, and profit insights.",
-    badge: "Clear charts"
-  },
-];
+import AppleScrollStage3D from "@/components/AppleScrollStage3D";
+import HardwareBento3D from "@/components/HardwareBento3D";
+import InteractiveCounterDemo from "@/components/InteractiveCounterDemo";
+import DownloadHub3D from "@/components/DownloadHub3D";
+import Testimonials3D from "@/components/Testimonials3D";
 
 const PLANS = [
   { 
@@ -110,564 +69,286 @@ const PLANS = [
 ];
 
 const FAQS = [
-  { q: "Do I need an expensive computer to run Dukaan?", a: "No. Dukaan works seamlessly on any smartphone, tablet, laptop or desktop browser. Touchscreen and keyboard friendly." },
-  { q: "How does UPI payment collection work?", a: "Dukaan displays your shop's own UPI QR code directly on the counter screen. Customers scan and pay using any UPI app (GPay, PhonePe, Paytm). You confirm and the bill is generated." },
-  { q: "What is Counter Mode?", a: "Counter Mode is a dedicated high-speed screen built for fast billing. It supports keyboard shortcuts F1-F6 so you can bill, check stock, and manage udhaar without ever touching a mouse." },
-  { q: "Can I manage multiple shops?", a: "Yes. With Dukaan's multi-shop architecture, you can add and switch between multiple shop branches with a single tap." },
-  { q: "Which languages are supported?", a: "English, हिन्दी (Hindi) and ગુજરાતી (Gujarati). You can toggle the language instantly from the top menu bar." },
+  { 
+    q: "Kya Dukaan bina internet (offline) chalti hai?", 
+    a: "Haan! Dukaan ka native Android app (.apk) aur Windows PC software (.exe) embedded C-SQLite database use karte hain jo bina internet ke 100% offline Airplane Mode me chalta hai." 
+  },
+  { 
+    q: "Barcode scanner ke liye alag machine chahiye?", 
+    a: "Nahi! Dukaan aapke mobile ke camera ko industrial optical barcode scanner me badal deta hai. Bas packet par camera point karein aur item bill me auto-add ho jata hai." 
+  },
+  { 
+    q: "Udhaar ka payment reminder WhatsApp par kaise jata hai?", 
+    a: "Customer Khata me bas 1-tap 'WhatsApp' button dabayein. Aapke phone ka WhatsApp open hota hai jisme grahak ke naam aur baaki hisab ka message pehle se likha hota hai." 
+  },
+  { 
+    q: "Receipt print karne ke liye printer kaise connect hota hai?", 
+    a: "Dukaan kisi bhi standard 58mm ya 80mm Bluetooth, USB, ya WiFi thermal printer ke sath compatible hai. Zero ink lagti hai aur bill instant print hota hai." 
+  },
+  { 
+    q: "Multiple branches ya shops manage kar sakte hain?", 
+    a: "Haan! Dukaan Premium me multi-shop headquarter support hai jisse aap ek hi login se alag-alag dukaano ka hisab dekh sakte hain." 
+  },
 ];
-
-const reveal = { hidden: { opacity: 0, y: 34 }, show: { opacity: 1, y: 0, transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] } } };
-const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
-const item = { hidden: { opacity: 0, y: 24, scale: 0.97 }, show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.48, ease: [0.22, 1, 0.36, 1] } } };
-
-function Reveal({ children, className = "", id }) {
-  return (
-    <motion.div id={id} className={className} variants={reveal} initial="hidden" whileInView="show" viewport={{ once: true, amount: 0.16 }}>
-      {children}
-    </motion.div>
-  );
-}
 
 export default function Landing() {
   const nav = useNavigate();
   const { user } = useAuth();
+  const [lang, setLang] = useState("EN"); // 'EN' | 'HI' | 'GU'
+
+  const langStrings = {
+    EN: {
+      tag: "100% Offline Retail Counter OS",
+      heroBtn: "Start Free Now",
+      downloadBtn: "Get Android APK & PC",
+      login: "Log in",
+      signup: "Sign Up Free",
+      openDukaan: "Open Dukaan",
+    },
+    HI: {
+      tag: "100% ऑफलाइन रीटेल बिलिंग काउंटर ओएस",
+      heroBtn: "फ्री में शुरू करें",
+      downloadBtn: "Android APK और PC डाउनलोड करें",
+      login: "लॉग इन",
+      signup: "साइन अप",
+      openDukaan: "दुकान खोलें",
+    },
+    GU: {
+      tag: "100% ઑફલાઇન રિટેલ બિલિંગ કાઉન્ટર",
+      heroBtn: "મફતમાં શરૂ કરો",
+      downloadBtn: "Android APK અને PC ડાઉનલોડ",
+      login: "લૉગ ઇન",
+      signup: "સાઇન અપ",
+      openDukaan: "દુકાન ખોલો",
+    }
+  };
+
+  const t = langStrings[lang];
 
   return (
-    <div className="min-h-screen bg-brand-sand text-brand-indigo noise relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#07090e] text-slate-100 selection:bg-cyan-500 selection:text-black overflow-x-hidden font-sans">
       
-      {/* 3D Ambient Depth Canvas Background */}
-      <ThreeDBackground />
-
       {/* =========================================================
-          TOP NAVBAR
+          APPLE-GRADE FROSTED TITANIUM NAVBAR
       ========================================================= */}
-      <header className="sticky top-0 z-30 bg-brand-cream/85 backdrop-blur-xl border-b border-brand-mitti shadow-xs">
-        <div className="mx-auto max-w-6xl px-5 h-20 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2" data-testid="landing-logo">
-            <img src="/logo.png" alt="Dukaan" className="h-10 sm:h-12 w-auto object-contain transition-transform hover:scale-105" />
-            <div className="hidden sm:flex flex-col border-l border-brand-mitti pl-2.5">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-brand-indigo/40 font-mono leading-none">by</span>
-              <span className="text-xs font-display font-extrabold tracking-tight text-brand-indigo leading-tight">PEAN</span>
+      <header className="sticky top-0 z-50 bg-[#07090e]/80 backdrop-blur-2xl border-b border-white/10 shadow-2xl">
+        <div className="mx-auto max-w-6xl px-6 h-20 flex items-center justify-between">
+          
+          {/* Brand Logo */}
+          <Link to="/" className="flex items-center gap-2.5">
+            <img 
+              src="/logo.png" 
+              alt="Dukaan" 
+              className="h-9 w-auto object-contain transition-transform hover:scale-105" 
+            />
+            <div className="hidden sm:flex flex-col border-l border-white/10 pl-2.5">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 font-mono leading-none">by</span>
+              <span className="text-xs font-display font-extrabold tracking-tight text-white leading-tight">PEAN</span>
             </div>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-brand-indigo/80">
-            <a href="#features" className="hover:text-brand-terracotta transition-colors">Features</a>
-            <a href="#download" className="text-brand-terracotta font-bold hover:underline flex items-center gap-1 transition-colors">
-              <Download className="w-3.5 h-3.5" />
+          {/* Nav Links */}
+          <nav className="hidden md:flex items-center gap-8 text-xs font-mono font-bold uppercase tracking-wider text-slate-400">
+            <a href="#kiosk" className="hover:text-cyan-400 transition-colors">3D Hardware</a>
+            <a href="#test-drive" className="hover:text-emerald-400 transition-colors flex items-center gap-1">
+              <span>Test Drive</span>
+              <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[9px]">Live</span>
+            </a>
+            <a href="#download" className="hover:text-blue-400 transition-colors flex items-center gap-1">
+              <Download className="w-3.5 h-3.5 text-cyan-400" />
               <span>Download Apps</span>
             </a>
-            <a href="#counter-mode" className="hover:text-brand-terracotta transition-colors flex items-center gap-1">
-              <span>Counter Mode</span>
-              <span className="bg-brand-terracotta/10 text-brand-terracotta text-[10px] font-bold px-1.5 py-0.5 rounded-full">3D</span>
-            </a>
-            <a href="#pricing" className="hover:text-brand-terracotta transition-colors">Pricing</a>
-            <a href="#faq" className="hover:text-brand-terracotta transition-colors">FAQ</a>
+            <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
+            <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
           </nav>
 
+          {/* Right Action Stack */}
           <div className="flex items-center gap-3">
+            
+            {/* Language Switcher Pill */}
+            <div className="flex items-center bg-white/5 border border-white/10 rounded-full p-1 text-[11px] font-bold font-mono">
+              {["EN", "HI", "GU"].map((l) => (
+                <button
+                  key={l}
+                  onClick={() => setLang(l)}
+                  className={`px-2.5 py-1 rounded-full transition-all ${
+                    lang === l
+                      ? "bg-cyan-500 text-black shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+
             <Button 
               onClick={() => nav("/login")} 
               variant="ghost"
-              className="hidden sm:inline-flex text-brand-indigo hover:text-brand-terracotta rounded-full px-4 h-11 text-sm font-semibold transition-all"
+              className="hidden sm:inline-flex text-slate-300 hover:text-white rounded-full px-4 h-10 text-xs font-bold uppercase tracking-wider"
             >
-              Log in
+              {t.login}
             </Button>
-            <Button 
-              onClick={() => nav("/register")} 
-              variant="outline"
-              className="hidden sm:inline-flex border-brand-indigo/30 text-brand-indigo hover:bg-brand-indigo/5 rounded-full px-4 h-11 text-sm font-semibold transition-all"
-            >
-              Sign Up Free
-            </Button>
+
             <Button 
               onClick={() => nav("/app")} 
-              data-testid="cta-open-app" 
-              className="bg-brand-indigo hover:bg-brand-indigo/90 text-white rounded-full px-5 h-11 text-sm font-semibold active:scale-95 transition-all shadow-md flex items-center gap-1.5"
+              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-extrabold rounded-full px-5 h-10 text-xs uppercase tracking-wider active:scale-95 transition-all shadow-lg shadow-cyan-500/20 flex items-center gap-1.5"
             >
-              <span>Open Dukaan</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>{t.openDukaan}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </Button>
           </div>
         </div>
       </header>
 
       {/* =========================================================
-          HERO SECTION (3D Interactive Kiosk)
+          APPLE 3D SCROLL-DRIVEN STAGE (SCROLLYTELLING)
       ========================================================= */}
-      <section className="relative z-10 mx-auto max-w-6xl px-5 pt-12 md:pt-20 pb-16 grid lg:grid-cols-12 gap-12 items-center">
-        
-        {/* Left: Value Proposition */}
-        <motion.div 
-          initial={{ opacity: 0, x: -35 }} 
-          animate={{ opacity: 1, x: 0 }} 
-          transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }} 
-          className="lg:col-span-6"
-        >
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-brand-mitti bg-white/80 backdrop-blur-md text-xs font-semibold uppercase tracking-widest text-brand-terracotta shadow-xs">
-            <Sparkles className="w-3.5 h-3.5" />
-            Made for Indian Local Shops & Kiranas
-          </div>
-
-          {/* Headline */}
-          <h1 className="mt-6 font-display text-5xl sm:text-6xl lg:text-[4.75rem] leading-[1.04] tracking-tight text-brand-indigo">
-            Run Your <br />
-            <span className="text-brand-terracotta relative">
-              Dukaan.
-              <span className="absolute left-0 bottom-1 w-full h-2 bg-brand-terracotta/20 rounded-full -z-10" />
-            </span> <br />
-            Smarter.
-          </h1>
-
-          {/* Supporting Text */}
-          <p className="mt-6 text-lg sm:text-xl text-brand-indigo/75 max-w-lg leading-relaxed font-normal">
-            Billing, inventory, stock alerts, customers, udhaar ledger and business insights — all in one simple platform.
-          </p>
-
-          {/* CTA Buttons */}
-          <div className="mt-8 flex flex-wrap gap-4 items-center">
-            <Button 
-              size="lg" 
-              onClick={() => nav("/register")} 
-              className="h-14 px-8 text-lg rounded-full bg-brand-terracotta text-white hover:bg-brand-terracotta/90 active:scale-95 transition-all shadow-glow flex items-center gap-2"
-            >
-              <span>Start Free Now</span>
-              <ArrowRight className="w-5 h-5" />
-            </Button>
-
-            <a 
-              href="#download"
-              className="h-14 px-7 text-base rounded-full border-2 border-brand-indigo/30 hover:border-brand-indigo bg-white text-brand-indigo font-bold active:scale-95 transition-all shadow-sm flex items-center gap-2"
-            >
-              <Download className="w-4 h-4 text-brand-terracotta" />
-              <span>Get PC (.exe) & APK</span>
-            </a>
-          </div>
-
-          {/* Trust points */}
-          <div className="mt-8 flex items-center gap-6 text-xs text-brand-indigo/65 font-semibold">
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" /> 100% Secure & Private
-            </span>
-            <span>·</span>
-            <span className="flex items-center gap-1.5">
-              <Zap className="w-4 h-4 text-amber-600" /> Fast 1-Tap Billing
-            </span>
-            <span>·</span>
-            <span>Plans from ₹99/mo</span>
-          </div>
-        </motion.div>
-
-        {/* Right: Interactive 3D Dukaan POS Kiosk */}
-        <motion.div 
-          initial={{ opacity: 0, x: 35, scale: 0.95 }} 
-          animate={{ opacity: 1, x: 0, scale: 1 }} 
-          transition={{ duration: 0.8, delay: 0.1, ease: [0.22, 1, 0.36, 1] }} 
-          className="lg:col-span-6"
-        >
-          <ThreeDHeroKiosk />
-        </motion.div>
-
-      </section>
+      <div id="kiosk">
+        <AppleScrollStage3D />
+      </div>
 
       {/* =========================================================
-          3D FEATURES GRID
+          HARDWARE BENTO 3D GRID
       ========================================================= */}
-      <Reveal className="relative z-10 mx-auto max-w-6xl px-5 py-24 border-t border-brand-mitti" id="features">
-        
+      <HardwareBento3D />
+
+      {/* =========================================================
+          INTERACTIVE COUNTER DEMO (PLAYABLE TEST DRIVE)
+      ========================================================= */}
+      <div id="test-drive">
+        <InteractiveCounterDemo />
+      </div>
+
+      {/* =========================================================
+          DEDICATED 3D DOWNLOAD HUB (STANDALONE .APK & .EXE)
+      ========================================================= */}
+      <DownloadHub3D />
+
+      {/* =========================================================
+          REAL INDIAN RETAILER TESTIMONIALS
+      ========================================================= */}
+      <Testimonials3D />
+
+      {/* =========================================================
+          PRICING SECTION (APPLE DARK AESTHETIC)
+      ========================================================= */}
+      <section id="pricing" className="relative z-20 py-24 px-6 max-w-6xl mx-auto bg-[#07090e] border-t border-white/10">
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-mitti bg-white text-xs font-semibold uppercase tracking-widest text-brand-terracotta mb-4">
-            <Layers className="w-3.5 h-3.5" /> Complete Business Toolkit
-          </div>
-          <h2 className="font-display text-4xl sm:text-5xl text-brand-indigo">
-            Everything your Dukaan needs
-          </h2>
-          <p className="mt-4 text-base sm:text-lg text-brand-indigo/70">
-            Simple enough for any shop owner. Powerful enough to manage your entire business.
-          </p>
-        </div>
-
-        <motion.div variants={stagger} className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {FEATURES.map(({ icon: Icon, title, body, badge }) => (
-            <Card3D key={title} depth={18} glow={true} className="w-full">
-              <div className="bg-white rounded-3xl border-2 border-brand-mitti p-8 shadow-3d-card hover:border-brand-indigo/30 transition-colors h-full flex flex-col justify-between preserve-3d">
-                <div>
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="w-14 h-14 rounded-2xl bg-brand-sand border border-brand-mitti flex items-center justify-center text-brand-indigo shadow-xs translate-z-20">
-                      <Icon className="w-7 h-7 text-brand-terracotta" />
-                    </div>
-                    <span className="text-[11px] font-bold text-brand-indigo/60 bg-brand-sand px-2.5 py-1 rounded-full border border-brand-mitti">
-                      {badge}
-                    </span>
-                  </div>
-
-                  <h3 className="font-heading text-xl font-bold text-brand-indigo mb-3 translate-z-10">
-                    {title}
-                  </h3>
-                  <p className="text-sm text-brand-indigo/70 leading-relaxed">
-                    {body}
-                  </p>
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-brand-mitti/60 flex items-center justify-between text-xs font-semibold text-brand-terracotta">
-                  <span>Explore Feature</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-            </Card3D>
-          ))}
-        </motion.div>
-      </Reveal>
-
-      {/* =========================================================
-          3D DEDICATED COUNTER MODE SHOWCASE
-      ========================================================= */}
-      <section id="counter-mode" className="relative z-10">
-        <ThreeDCounterModeShowcase />
-      </section>
-
-      {/* =========================================================
-          HOW IT WORKS (3D STEPS)
-      ========================================================= */}
-      <Reveal className="relative z-10 mx-auto max-w-6xl px-5 py-24 border-t border-brand-mitti" id="how-it-works">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-mitti bg-white text-xs font-semibold uppercase tracking-widest text-brand-terracotta mb-4">
-            Easy Setup
-          </div>
-          <h2 className="font-display text-4xl sm:text-5xl text-brand-indigo">
-            How it works
-          </h2>
-          <p className="mt-4 text-base sm:text-lg text-brand-indigo/70">
-            Start managing your Dukaan in 3 easy steps. No technical skills needed.
-          </p>
-        </div>
-
-        <motion.div variants={stagger} className="grid md:grid-cols-3 gap-8">
-          {[
-            { 
-              step: "01", 
-              title: "Create your Dukaan", 
-              desc: "Enter your shop name, contact details, and optional GST settings. Ready in 30 seconds." 
-            },
-            { 
-              step: "02", 
-              title: "Add Products & Customers", 
-              desc: "Quickly enter your inventory with selling price and low-stock alerts, or add customer khata." 
-            },
-            { 
-              step: "03", 
-              title: "Start Managing Business", 
-              desc: "Bill customers via Cash or UPI, record Udhaar, track profits, and download PDF receipts." 
-            }
-          ].map((s) => (
-            <Card3D key={s.step} depth={15} glow={true} className="w-full">
-              <div className="bg-white rounded-3xl border-2 border-brand-mitti p-8 shadow-3d-card relative text-center preserve-3d h-full flex flex-col items-center justify-between">
-                <div>
-                  <div className="w-16 h-16 rounded-2xl bg-brand-indigo text-white font-display text-2xl font-bold flex items-center justify-center mx-auto mb-6 shadow-md translate-z-20">
-                    {s.step}
-                  </div>
-                  <h3 className="font-heading text-xl font-bold text-brand-indigo mb-3 translate-z-10">
-                    {s.title}
-                  </h3>
-                  <p className="text-sm text-brand-indigo/70 leading-relaxed">
-                    {s.desc}
-                  </p>
-                </div>
-                <div className="mt-6 flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Step {s.step} Verified
-                </div>
-              </div>
-            </Card3D>
-          ))}
-        </motion.div>
-      </Reveal>
-
-      {/* =========================================================
-          DOWNLOAD SECTION (WINDOWS PC .EXE & ANDROID .APK)
-      ========================================================= */}
-      <Reveal className="relative z-10 mx-auto max-w-6xl px-5 py-20 border-t border-brand-mitti" id="download">
-        <div className="text-center max-w-2xl mx-auto mb-14">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-brand-mitti bg-white text-xs font-bold uppercase tracking-widest text-brand-terracotta mb-4 shadow-2xs">
-            <Download className="w-3.5 h-3.5" />
-            Native Desktop & Mobile Apps
-          </div>
-          <h2 className="font-display text-4xl sm:text-5xl text-brand-indigo">
-            Download Dukaan for Your Counter & Mobile
-          </h2>
-          <p className="mt-4 text-base sm:text-lg text-brand-indigo/70">
-            No browser required. Launch straight into billing with 100% offline device storage.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-8 items-stretch max-w-4xl mx-auto">
-          {/* Windows PC Software Card */}
-          <div className="rounded-3xl p-8 border-2 border-brand-mitti bg-white shadow-lift flex flex-col justify-between hover:border-brand-indigo transition-all">
-            <div>
-              <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 grid place-items-center mb-5">
-                <Laptop className="w-8 h-8" />
-              </div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-blue-600 mb-1">Desktop Software</div>
-              <h3 className="font-display text-2xl font-bold text-brand-indigo">Windows PC (.exe)</h3>
-              <p className="mt-2 text-sm text-brand-indigo/70 leading-relaxed">
-                Counter billing software for Windows 10 & 11. Fullscreen kiosk mode (F11), barcode scanner support, and direct thermal receipt printing.
-              </p>
-
-              <div className="mt-6 space-y-2 text-xs font-semibold text-brand-indigo/80">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Direct launch into POS (No landing page)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Works 100% offline once registered</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Single-file executable + Portable zip</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8 pt-6 border-t border-brand-mitti">
-              <a
-                href="https://github.com/MrGraphicsManager/Dukaan/actions"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full h-12 rounded-2xl bg-brand-indigo hover:bg-brand-indigo/90 text-white font-bold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
-              >
-                <Download className="w-4 h-4" />
-                <span>Download Windows Software (.exe)</span>
-              </a>
-              <div className="mt-2 text-center text-[10px] text-brand-indigo/50">
-                Windows 10 / 11 64-bit · Installer & Portable
-              </div>
-            </div>
-          </div>
-
-          {/* Android Mobile App Card */}
-          <div className="rounded-3xl p-8 border-2 border-brand-mitti bg-white shadow-lift flex flex-col justify-between hover:border-brand-terracotta transition-all">
-            <div>
-              <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 grid place-items-center mb-5">
-                <Smartphone className="w-8 h-8" />
-              </div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 mb-1">Android Mobile App</div>
-              <h3 className="font-display text-2xl font-bold text-brand-indigo">Android App (.apk)</h3>
-              <p className="mt-2 text-sm text-brand-indigo/70 leading-relaxed">
-                Take your Dukaan billing and customer khata ledger in your pocket. Touch-friendly mobile interface with 1-tap WhatsApp digital bills.
-              </p>
-
-              <div className="mt-6 space-y-2 text-xs font-semibold text-brand-indigo/80">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Direct launch into Shop Dashboard</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>1-Tap WhatsApp customer bill sender</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Safe-area native bottom dock navigation</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8 pt-6 border-t border-brand-mitti">
-              <a
-                href="https://github.com/MrGraphicsManager/Dukaan/actions/runs/33747305367"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full h-12 rounded-2xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
-              >
-                <Download className="w-4 h-4" />
-                <span>Download Android APK (5.7 MB)</span>
-              </a>
-              <div className="mt-2 text-center text-[10px] text-brand-indigo/50">
-                Android 8.0+ · Direct APK install
-              </div>
-            </div>
-          </div>
-        </div>
-      </Reveal>
-
-      {/* =========================================================
-          PRICING SECTION (3D ELEVATED CARDS)
-      ========================================================= */}
-      <Reveal className="relative z-10 mx-auto max-w-6xl px-5 py-24 border-t border-brand-mitti" id="pricing">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-mitti bg-white text-xs font-semibold uppercase tracking-widest text-brand-terracotta mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 text-xs font-bold uppercase tracking-widest mb-4">
             Transparent Indian Pricing
           </div>
-          <h2 className="font-display text-4xl sm:text-5xl text-brand-indigo">
-            Simple, honest pricing
+          <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white font-display">
+            Simple, honest pricing. <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">
+              No hidden commissions.
+            </span>
           </h2>
-          <p className="mt-4 text-base sm:text-lg text-brand-indigo/70">
-            Start with our generous free trial. Upgrade only when your Dukaan grows.
+          <p className="mt-4 text-base sm:text-lg text-slate-400">
+            Start with our generous free trial. Upgrade only as your shop expands.
           </p>
         </div>
 
-        <motion.div variants={stagger} className="grid md:grid-cols-3 gap-8 items-stretch">
+        <div className="grid md:grid-cols-3 gap-8 items-stretch">
           {PLANS.map((p) => (
-            <Card3D 
-              key={p.name} 
-              depth={p.featured ? 22 : 12} 
-              glow={true} 
-              className="w-full"
+            <div
+              key={p.name}
+              className={`rounded-3xl p-8 border flex flex-col justify-between transition-all ${
+                p.featured
+                  ? "bg-gradient-to-b from-slate-900 via-slate-950 to-black border-cyan-500/50 shadow-[0_15px_60px_-15px_rgba(6,182,212,0.25)] relative"
+                  : "bg-slate-950/80 border-slate-800 hover:border-slate-700"
+              }`}
             >
-              <div 
-                className={`rounded-3xl p-8 border-2 shadow-3d-card relative flex flex-col justify-between h-full preserve-3d ${
-                  p.featured 
-                    ? "bg-brand-indigo text-white border-brand-indigo shadow-2xl" 
-                    : "bg-white text-brand-indigo border-brand-mitti"
-                }`}
-              >
-                {p.featured && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-brand-terracotta text-white text-[11px] font-extrabold uppercase tracking-widest py-1.5 px-4 rounded-full shadow-md translate-z-30 flex items-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5" /> Most Popular for Shops
-                  </div>
-                )}
-
-                <div>
-                  <div className={`text-xs uppercase tracking-widest font-extrabold ${p.featured ? "text-brand-terracotta" : "text-brand-terracotta"}`}>
-                    {p.name} PLAN
-                  </div>
-
-                  <div className="mt-4 flex items-baseline gap-2">
-                    <span className="font-display text-5xl font-extrabold">₹{p.price}</span>
-                    <span className={`text-sm font-semibold ${p.featured ? "text-white/60" : "text-brand-indigo/50"}`}>/month</span>
-                  </div>
-                  <div className={`mt-1 text-xs font-medium ${p.featured ? "text-white/60" : "text-brand-indigo/50"}`}>
-                    + ₹{p.setup} one-time setup fee
-                  </div>
-
-                  <div className={`my-6 h-px w-full ${p.featured ? "bg-white/15" : "bg-brand-mitti"}`} />
-
-                  <ul className="space-y-3.5 mb-8">
-                    {p.perks.map((x) => (
-                      <li key={x} className="flex items-start gap-3">
-                        <div className={`mt-0.5 rounded-full p-0.5 shrink-0 ${p.featured ? "bg-brand-terracotta text-white" : "bg-brand-leaf/10 text-brand-leaf"}`}>
-                          <Check className="w-3.5 h-3.5" />
-                        </div>
-                        <span className={`text-sm font-medium ${p.featured ? "text-white/90" : "text-brand-indigo/80"}`}>{x}</span>
-                      </li>
-                    ))}
-                  </ul>
+              {p.featured && (
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 text-black text-[10px] font-black uppercase tracking-widest shadow-md">
+                  Most Popular for Kirana
                 </div>
+              )}
 
-                <div className="mt-auto pt-4">
-                  <Button 
-                    onClick={() => nav(`/subscribe?plan=${p.name.toLowerCase()}`)} 
-                    data-testid={`price-cta-${p.name.toLowerCase()}`} 
-                    className={`w-full h-13 rounded-full text-base font-bold active:scale-95 transition-all shadow-md ${
-                      p.featured 
-                        ? "bg-brand-terracotta hover:bg-brand-terracotta/90 text-white" 
-                        : "bg-brand-sand border-2 border-brand-mitti hover:border-brand-indigo text-brand-indigo"
-                    }`}
-                  >
-                    Choose {p.name}
-                  </Button>
+              <div>
+                <div className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400">
+                  {p.name}
+                </div>
+                <div className="mt-4 flex items-baseline gap-1">
+                  <span className="text-4xl font-black text-white font-mono">₹{p.price}</span>
+                  <span className="text-xs text-slate-400 font-semibold">/ month</span>
+                </div>
+                <div className="text-[11px] text-slate-500 mt-1">Setup ₹{p.setup} one-time</div>
+
+                <div className="mt-8 space-y-3">
+                  {p.perks.map((perk, i) => (
+                    <div key={i} className="flex items-start gap-2.5 text-xs text-slate-300">
+                      <Check className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                      <span>{perk}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </Card3D>
-          ))}
-        </motion.div>
-      </Reveal>
 
-      {/* =========================================================
-          FAQ SECTION
-      ========================================================= */}
-      <Reveal className="relative z-10 mx-auto max-w-4xl px-5 py-24 border-t border-brand-mitti" id="faq">
-        <div className="text-center mb-12">
-          <h2 className="font-display text-4xl text-brand-indigo">Frequently Asked Questions</h2>
-          <p className="mt-3 text-base text-brand-indigo/70">Clear answers for shop owners.</p>
-        </div>
-
-        <Accordion type="single" collapsible className="space-y-4">
-          {FAQS.map((f, i) => (
-            <AccordionItem key={i} value={`q${i}`} className="bg-white rounded-2xl border-2 border-brand-mitti px-6 overflow-hidden shadow-xs">
-              <AccordionTrigger data-testid={`faq-${i}`} className="text-left font-semibold text-base py-5 text-brand-indigo hover:no-underline">
-                {f.q}
-              </AccordionTrigger>
-              <AccordionContent className="text-brand-indigo/75 pb-5 leading-relaxed text-sm">
-                {f.a}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
-      </Reveal>
-
-      {/* =========================================================
-          FINAL 3D CTA BANNER
-      ========================================================= */}
-      <section className="relative z-10 mx-auto max-w-6xl px-5 pb-24">
-        <Card3D depth={14} glow={true} className="w-full">
-          <div className="bg-gradient-to-br from-brand-indigo to-[#2A2375] text-white rounded-[2.5rem] p-10 md:p-16 text-center relative overflow-hidden shadow-2xl border-2 border-brand-indigo/40 preserve-3d">
-            
-            {/* Ambient gold glow */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-brand-terracotta/20 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-96 h-96 bg-brand-gold/15 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="relative z-10 max-w-2xl mx-auto">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 text-xs font-semibold uppercase tracking-widest text-brand-terracotta mb-6">
-                <Sparkles className="w-3.5 h-3.5" /> Start in 30 Seconds
-              </div>
-
-              <h2 className="font-display text-4xl md:text-6xl tracking-tight leading-tight">
-                Everything your Dukaan needs. <br />
-                <span className="text-brand-terracotta">In one place.</span>
-              </h2>
-
-              <p className="mt-6 text-lg text-white/75 leading-relaxed">
-                Join thousands of modern shops across India managing billing, inventory, and udhaar effortlessly.
-              </p>
-
-              <div className="mt-10 flex flex-wrap justify-center gap-4">
-                <Button 
-                  size="lg" 
-                  onClick={() => nav("/app")} 
-                  className="h-14 px-10 text-lg rounded-full bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold active:scale-95 transition-all shadow-glow flex items-center gap-2"
+              <div className="mt-8 pt-6 border-t border-white/10">
+                <Button
+                  onClick={() => nav("/register")}
+                  className={`w-full h-12 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all ${
+                    p.featured
+                      ? "bg-cyan-500 hover:bg-cyan-400 text-black shadow-lg shadow-cyan-500/20"
+                      : "bg-slate-800 hover:bg-slate-700 text-white"
+                  }`}
                 >
-                  <span>Open Your Dukaan</span>
-                  <ArrowRight className="w-5 h-5" />
+                  Get Started Free
                 </Button>
-                <InstallAppButton variant="outline" className="h-14 px-8 text-base rounded-full border-white/20 bg-white/10 text-white hover:bg-white/20" />
               </div>
             </div>
-
-          </div>
-        </Card3D>
+          ))}
+        </div>
       </section>
 
       {/* =========================================================
-          FOOTER
+          FAQ ACCORDION SECTION
       ========================================================= */}
-      <footer className="border-t border-brand-mitti bg-white py-12 text-center relative z-10">
-        <div className="flex items-center justify-center gap-3 mb-3">
-          <img src="/logo.png" alt="Dukaan" className="h-9 object-contain" />
-          <div className="h-6 w-px bg-brand-mitti" />
-          <div className="flex items-center gap-1.5 text-xs font-bold text-brand-indigo/80">
-            <span className="text-brand-indigo/50 text-[10px] font-mono uppercase">A product of</span>
-            <span className="font-display font-black text-sm tracking-tight text-brand-indigo">PEAN</span>
+      <section id="faq" className="relative z-20 py-24 px-6 max-w-4xl mx-auto bg-[#07090e] border-t border-white/10">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white font-display">
+            Frequently Asked Questions
+          </h2>
+          <p className="mt-2 text-sm text-slate-400">
+            Have questions about Dukaan? Here are direct answers.
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {FAQS.map((faq, idx) => (
+            <div
+              key={idx}
+              className="p-6 rounded-2xl bg-slate-950 border border-slate-800/80 hover:border-slate-700 transition-colors"
+            >
+              <h4 className="text-base font-bold text-white mb-2">
+                {faq.q}
+              </h4>
+              <p className="text-sm text-slate-400 leading-relaxed font-normal">
+                {faq.a}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* =========================================================
+          FOOTER WITH PEAN BRANDING
+      ========================================================= */}
+      <footer className="relative z-20 border-t border-white/10 bg-black py-16 px-6">
+        <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="Dukaan" className="h-8 w-auto object-contain" />
+            <div className="text-xs text-slate-500 font-mono">
+              © {new Date().getFullYear()} Dukaan Retail OS · Developed by PEAN
+            </div>
           </div>
-        </div>
-        <p className="text-xs text-brand-indigo/60 mb-6 font-medium">Run Your Dukaan. Smarter.</p>
-        <div className="flex flex-wrap items-center justify-center gap-6 md:gap-8 mb-8 text-sm font-medium">
-          <a href="#features" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Features</a>
-          <a href="#pricing" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Pricing Plans</a>
-          <Link to="/subscribe" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Buy Subscription</Link>
-          <Link to="/privacy-policy" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Privacy Policy</Link>
-          <Link to="/refund-policy" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Refund Policy</Link>
-        </div>
-        <div className="text-xs text-brand-indigo/60 flex flex-col sm:flex-row items-center justify-center gap-2">
-          <span className="flex items-center gap-1">
-            <span>Made with</span>
-            <Heart className="w-3.5 h-3.5 text-brand-terracotta fill-brand-terracotta inline" />
-            <span>for Indian Small Businesses</span>
-          </span>
-          <span className="hidden sm:inline text-brand-indigo/30">·</span>
-          <span>© 2026 Dukaan · A Product of PEAN · All rights reserved</span>
+
+          <div className="flex gap-6 text-xs text-slate-400 font-mono">
+            <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
+            <Link to="/refund-policy" className="hover:text-white transition-colors">Refund Policy</Link>
+            <a href="#download" className="hover:text-white transition-colors">Download App</a>
+          </div>
         </div>
       </footer>
 
