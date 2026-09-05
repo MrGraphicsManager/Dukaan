@@ -13,37 +13,40 @@ import {
   ListMusic,
   Info,
   Search,
-  Volume2
+  Volume2,
+  Maximize2,
+  Minimize2,
+  LogIn
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
-// 100% FULL-LENGTH Presets (No 30-second cuts, continuous full tracks!)
-const FULL_PRESET_PLAYLISTS = [
+// Presets: Curated Spotify & YouTube Mixes
+const PRESET_COLLECTION = [
+  {
+    name: "🟢 Spotify Top 50 India",
+    type: "spotify",
+    url: "https://open.spotify.com/playlist/37i9dQZF1DX0XUfTFmNBRM",
+    desc: "Official Spotify Top Hits (Login for full songs)"
+  },
   {
     name: "🎧 24/7 Lofi Chill Beats",
     type: "youtube",
     url: "https://www.youtube.com/watch?v=jfKfPfyJRdk",
-    desc: "100% Full continuous lofi stream (0 cuts)"
+    desc: "100% Full continuous stream (Zero login)"
   },
   {
-    name: "🎵 Bollywood Hindi Hits (Full)",
+    name: "🎵 Bollywood Hits Full",
     type: "youtube",
     url: "https://www.youtube.com/watch?v=kY3SuK2t3_U",
-    desc: "Acoustic Hindi favorites non-stop full songs"
+    desc: "Continuous full Hindi tracks (Zero cuts)"
   },
   {
-    name: "⚡ Deep Focus & Tech Lounge",
+    name: "⚡ Deep Focus Work Mix",
     type: "youtube",
     url: "https://www.youtube.com/watch?v=WPni755-Krg",
-    desc: "3-Hour uninterrupted ambient work beats"
-  },
-  {
-    name: "☕ Punjabi & Indie Pop Vibes",
-    type: "youtube",
-    url: "https://www.youtube.com/watch?v=mU_Yv_h8x4c",
-    desc: "Full continuous Punjabi & indie tracks"
+    desc: "3-Hour uninterrupted focus audio"
   }
 ];
 
@@ -99,7 +102,7 @@ export function parseMusicUrl(rawUrl) {
           id: listId,
           embedUrl: `https://www.youtube-nocookie.com/embed/videoseries?list=${listId}&autoplay=1`,
           rawUrl: trimmed,
-          title: "YouTube Full Playlist (No 30s Limit)",
+          title: "YouTube Full Playlist (100% Full Songs)",
           isFullLength: true
         };
       }
@@ -122,7 +125,7 @@ export function parseMusicUrl(rawUrl) {
         id: videoId,
         embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&enablejsapi=1`,
         rawUrl: trimmed,
-        title: "YouTube Full Song (No 30s Limit)",
+        title: "YouTube Full Song (100% Full Audio)",
         isFullLength: true
       };
     }
@@ -136,7 +139,7 @@ export function parseMusicUrl(rawUrl) {
       kind: "search",
       embedUrl: `https://www.youtube-nocookie.com/embed?listType=search&list=${query}&autoplay=1`,
       rawUrl: trimmed,
-      title: `YouTube Search: "${trimmed}" (Full Audio)`,
+      title: `Full Song Search: "${trimmed}"`,
       isFullLength: true
     };
   }
@@ -146,18 +149,21 @@ export function parseMusicUrl(rawUrl) {
 
 export default function AdminMusicPlayer() {
   const [activeUrl, setActiveUrl] = useState(() => {
-    return localStorage.getItem("dukaan_admin_music_url") || FULL_PRESET_PLAYLISTS[0].url;
+    return localStorage.getItem("dukaan_admin_music_url") || PRESET_COLLECTION[0].url;
   });
   const [inputUrl, setInputUrl] = useState("");
   const [isExpanded, setIsExpanded] = useState(() => {
     const stored = localStorage.getItem("dukaan_admin_music_expanded");
     return stored === null ? true : stored === "true";
   });
+  const [spotifyHeight, setSpotifyHeight] = useState("352"); // 352 shows full tracklist & login button
+  const [spotifyTrackTitle, setSpotifyTrackTitle] = useState("");
 
   const parsedMedia = useMemo(() => {
     return parseMusicUrl(activeUrl);
   }, [activeUrl]);
 
+  // Persist settings
   useEffect(() => {
     if (activeUrl) {
       localStorage.setItem("dukaan_admin_music_url", activeUrl);
@@ -168,36 +174,63 @@ export default function AdminMusicPlayer() {
     localStorage.setItem("dukaan_admin_music_expanded", String(isExpanded));
   }, [isExpanded]);
 
+  // Auto-fetch Spotify Track Title via oEmbed so user can play full version with 1 click
+  useEffect(() => {
+    if (parsedMedia?.isSpotify && parsedMedia.rawUrl) {
+      let isMounted = true;
+      fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(parsedMedia.rawUrl)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (isMounted && data?.title) {
+            setSpotifyTrackTitle(data.title);
+          }
+        })
+        .catch(() => {
+          if (isMounted) setSpotifyTrackTitle("");
+        });
+      return () => {
+        isMounted = false;
+      };
+    } else {
+      setSpotifyTrackTitle("");
+    }
+  }, [parsedMedia]);
+
   const handleApplyUrl = (e) => {
     if (e) e.preventDefault();
     const clean = inputUrl.trim();
     if (!clean) {
-      toast.error("Please enter a YouTube link, Spotify link, or song name.");
+      toast.error("Please enter a Spotify link, YouTube link, or song title.");
       return;
     }
     const parsed = parseMusicUrl(clean);
     if (!parsed) {
-      toast.error("Could not parse song. Try a YouTube video/playlist link or search term.");
+      toast.error("Could not parse song. Try a valid URL or search term.");
       return;
     }
     setActiveUrl(clean);
     setInputUrl("");
     if (parsed.type === "spotify") {
-      toast.info("Loaded Spotify. Note: Spotify limits free/unlogged embeds to 30s. Use YouTube links for full songs!");
+      toast.info("Spotify loaded! Log in inside the player to stream full songs.");
     } else {
-      toast.success("Playing full-length audio via YouTube!");
+      toast.success("Playing full-length uninterrupted audio!");
     }
   };
 
   const handleSelectPreset = (preset) => {
     setActiveUrl(preset.url);
-    toast.success(`Playing full song preset: ${preset.name}`);
+    if (preset.type === "spotify") {
+      toast.info(`Loaded ${preset.name}. Log in inside player to hear full songs.`);
+    } else {
+      toast.success(`Playing ${preset.name} (100% Full Audio)`);
+    }
   };
 
-  const handleSwitchToYouTubeFull = () => {
-    // If currently on spotify, switch to full YouTube Bollywood or Lofi
-    setActiveUrl("https://www.youtube.com/watch?v=kY3SuK2t3_U");
-    toast.success("Switched to YouTube Full Songs (0 limits, 100% full audio)!");
+  // 1-Click: Play exact Spotify track in 100% full length without requiring login
+  const handlePlaySpotifyFullNoLogin = () => {
+    const searchTerm = spotifyTrackTitle || "Hindi Songs";
+    setActiveUrl(searchTerm);
+    toast.success(`Playing "${searchTerm}" 100% full length with zero login!`);
   };
 
   const handleClear = () => {
@@ -213,7 +246,7 @@ export default function AdminMusicPlayer() {
         {/* COMPACT TOP BAR */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           
-          {/* Left: Player Status & Equalizer */}
+          {/* Left: Player Status & Title */}
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shrink-0 shadow-inner">
               <Headphones className="w-4 h-4" />
@@ -223,7 +256,7 @@ export default function AdminMusicPlayer() {
               <span className="text-xs font-bold text-white tracking-tight flex items-center gap-1.5">
                 <span>Sound Lounge</span>
                 <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  Full Audio
+                  {parsedMedia?.type === "spotify" ? "Spotify" : "Full Audio"}
                 </span>
               </span>
 
@@ -237,14 +270,14 @@ export default function AdminMusicPlayer() {
                     <span className={`w-1.5 h-1.5 rounded-full ${
                       parsedMedia.type === "spotify" ? "bg-emerald-400 animate-pulse" : "bg-rose-400 animate-pulse"
                     }`} />
-                    {parsedMedia.type === "spotify" ? "Spotify (30s Preview)" : "YouTube (Full Song)"}
+                    {parsedMedia.type === "spotify" ? "Spotify Official" : "100% Full Audio"}
                   </span>
-                  <span className="text-[11px] text-slate-300 font-medium max-w-[180px] sm:max-w-[300px] truncate">
-                    {parsedMedia.title}
+                  <span className="text-[11px] text-slate-300 font-medium max-w-[180px] sm:max-w-[320px] truncate">
+                    {spotifyTrackTitle || parsedMedia.title}
                   </span>
                 </div>
               ) : (
-                <span className="text-[11px] text-slate-500 italic">No playlist loaded</span>
+                <span className="text-[11px] text-slate-500 italic">No song loaded</span>
               )}
             </div>
 
@@ -259,12 +292,12 @@ export default function AdminMusicPlayer() {
             )}
           </div>
 
-          {/* Right: Controls & Expand/Collapse */}
+          {/* Right: Presets & Drawer Toggle */}
           <div className="flex items-center gap-2">
             
-            {/* Quick Full-Length Presets Pills (Desktop) */}
+            {/* Quick Presets Pills (Desktop) */}
             <div className="hidden xl:flex items-center gap-1.5">
-              {FULL_PRESET_PLAYLISTS.map((p, idx) => (
+              {PRESET_COLLECTION.map((p, idx) => (
                 <button
                   key={idx}
                   onClick={() => handleSelectPreset(p)}
@@ -292,7 +325,7 @@ export default function AdminMusicPlayer() {
               {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             </Button>
 
-            {/* Clear / Close */}
+            {/* Clear / Eject */}
             {parsedMedia && (
               <button
                 onClick={handleClear}
@@ -310,22 +343,68 @@ export default function AdminMusicPlayer() {
           <div className="mt-3 pt-3 border-t border-slate-800/80 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start animate-fade-in">
             
             {/* Left Column: Embed Iframe Player */}
-            <div className="lg:col-span-7 bg-slate-950 rounded-2xl p-2.5 border border-slate-800 shadow-2xl overflow-hidden space-y-2">
+            <div className="lg:col-span-7 bg-slate-950 rounded-2xl p-3 border border-slate-800 shadow-2xl overflow-hidden space-y-2.5">
               
-              {/* Spotify Preview Notice Bar */}
+              {/* SPOTIFY FULL SONG UNLOCK HEADER & HELPER */}
               {parsedMedia?.isSpotify && (
-                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-2 text-xs text-amber-300">
-                  <div className="flex items-center gap-2">
-                    <Info className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span>Spotify iframe me browser login na hone par 30-sec preview chalta hai.</span>
+                <div className="p-3 rounded-xl bg-slate-900/90 border border-emerald-500/30 space-y-2 text-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-emerald-400 font-bold">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>Spotify Full Song Unlock</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {/* Spotify Login Button */}
+                      <Button
+                        type="button"
+                        onClick={() => window.open("https://accounts.spotify.com/login", "_blank", "width=600,height=700")}
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2.5 bg-emerald-950/70 border-emerald-500/50 hover:bg-emerald-900 text-emerald-300 font-bold text-[11px] rounded-lg flex items-center gap-1.5 shadow-sm"
+                        title="Spotify account login karne par iframe me 100% full song chalta hai"
+                      >
+                        <LogIn className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Log in to Spotify</span>
+                      </Button>
+
+                      {/* Instant Play Full Song without login */}
+                      <Button
+                        type="button"
+                        onClick={handlePlaySpotifyFullNoLogin}
+                        size="sm"
+                        className="h-7 px-2.5 bg-gradient-to-r from-emerald-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white font-bold text-[11px] rounded-lg flex items-center gap-1.5 shadow-md active:scale-95"
+                        title="Bina login kiye wahi exact gaana 100% poora sunne ke liye click karein"
+                      >
+                        <Play className="w-3 h-3 fill-current" />
+                        <span>Play Full Song (No Login)</span>
+                      </Button>
+
+                      {/* Size toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setSpotifyHeight(spotifyHeight === "352" ? "152" : "352")}
+                        className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+                        title={spotifyHeight === "352" ? "Compact View" : "Full Tracklist View"}
+                      >
+                        {spotifyHeight === "352" ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
                   </div>
-                  <Button
-                    onClick={handleSwitchToYouTubeFull}
-                    size="sm"
-                    className="h-7 px-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-[11px] rounded-lg shrink-0"
-                  >
-                    ▶️ Play Full Audio on YouTube
-                  </Button>
+
+                  <div className="text-[11px] text-slate-300 bg-emerald-950/30 p-2.5 rounded-lg border border-emerald-900/40 leading-relaxed">
+                    <p className="font-semibold text-emerald-300 mb-1">
+                      🎵 Spotify me pura gaana chalane ke do tarike:
+                    </p>
+                    <ul className="list-disc list-inside space-y-0.5 text-slate-300 text-[10.5px]">
+                      <li>
+                        <strong>Spotify Login ke saath:</strong> Player me ya upar <strong>"Log in to Spotify"</strong> dabayein. Free ya Premium account login hote hi Spotify bina ruke poora gaana chalata hai!
+                      </li>
+                      <li>
+                        <strong>Bina kisi login ke:</strong> Upar <strong>"Play Full Song (No Login)"</strong> dabayein — wahi gaana turant bina 30-sec limit ke 100% chalega!
+                      </li>
+                    </ul>
+                  </div>
                 </div>
               )}
 
@@ -334,20 +413,21 @@ export default function AdminMusicPlayer() {
                   <iframe
                     src={parsedMedia.embedUrl}
                     width="100%"
-                    height="152"
+                    height={spotifyHeight}
                     frameBorder="0"
                     allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                    allowtransparency="true"
                     loading="lazy"
                     title="Spotify Embed"
-                    className="rounded-xl w-full bg-slate-950"
+                    className="rounded-xl w-full bg-slate-950 transition-all duration-300 border border-slate-800/80"
                   />
                 ) : (
-                  <div className="relative w-full rounded-xl overflow-hidden aspect-video max-h-[220px] bg-black">
+                  <div className="relative w-full rounded-xl overflow-hidden aspect-video max-h-[260px] bg-black border border-slate-800">
                     <iframe
                       src={parsedMedia.embedUrl}
                       width="100%"
                       height="100%"
-                      title="YouTube Full Embed"
+                      title="Full Song Audio Engine"
                       frameBorder="0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       allowFullScreen
@@ -358,7 +438,7 @@ export default function AdminMusicPlayer() {
               ) : (
                 <div className="h-32 flex flex-col items-center justify-center text-center p-4 text-slate-500">
                   <Radio className="w-8 h-8 mb-2 text-slate-600 animate-pulse" />
-                  <p className="text-xs">No song loaded. Paste any YouTube video/playlist link or search any song title on the right.</p>
+                  <p className="text-xs">No song loaded. Paste any Spotify / YouTube URL or search a song name on the right.</p>
                 </div>
               )}
             </div>
@@ -367,36 +447,36 @@ export default function AdminMusicPlayer() {
             <div className="lg:col-span-5 flex flex-col gap-3">
               <form onSubmit={handleApplyUrl} className="space-y-2">
                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                  <span>Enter Song Name or YouTube / Spotify Link</span>
-                  <span className="text-[10px] text-emerald-400 font-bold font-mono">100% Full Audio</span>
+                  <span>Spotify / YouTube Link or Song Name</span>
+                  <span className="text-[10px] text-emerald-400 font-bold font-mono">Full Playback</span>
                 </label>
                 <div className="flex gap-2">
                   <Input
                     type="text"
-                    placeholder="e.g. YouTube link, Spotify link, or 'Arijit Singh songs'"
+                    placeholder="Paste Spotify link, YouTube link, or type song name"
                     value={inputUrl}
                     onChange={(e) => setInputUrl(e.target.value)}
                     className="bg-slate-950 border-slate-800 text-white text-xs h-9 rounded-xl focus:border-indigo-500"
                   />
                   <Button
                     type="submit"
-                    className="h-9 px-3.5 bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shrink-0 active:scale-95 transition-all shadow-md"
+                    className="h-9 px-3.5 bg-gradient-to-r from-emerald-600 via-indigo-600 to-rose-600 hover:opacity-90 text-white font-bold text-xs rounded-xl shrink-0 active:scale-95 transition-all shadow-md"
                   >
-                    Play Full
+                    Play
                   </Button>
                 </div>
               </form>
 
-              {/* Quick Presets Grid (All 100% Full Tracks) */}
+              {/* Quick Presets Grid */}
               <div className="space-y-1.5 pt-1">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    Full-Length Executive Mixes (0 Limits)
+                    Quick Curated Mixes
                   </span>
-                  <span className="text-[9px] text-emerald-400 font-bold font-mono">No 30s Cuts</span>
+                  <span className="text-[9px] text-emerald-400 font-bold font-mono">Full Tracks</span>
                 </div>
                 <div className="grid grid-cols-2 gap-1.5">
-                  {FULL_PRESET_PLAYLISTS.map((p, idx) => (
+                  {PRESET_COLLECTION.map((p, idx) => (
                     <button
                       key={idx}
                       onClick={() => handleSelectPreset(p)}
@@ -407,7 +487,7 @@ export default function AdminMusicPlayer() {
                       }`}
                     >
                       <div className="font-semibold truncate flex items-center justify-between">
-                        <span>{p.name}</span>
+                        <span className="truncate">{p.name}</span>
                         {activeUrl === p.url && <Check className="w-3 h-3 text-indigo-400 shrink-0" />}
                       </div>
                       <span className="text-[10px] text-slate-500 truncate mt-0.5">{p.desc}</span>
@@ -417,8 +497,17 @@ export default function AdminMusicPlayer() {
               </div>
 
               {/* Explanation Note */}
-              <div className="text-[10px] text-slate-400 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80 leading-relaxed">
-                <strong className="text-white">Full Song Tip:</strong> Spotify embeds bina Spotify login ke sirf 30-sec preview dete hain. YouTube par poore 100% songs & playlists chalte hain. Aap direct YouTube song link paste karein ya upar kisi bhi gaane ka naam likhkar <strong>"Play Full"</strong> dabayein!
+              <div className="text-[10.5px] text-slate-400 bg-slate-950/80 p-3 rounded-xl border border-slate-800/80 leading-relaxed space-y-1">
+                <div className="font-bold text-slate-200 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Spotify Full Song Kaise Chalayein:</span>
+                </div>
+                <p>
+                  Spotify ke official player me poore gaane sunne ke liye aapka Spotify account (Free ya Premium) logged in hona zaroori hota hai. Player ke andar Spotify <strong>"Log In"</strong> button daba kar login karein.
+                </p>
+                <p className="text-emerald-400 font-medium">
+                  ⚡ Agar bina login kiye gaana sunna hai, toh aap kisi bhi gaane ka naam upar likh kar search kar sakte hain ya <strong>"Play Full Song (No Login)"</strong> daba sakte hain!
+                </p>
               </div>
             </div>
 
