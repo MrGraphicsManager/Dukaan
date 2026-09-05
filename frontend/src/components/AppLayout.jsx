@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { useEffect, useState, useCallback } from "react";
 import { t } from "@/lib/i18n";
-import { LayoutDashboard, Receipt, Package, Warehouse, Users, Wallet, ClipboardList, BarChart3, Settings as Cog, LogOut, Store, CreditCard, ShieldCheck, ShieldAlert, Lock, Monitor, Bell, CheckCheck, AlertTriangle, X, RotateCw, Eye } from "lucide-react";
+import { LayoutDashboard, Receipt, Package, Warehouse, Users, Wallet, ClipboardList, BarChart3, Settings as Cog, LogOut, Store, CreditCard, ShieldCheck, ShieldAlert, Lock, Monitor, Bell, CheckCheck, AlertTriangle, X, RotateCw, Eye, Menu, ChevronRight } from "lucide-react";
 import { PLAN_TIER, ROUTE_PLAN } from "@/components/SubGate";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,13 @@ const NAV = [
   { to: "/app/counter", key: "counter_mode", Icon: Monitor },
 ];
 
-const MOBILE_NAV = NAV.filter(n => ["dashboard","new_bill","udhaar","orders","settings"].includes(n.key));
+const MOBILE_NAV = [
+  { to: "/app", key: "dashboard", Icon: LayoutDashboard, end: true },
+  { to: "/app/pos", key: "new_bill", Icon: Receipt },
+  { to: "/app/products", key: "products", Icon: Package },
+  { to: "/app/udhaar", key: "udhaar", Icon: Wallet },
+  { to: "#menu", key: "menu", Icon: Menu, isAction: true },
+];
 
 
 /* =========================================================
@@ -134,6 +140,7 @@ export default function AppLayout() {
     return localSub;
   });
   const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const { notifications, unreadCount, fetchNotifications, markRead, markAllRead } = useNotifications();
 
   // Read the current subscription from the backend if available; otherwise keep local state
@@ -524,12 +531,22 @@ export default function AppLayout() {
         <div className="mx-auto max-w-[1400px] px-4 h-16 flex items-center justify-between gap-3">
 
           {/* Logo (Switches to official Premium logo for Premium plan users) */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Mobile Hamburger Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setMobileDrawerOpen(true)}
+              className="md:hidden w-9 h-9 rounded-xl border border-brand-mitti bg-white text-brand-indigo flex items-center justify-center shadow-xs active:scale-95 transition-transform shrink-0"
+              aria-label="Open Navigation Menu"
+            >
+              <Menu className="w-5 h-5 text-brand-indigo" />
+            </button>
+
             <button className="md:hidden flex items-center gap-2" onClick={() => nav("/app")} data-testid="topbar-logo" aria-label="Home">
               <img 
                 src={isPremium ? "/logo-premium.png" : "/logo.png"} 
                 alt="Dukaan" 
-                className={`${isPremium ? "h-9 sm:h-10" : "h-8"} w-auto object-contain`} 
+                className={`${isPremium ? "h-8 sm:h-10" : "h-7 sm:h-8"} w-auto object-contain`} 
               />
             </button>
             <div className="hidden md:flex items-center gap-2.5">
@@ -620,8 +637,8 @@ export default function AppLayout() {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button data-testid="shop-switcher" className={`flex items-center gap-2 px-3 py-2 rounded-full border text-sm transition-colors ${isPremium ? "premium-control" : "border-brand-mitti bg-white text-brand-indigo hover:border-brand-indigo"}`}>
-                  <Store className="w-4 h-4"/><span className="max-w-[140px] truncate">{activeShop?.name || "Select shop"}</span>
+                <button data-testid="shop-switcher" className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full border text-xs sm:text-sm transition-colors ${isPremium ? "premium-control" : "border-brand-mitti bg-white text-brand-indigo hover:border-brand-indigo"}`}>
+                  <Store className="w-4 h-4 shrink-0"/><span className="hidden sm:inline max-w-[140px] truncate">{activeShop?.name || "Select shop"}</span>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64">
@@ -793,33 +810,155 @@ export default function AppLayout() {
 
 
       {/* =====================================================
+          MOBILE SLIDE-OUT NAVIGATION DRAWER (Mobile Only)
+      ===================================================== */}
+      {mobileDrawerOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity" 
+            onClick={() => setMobileDrawerOpen(false)} 
+          />
+
+          {/* Drawer Panel */}
+          <div className="relative w-[82%] max-w-xs bg-white h-full shadow-2xl flex flex-col justify-between z-10 animate-in slide-in-from-left duration-200 border-r border-brand-mitti">
+            
+            {/* Drawer Header */}
+            <div className="p-4 border-b border-brand-mitti/60 flex items-center justify-between bg-brand-sand/40">
+              <div className="flex items-center gap-2.5">
+                <img 
+                  src={isPremium ? "/logo-premium.png" : "/logo.png"} 
+                  alt="Dukaan" 
+                  className="h-8 w-auto object-contain" 
+                />
+                <div>
+                  <div className="text-xs font-bold text-brand-indigo truncate max-w-[130px]">
+                    {activeShop?.name || "Apni Dukaan"}
+                  </div>
+                  <div className="text-[10px] text-brand-indigo/60 flex items-center gap-1 font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                    Online Store
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => setMobileDrawerOpen(false)}
+                className="w-8 h-8 rounded-full bg-white border border-brand-mitti flex items-center justify-center text-brand-indigo/70 hover:text-brand-indigo"
+                aria-label="Close menu"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Navigation Links Scrollable Area */}
+            <nav className="flex-1 overflow-y-auto p-3 space-y-1">
+              <div className="text-[10px] font-mono uppercase tracking-wider text-brand-indigo/40 px-3 py-1 font-bold">
+                Menu & Management
+              </div>
+              {NAV.map(({ to, key, Icon, end }) => {
+                const locked = isLocked(to);
+                return (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    end={end}
+                    onClick={() => setMobileDrawerOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                        isActive 
+                          ? "bg-brand-indigo text-white shadow-xs" 
+                          : "text-brand-indigo/80 hover:bg-brand-mitti/50 active:bg-brand-mitti"
+                      }`
+                    }
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span className="flex-1 text-xs">{t(lang, key)}</span>
+                    {locked && <Lock className="w-3.5 h-3.5 text-brand-terracotta shrink-0" />}
+                  </NavLink>
+                );
+              })}
+
+              {user?.is_admin && (
+                <NavLink
+                  to="/admin"
+                  onClick={() => setMobileDrawerOpen(false)}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold bg-amber-500/10 text-amber-900 border border-amber-300 mt-2"
+                >
+                  <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Admin Console</span>
+                </NavLink>
+              )}
+            </nav>
+
+            {/* Drawer Footer */}
+            <div className="p-4 border-t border-brand-mitti/60 bg-brand-sand/30 space-y-2">
+              <div className="flex items-center justify-between text-xs text-brand-indigo/70 font-medium">
+                <span className="truncate max-w-[150px] font-bold text-brand-indigo">{user?.name || user?.email?.split('@')[0]}</span>
+                <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-brand-terracotta/10 text-brand-terracotta font-bold">
+                  {user?.subscription?.plan || "Starter"}
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  setMobileDrawerOpen(false);
+                  await logout();
+                  nav("/");
+                }}
+                className="w-full text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200 font-bold h-9 rounded-xl"
+              >
+                <LogOut className="w-3.5 h-3.5 mr-1.5" />
+                {t(lang, "logout")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================
           BOTTOM NAVIGATION (Mobile Only - Native App Feel)
       ===================================================== */}
 
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-brand-mitti shadow-nav pb-[env(safe-area-inset-bottom,0px)]">
         <div className="grid grid-cols-5 h-16 items-center px-1">
-          {MOBILE_NAV.map(({ to, key, Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              data-testid={`bottomnav-${key}`}
-              className={({ isActive }) =>
-                `flex flex-col items-center justify-center gap-1 py-1.5 rounded-2xl text-[11px] font-bold transition-all relative ${
-                  isActive 
-                    ? "text-brand-terracotta bg-brand-terracotta/10 scale-105" 
-                    : "text-brand-indigo/65 hover:text-brand-indigo active:scale-95"
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <Icon className={`w-5 h-5 transition-transform ${isActive ? "scale-110" : ""}`} />
-                  <span className="leading-tight truncate max-w-[64px]">{t(lang, key)}</span>
-                </>
-              )}
-            </NavLink>
-          ))}
+          {MOBILE_NAV.map(({ to, key, Icon, end, isAction }) => {
+            if (isAction) {
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setMobileDrawerOpen(true)}
+                  className="flex flex-col items-center justify-center gap-1 py-1.5 rounded-2xl text-[11px] font-bold text-brand-indigo/65 hover:text-brand-indigo active:scale-95 transition-all"
+                >
+                  <Icon className="w-5 h-5 text-brand-indigo/70" />
+                  <span className="leading-tight truncate max-w-[64px]">{t(lang, key) || "Menu"}</span>
+                </button>
+              );
+            }
+            return (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                data-testid={`bottomnav-${key}`}
+                className={({ isActive }) =>
+                  `flex flex-col items-center justify-center gap-1 py-1.5 rounded-2xl text-[11px] font-bold transition-all relative ${
+                    isActive 
+                      ? "text-brand-terracotta bg-brand-terracotta/10 scale-105" 
+                      : "text-brand-indigo/65 hover:text-brand-indigo active:scale-95"
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <Icon className={`w-5 h-5 transition-transform ${isActive ? "scale-110" : ""}`} />
+                    <span className="leading-tight truncate max-w-[64px]">{t(lang, key)}</span>
+                  </>
+                )}
+              </NavLink>
+            );
+          })}
         </div>
       </nav>
     </div>

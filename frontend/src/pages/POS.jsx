@@ -33,7 +33,9 @@ import {
   VolumeX,
   Share2,
   Crown,
-  AlertTriangle
+  AlertTriangle,
+  ChevronRight,
+  X
 } from "lucide-react";
 import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
 import { useAuth } from "@/lib/AuthContext";
@@ -78,6 +80,9 @@ export default function POS() {
 
   // New Customer modal state
   const [newCustomer, setNewCustomer] = useState({ open: false, name: "", phone: "" });
+
+  // Mobile Cart Slide-up Drawer state
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
 
   useEffect(() => {
     api.get("/products")
@@ -598,7 +603,15 @@ export default function POS() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
+          {/* Quick Mobile Bill Trigger Button */}
+          <Button
+            onClick={() => setMobileCartOpen(true)}
+            className="lg:hidden rounded-full bg-brand-terracotta text-white text-xs font-bold px-3.5 h-10 flex items-center gap-1.5 shadow-sm active:scale-95"
+          >
+            <Receipt className="w-3.5 h-3.5" />
+            <span>Bill ({cart.reduce((a, c) => a + c.qty, 0)})</span>
+          </Button>
           <Button
             variant="outline"
             onClick={() => {
@@ -830,9 +843,9 @@ export default function POS() {
         </div>
 
         {/* =========================================================
-            RIGHT SECTION: INTERACTIVE BILL SLIP & CART REGISTER
+            RIGHT SECTION: INTERACTIVE BILL SLIP & CART REGISTER (Desktop)
         ========================================================= */}
-        <div className="lg:col-span-5 xl:col-span-4 bg-white rounded-3xl border-2 border-brand-mitti shadow-md p-6 lg:sticky lg:top-24 flex flex-col justify-between">
+        <div className="hidden lg:flex lg:col-span-5 xl:col-span-4 bg-white rounded-3xl border-2 border-brand-mitti shadow-md p-6 lg:sticky lg:top-24 flex-col justify-between">
           
           <div>
             {/* Bill Header */}
@@ -1336,6 +1349,230 @@ export default function POS() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* =========================================================
+          MOBILE FLOATING CART PILL (lg:hidden)
+      ========================================================= */}
+      {cart.length > 0 && !mobileCartOpen && (
+        <div className="lg:hidden fixed bottom-[72px] inset-x-3 z-40 bg-gradient-to-r from-brand-indigo to-[#261E7A] text-white p-3 rounded-2xl shadow-2xl border border-white/20 flex items-center justify-between animate-in slide-in-from-bottom duration-200">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-brand-terracotta text-white flex items-center justify-center font-bold text-xs shadow-xs">
+              {cart.reduce((a, c) => a + c.qty, 0)}
+            </div>
+            <div>
+              <div className="text-xs font-bold leading-tight">{money(total)}</div>
+              <div className="text-[10px] text-white/70">{cart.length} item{cart.length > 1 ? "s" : ""} added</div>
+            </div>
+          </div>
+          <button
+            onClick={() => setMobileCartOpen(true)}
+            className="bg-brand-terracotta hover:bg-brand-terracotta/90 text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-1 shadow-md active:scale-95 transition-all"
+          >
+            <span>View Bill & Pay</span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* =========================================================
+          MOBILE SLIDE-UP BILL DRAWER (lg:hidden)
+      ========================================================= */}
+      {mobileCartOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-brand-indigo/60 backdrop-blur-xs animate-in fade-in"
+            onClick={() => setMobileCartOpen(false)}
+          />
+
+          {/* Drawer Sheet */}
+          <div className="relative w-full max-h-[88vh] bg-white rounded-t-3xl shadow-2xl border-t-2 border-brand-mitti flex flex-col z-10 animate-in slide-in-from-bottom duration-300">
+            
+            {/* Drawer Drag handle & Header */}
+            <div className="p-4 border-b border-brand-mitti/80 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-brand-terracotta/10 text-brand-terracotta grid place-items-center">
+                  <Receipt className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-display text-lg font-bold text-brand-indigo">
+                    Active Bill Slip
+                  </h3>
+                  <p className="text-[11px] text-brand-indigo/60">
+                    {cart.reduce((acc, it) => acc + it.qty, 0)} item{cart.reduce((acc, it) => acc + it.qty, 0) !== 1 ? "s" : ""} in cart
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {cart.length > 0 && (
+                  <button
+                    onClick={clearCart}
+                    className="text-xs text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg border border-red-200 font-semibold flex items-center gap-1"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Clear</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setMobileCartOpen(false)}
+                  className="w-8 h-8 rounded-full bg-brand-sand hover:bg-brand-mitti grid place-items-center text-brand-indigo/70 hover:text-brand-indigo transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable Drawer Body */}
+            <div className="p-4 overflow-y-auto space-y-4 flex-1">
+              
+              {/* Customer Khata Selector */}
+              <div className="p-3 rounded-2xl bg-brand-sand/70 border border-brand-mitti">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-bold text-brand-indigo/70 uppercase tracking-wider">
+                    Customer / Khata
+                  </span>
+                  <button
+                    onClick={() => setNewCustomer({ ...newCustomer, open: true })}
+                    className="text-xs font-bold text-brand-terracotta hover:underline flex items-center gap-1"
+                  >
+                    <UserPlus className="w-3 h-3" /> + Add
+                  </button>
+                </div>
+
+                <Select value={customerId} onValueChange={setCustomerId}>
+                  <SelectTrigger className="bg-white border-brand-mitti rounded-xl h-9 text-xs font-medium">
+                    <SelectValue placeholder="Walk-in Customer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Walk-in Customer</SelectItem>
+                    {customers.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name} {c.phone && `· ${c.phone}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Items List */}
+              <div className="space-y-2">
+                {cart.length === 0 ? (
+                  <div className="py-8 text-center text-brand-indigo/50 text-xs">
+                    <ShoppingBag className="w-7 h-7 opacity-30 mx-auto mb-1.5" />
+                    Cart is empty. Tap any product to add.
+                  </div>
+                ) : (
+                  cart.map((item, idx) => (
+                    <div 
+                      key={item.product_id}
+                      className="p-2.5 rounded-2xl bg-brand-sand/40 border border-brand-mitti/80 flex items-center justify-between gap-2.5"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-heading font-bold text-brand-indigo text-xs truncate">
+                          {item.name}
+                        </div>
+                        <div className="text-[11px] text-brand-indigo/60 font-mono">
+                          {money(item.price)} × {item.qty}
+                        </div>
+                      </div>
+
+                      {/* Quantity Controls */}
+                      <div className="flex items-center gap-1 bg-white px-1.5 py-0.5 rounded-xl border border-brand-mitti">
+                        <button 
+                          onClick={() => updateQty(idx, -1)}
+                          className="w-6 h-6 rounded-lg bg-brand-sand hover:bg-brand-mitti grid place-items-center text-brand-indigo font-bold"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="font-mono font-bold text-xs w-4 text-center text-brand-indigo">
+                          {item.qty}
+                        </span>
+                        <button 
+                          onClick={() => updateQty(idx, 1)}
+                          className="w-6 h-6 rounded-lg bg-brand-sand hover:bg-brand-mitti grid place-items-center text-brand-indigo font-bold"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+
+                      <div className="font-heading font-extrabold text-xs text-brand-indigo min-w-[50px] text-right">
+                        {money(item.price * item.qty)}
+                      </div>
+
+                      <button 
+                        onClick={() => removeItem(idx)}
+                        className="text-brand-indigo/30 hover:text-red-600 p-1"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Subtotal & Discount */}
+              {cart.length > 0 && (
+                <div className="pt-3 border-t border-brand-mitti space-y-2 text-xs">
+                  <div className="flex justify-between text-brand-indigo/70 font-medium">
+                    <span>Subtotal</span>
+                    <span className="font-bold text-brand-indigo font-mono">{money(subtotal)}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-brand-indigo/70 font-medium flex items-center gap-1">
+                      <Tag className="w-3.5 h-3.5 text-brand-terracotta" />
+                      Discount
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        type="number"
+                        min="0"
+                        value={discount}
+                        onChange={(e) => setDiscount(e.target.value)}
+                        placeholder="0"
+                        className="w-16 h-7 text-right rounded-lg border-brand-mitti text-xs"
+                      />
+                      <button
+                        onClick={() => setDiscountType(prev => prev === "flat" ? "percent" : "flat")}
+                        className="px-2 py-1 rounded-lg bg-brand-sand border border-brand-mitti font-bold text-[10px] text-brand-indigo"
+                      >
+                        {discountType === "flat" ? "₹" : "%"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-brand-mitti flex items-baseline justify-between">
+                    <span className="text-xs uppercase tracking-widest font-extrabold text-brand-terracotta">
+                      Total Due
+                    </span>
+                    <span className="font-display font-extrabold text-2xl text-brand-indigo">
+                      {money(total)}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Drawer Bottom Checkout Action */}
+            <div className="p-4 border-t border-brand-mitti bg-brand-sand/20">
+              <Button
+                disabled={cart.length === 0}
+                onClick={() => {
+                  setMobileCartOpen(false);
+                  setMethod("cash");
+                  setAmountReceived(String(total));
+                  setPayOpen(true);
+                }}
+                className="w-full h-12 rounded-2xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                <span>Proceed to Payment · {money(total)}</span>
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );
