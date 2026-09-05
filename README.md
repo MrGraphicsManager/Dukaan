@@ -1,0 +1,121 @@
+# 🛍️ Dukaan — Cloud Retail Operating System & Smart POS
+
+<div align="center">
+
+![Dukaan Banner](https://img.shields.io/badge/Dukaan-Retail%20OS%20v2.0-blue?style=for-the-badge&logo=react)
+![PEAN Studio](https://img.shields.io/badge/Studio-PEAN%20Ecosystem-purple?style=for-the-badge)
+![Status](https://img.shields.io/badge/Production-Ready-emerald?style=for-the-badge)
+
+**A high-performance, low-latency Point of Sale (POS) and retail management platform built for modern Indian Kirana, grocery, and pharmacy counters.**
+
+[Features](#-key-engineering-highlights) • [Architecture](#-system-architecture) • [Tech Stack](#-tech-stack) • [Quick Start](#-quick-start) • [Author](#-creator--author)
+
+</div>
+
+---
+
+## 🚀 Overview
+
+**Dukaan** is an end-to-end retail operating system engineered to eliminate checkout queues and digitize small business counter operations. Developed from the ground up to solve the real bottlenecks faced by physical stores, Dukaan brings sub-second keyboard checkout, native thermal hardware spooling, real-time multi-device sync, and automated customer credit recovery via WhatsApp.
+
+A flagship venture engineered under the **PEAN** technology studio.
+
+---
+
+## ⚡ Key Engineering Highlights
+
+### 1. ⏱️ 0.8-Second Checkout Engine
+- **F1–F6 Keyboard Shortcuts:** Cashiers can search products, modify quantities, select payment modes, and dispatch bills without touching a mouse.
+- **Sub-Second Latency:** Client-side optimistic cart operations and fast indexed item lookups guarantee zero lag at high-volume counters.
+
+### 2. 🔄 Real-Time Distributed Terminal Synchronization
+- **Server-Sent Events (SSE) & ntfy.sh Event Bus:** Multiple counter tablets, barcode scanners, and back-office inventory dashboards synchronize state in real time without heavy polling.
+- **Zero-Refresh Updates:** Store announcements, maintenance locks, and catalog adjustments propagate instantly across all active merchant sessions.
+
+### 3. 🖨️ Native ESC/POS Thermal Receipt Engine
+- **58mm & 80mm ESC/POS Standard:** Direct browser-based spooler formatting clean monochrome receipts with dashed line separators and barcode numbers.
+- **Diagnostic Spooling:** Built-in hardware test utility verifying margins, column widths (32/48 col), feed, and paper cut.
+- **Custom Branding Toggle:** Merchants can toggle custom header branding and store contact details on demand.
+
+### 4. 💬 1-Tap WhatsApp Digital Cash Memos & Udhaar Recovery
+- Replaces traditional manual paper credit notebooks with automated WhatsApp reminders.
+- Merchants can dispatch formatted digital cash memos with 1 tap via the WhatsApp Web/App API, reducing unpaid debts and awkward follow-ups.
+
+### 5. 📦 Universal 100+ FMCG Master Barcode Catalog
+- Integrated master barcode database covering standard FMCG items (Atta, Maggi, Dettol, Parle-G, Lifebuoy).
+- Scanning standard product barcodes instantly auto-fills product names, standard MRP, selling prices, and HSN codes with zero manual typing.
+
+### 6. 📱 Mobile-First UX Overhaul (100% Desktop Preservation)
+- **Slide-Out Hamburger Drawer (☰):** Grants full access to all 11 pages (POS, Inventory, Khata, Stock Alerts, Reports, Admin) on smartphones.
+- **Floating Cart Pill & Slide-Up Bill Sheet:** Floating pill displays live totals above the bottom bar, expanding into a thumb-friendly bottom checkout sheet.
+- **Strict Isolation:** 100% of desktop column layouts (`lg:col-span-5`, `lg:sticky`) remain completely untouched and regressions-free.
+
+---
+
+## 🛠️ Tech Stack
+
+| Domain | Technologies |
+| :--- | :--- |
+| **Frontend** | React 18, Vite, Tailwind CSS, Lucide React, Framer Motion |
+| **Backend / API** | Node.js, Express.js, RESTful APIs, Server-Sent Events (SSE) |
+| **Database & Cache** | SQLite / PostgreSQL, LocalStorage Offline Fallback Sync |
+| **Hardware / Protocol** | ESC/POS Thermal Printing, Webhooks, WhatsApp API |
+| **Tooling & Build** | Craco, PostCSS, ESLint, Git & GitHub |
+
+---
+
+## 🏗️ System Architecture
+
+```
+[ Barcode Scanner / F1-F6 Counter ]
+               │
+               ▼
+   [ Dukaan POS Client (React 18) ]
+   ├── Client-side Cart & Tax Calculation (0.8s)
+   ├── Local-first Cache & Offline Storage
+   └── Responsive View Engine (Mobile Drawer / Desktop Grid)
+         │                   │                    │
+         ▼                   ▼                    ▼
+[ ESC/POS Spooler ]   [ WhatsApp API ]   [ SSE Event Bus (ntfy.sh) ]
+  • 58mm/80mm Paper     • Digital Memo     • Multi-device Store Sync
+  • Cut & Margin Test   • Udhaar Reminders • Instant Announcement Lock
+```
+
+---
+
+## 💻 Quick Start
+
+### Prerequisites
+- Node.js (v18 or higher)
+- npm or yarn
+
+### Installation
+```bash
+# Clone repository
+git clone https://github.com/MrGraphicsManager/Dukaan.git
+cd Dukaan
+
+# Install frontend dependencies
+cd frontend
+npm install
+
+# Start local development server
+npm run dev
+```
+
+Visit `http://localhost:5173` to launch Dukaan.
+
+---
+
+## 👨‍💻 Creator & Author
+
+**Priyen Naik**  
+*Full-Stack Software Engineer & Product Architect*  
+- 🐙 GitHub: [@MrGraphicsManager](https://github.com/MrGraphicsManager)  
+- 📧 Email: [contact@officialdukaan.in](mailto:contact@officialdukaan.in)  
+- 🏢 Studio: **PEAN Ecosystem**
+
+---
+
+## 📄 License
+This project is open-source and available under the [MIT License](LICENSE).
