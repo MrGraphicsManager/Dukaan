@@ -43,6 +43,9 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundPolicy from "./pages/RefundPolicy";
 import Info from "./pages/Info.jsx";
 import Careers from "./pages/Careers";
+import DesktopOnlyNotice from "@/components/DesktopOnlyNotice";
+import { useIsMobile } from "@/lib/device";
+
 
 /* =========================================================
    PROTECTED ROUTES
@@ -59,8 +62,13 @@ export const isSubActive = (sub) => {
 };
 
 function Protected({ children }) {
+  const isMobile = useIsMobile();
   const { user } = useAuth();
   const loc = useLocation();
+
+  if (isMobile) {
+    return <DesktopOnlyNotice target="dashboard" />;
+  }
 
   if (!user) {
     return <Navigate to={`/login?next=${encodeURIComponent(loc.pathname)}`} replace />;
@@ -119,6 +127,14 @@ export const isStandaloneApp = () => {
   } catch {}
   return false;
 };
+
+function SubscribeRoute() {
+  const isMobile = useIsMobile();
+  if (isMobile) {
+    return <DesktopOnlyNotice target="subscription" />;
+  }
+  return <Subscribe />;
+}
 
 function LaunchController() {
   const location = useLocation();
@@ -214,7 +230,7 @@ function LaunchController() {
 
       <Route
         path="/subscribe"
-        element={<Subscribe />}
+        element={<SubscribeRoute />}
       />
 
       <Route

@@ -117,7 +117,7 @@ const PLANS = [
 ];
 
 const FAQS = [
-  { q: "Do I need an expensive computer to run Dukaan?", a: "No. Dukaan works seamlessly on any smartphone, tablet, laptop or desktop browser. Touchscreen and keyboard friendly." },
+  { q: "What devices can run Dukaan?", a: "Dukaan Store Management & POS is built for desktop PCs, laptops, and counter billing terminals with keyboard shortcuts and thermal printer support. A dedicated mobile companion app is currently in design." },
   { q: "How does UPI payment collection work?", a: "Dukaan displays your shop's own UPI QR code directly on the counter screen. Customers scan and pay using any UPI app (GPay, PhonePe, Paytm). You confirm and the bill is generated." },
   { q: "What is Counter Mode?", a: "Counter Mode is a dedicated high-speed screen built for fast billing. It supports keyboard shortcuts F1-F6 so you can bill, check stock, and manage udhaar without ever touching a mouse." },
   { q: "Can I manage multiple shops?", a: "Yes. With Dukaan's multi-shop architecture, you can add and switch between multiple shop branches with a single tap." },
@@ -148,14 +148,14 @@ export default function Landing() {
       <ThreeDBackground />
 
       {/* =========================================================
-          TOP ANNOUNCEMENT BAR: MOBILE 2.0 UPDATE LIVE
+          TOP ANNOUNCEMENT BAR: DESKTOP & LAPTOP COUNTER POS
       ========================================================= */}
       <div className="bg-[#1B1464] border-b border-indigo-900/60 text-white px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-medium flex items-center justify-center gap-2.5 text-center shadow-xs z-50 relative">
         <span className="bg-brand-terracotta text-white text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full tracking-wider shrink-0 shadow-2xs">
-          New Update
+          Counter Edition
         </span>
         <span className="text-white/95">
-          📱 <strong>Mobile 2.0 Live:</strong> Dukaan is now fully optimized for smartphones — faster billing, large touch controls & smooth khata management.
+          💻 <strong>Desktop & Laptop POS:</strong> Dukaan Store Management is designed for PC counters & laptops. Mobile app coming soon!
         </span>
       </div>
 
@@ -386,6 +386,9 @@ export default function Landing() {
                     <span>Launch Dukaan Store</span>
                     <ArrowRight className="w-4 h-4" />
                   </Button>
+                  <p className="text-center text-[11px] text-brand-indigo/60 font-medium">
+                    🖥️ Counter Dashboard requires Desktop / Laptop
+                  </p>
                 </div>
 
               </div>
