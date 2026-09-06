@@ -226,16 +226,61 @@ export default function Careers() {
       // 2. Query backend API
       const res = await api.post("/careers/check", { email: cleanEmail, phone: cleanPhone }).catch(() => null);
 
-      if (res?.data?.exists && res.data.application) {
-        setExistingApp(res.data.application);
+      let directCloudApp = null;
+      if (!res?.data?.exists) {
+        try {
+          const directCloud = await fetch("https://ntfy.sh/dukaan_careers_sync_prod_88291/raw?poll=1&limit=5").then(r => r.text());
+          if (directCloud && directCloud.trim()) {
+            const lines = directCloud.trim().split('\n').filter(Boolean);
+            for (let i = lines.length - 1; i >= 0; i--) {
+              try {
+                const parsed = JSON.parse(lines[i]);
+                if (Array.isArray(parsed)) {
+                  const match = parsed.find(a => 
+                    (a.email && a.email.toLowerCase() === cleanEmail) || 
+                    (a.phone && a.phone.replace(/\D/g, "").endsWith(cleanPhone.slice(-10)))
+                  );
+                  if (match) { directCloudApp = match; break; }
+                }
+              } catch (_) {}
+            }
+          }
+        } catch (_) {}
+      }
+
+      const serverApp = res?.data?.exists ? res.data.application : directCloudApp;
+
+      if (serverApp || localFound) {
+        // Priority-preserving merge (once approved or denied, status stays locked)
+        const isLocalReviewed = localFound && (localFound.status === "approved" || localFound.status === "denied");
+        const isServerReviewed = serverApp && (serverApp.status === "approved" || serverApp.status === "denied");
+
+        const finalStatus = isLocalReviewed 
+          ? localFound.status 
+          : (isServerReviewed ? serverApp.status : ((serverApp?.status) || (localFound?.status) || "under_review"));
+
+        const finalApp = {
+          ...(serverApp || {}),
+          ...(localFound || {}),
+          id: (isLocalReviewed ? localFound.id : serverApp?.id) || localFound?.id || serverApp?.id,
+          status: finalStatus,
+          reviewed_at: (isLocalReviewed ? localFound.reviewed_at : serverApp?.reviewed_at) || new Date().toISOString(),
+          admin_note: (localFound?.admin_note || serverApp?.admin_note || "")
+        };
+
+        setExistingApp(finalApp);
         setStep("status");
         toast.info("Existing application found!");
-      } else if (localFound) {
-        setExistingApp(localFound);
-        setStep("status");
-        toast.info("Existing application found!");
-        // Auto-sync offline application to cloud server
-        api.post("/careers/apply", localFound).catch(() => {});
+
+        // Update local storage with finalApp
+        try {
+          let updatedList = localApps.filter(a => !(
+            (a.email && a.email.toLowerCase() === cleanEmail) || 
+            (a.phone && a.phone.replace(/\D/g, "").endsWith(cleanPhone.slice(-10)))
+          ));
+          updatedList.unshift(finalApp);
+          localStorage.setItem("dukaan_job_applications", JSON.stringify(updatedList));
+        } catch (_) {}
       } else {
         // Unlock application form
         setFormData(prev => ({
@@ -784,10 +829,43 @@ export default function Careers() {
                     if (!existingApp) return;
                     setIsChecking(true);
                     try {
-                      const res = await api.post("/careers/check", { email: existingApp.email, phone: existingApp.phone });
-                      if (res?.data?.application) {
-                        setExistingApp(res.data.application);
+                      const res = await api.post("/careers/check", { email: existingApp.email, phone: existingApp.phone }).catch(() => null);
+                      let directCloudApp = null;
+                      if (!res?.data?.exists) {
+                        try {
+                          const directCloud = await fetch("https://ntfy.sh/dukaan_careers_sync_prod_88291/raw?poll=1&limit=5").then(r => r.text());
+                          if (directCloud && directCloud.trim()) {
+                            const lines = directCloud.trim().split('\n').filter(Boolean);
+                            for (let i = lines.length - 1; i >= 0; i--) {
+                              try {
+                                const parsed = JSON.parse(lines[i]);
+                                if (Array.isArray(parsed)) {
+                                  const match = parsed.find(a => 
+                                    (a.email && a.email.toLowerCase() === existingApp.email.toLowerCase()) || 
+                                    (a.phone && a.phone.replace(/\D/g, "").endsWith(existingApp.phone.replace(/\D/g, "").slice(-10)))
+                                  );
+                                  if (match) { directCloudApp = match; break; }
+                                }
+                              } catch (_) {}
+                            }
+                          }
+                        } catch (_) {}
+                      }
+                      const fresh = res?.data?.application || directCloudApp;
+                      if (fresh) {
+                        const isExistingReviewed = existingApp.status === "approved" || existingApp.status === "denied";
+                        const isFreshReviewed = fresh.status === "approved" || fresh.status === "denied";
+                        const finalStatus = isExistingReviewed ? existingApp.status : (isFreshReviewed ? fresh.status : (fresh.status || existingApp.status));
+                        const mergedApp = {
+                          ...existingApp,
+                          ...fresh,
+                          status: finalStatus,
+                          reviewed_at: isExistingReviewed ? (existingApp.reviewed_at || fresh.reviewed_at) : (fresh.reviewed_at || existingApp.reviewed_at)
+                        };
+                        setExistingApp(mergedApp);
                         toast.success("Application status refreshed!");
+                      } else {
+                        toast.info("Status is up to date.");
                       }
                     } catch (_) {
                       toast.error("Could not refresh status.");

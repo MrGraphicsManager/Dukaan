@@ -1,4 +1,68 @@
 const tls = require("tls");
+const https = require("https");
+const http = require("http");
+
+function safeHttpGet(urlStr, timeoutMs = 4000) {
+  return new Promise((resolve) => {
+    try {
+      const u = new URL(urlStr);
+      const client = u.protocol === "http:" ? http : https;
+      const req = client.get(urlStr, {
+        headers: { "User-Agent": "OfficialDukaanBackend/1.0" }
+      }, (res) => {
+        let d = "";
+        res.on("data", chunk => { d += chunk; });
+        res.on("end", () => {
+          resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, statusCode: res.statusCode, text: () => Promise.resolve(d) });
+        });
+      });
+      req.on("error", () => resolve({ ok: false, statusCode: 500, text: () => Promise.resolve("") }));
+      req.setTimeout(timeoutMs, () => {
+        try { req.destroy(); } catch (_) {}
+        resolve({ ok: false, statusCode: 504, text: () => Promise.resolve("") });
+      });
+    } catch (_) {
+      resolve({ ok: false, statusCode: 500, text: () => Promise.resolve("") });
+    }
+  });
+}
+
+function safeHttpPost(urlStr, data, extraHeaders = {}, timeoutMs = 4000) {
+  return new Promise((resolve) => {
+    try {
+      const u = new URL(urlStr);
+      const client = u.protocol === "http:" ? http : https;
+      const body = typeof data === "string" ? data : JSON.stringify(data);
+      const req = client.request({
+        hostname: u.hostname,
+        port: u.port || (u.protocol === "http:" ? 80 : 443),
+        path: u.pathname + u.search,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(body),
+          "User-Agent": "OfficialDukaanBackend/1.0",
+          ...extraHeaders
+        }
+      }, (res) => {
+        let d = "";
+        res.on("data", chunk => { d += chunk; });
+        res.on("end", () => {
+          resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, statusCode: res.statusCode });
+        });
+      });
+      req.on("error", () => resolve({ ok: false, statusCode: 500 }));
+      req.setTimeout(timeoutMs, () => {
+        try { req.destroy(); } catch (_) {}
+        resolve({ ok: false, statusCode: 504 });
+      });
+      req.write(body);
+      req.end();
+    } catch (_) {
+      resolve({ ok: false, statusCode: 500 });
+    }
+  });
+}
 
 // Mail Configuration (GoDaddy / Titan Mail)
 const SMTP_HOST = process.env.SMTP_HOST || "smtpout.secureserver.net";
@@ -86,7 +150,7 @@ async function getPersistentState(force = false) {
     return globalPlatformConfig;
   }
   try {
-    const res = await fetch(`${SYNC_BUS_URL}/raw?poll=1&limit=10`, { signal: AbortSignal.timeout(3000) });
+    const res = await safeHttpGet(`${SYNC_BUS_URL}/raw?poll=1&limit=10`, 3500);
     if (res.ok) {
       const rawText = await res.text();
       if (rawText && rawText.trim()) {
@@ -243,12 +307,7 @@ async function savePersistentState(extraConfig = {}) {
       })),
       updated_at: globalPlatformConfig.updated_at
     };
-    await fetch(SYNC_BUS_URL, {
-      method: "POST",
-      body: JSON.stringify(payload),
-      headers: { "Title": "Dukaan Platform Sync", "Priority": "high" },
-      signal: AbortSignal.timeout(3500)
-    });
+    await safeHttpPost(SYNC_BUS_URL, payload, { "Title": "Dukaan Platform Sync", "Priority": "high" }, 3500);
   } catch (e) {
     console.warn("Persistent cloud state save error:", e.message);
   }
@@ -304,13 +363,20 @@ function deduplicateJobApplications(apps) {
 
       const finalNote = existing.admin_note || a.admin_note || "";
 
+      // Prioritize the ID and Aadhar from the reviewed / approved record
+      const finalId = isExistingReviewed ? existing.id : (a.id || existing.id);
+      const finalAadhar = (isExistingReviewed && existing.aadhar_number)
+        ? existing.aadhar_number
+        : ((a.aadhar_number && a.aadhar_number.length >= 12) ? a.aadhar_number : (existing.aadhar_number || a.aadhar_number));
+
       map.set(key, {
         ...existing,
         ...a,
+        id: finalId,
         status: finalStatus,
         reviewed_at: finalReviewedAt,
         admin_note: finalNote,
-        aadhar_number: (a.aadhar_number && a.aadhar_number.length >= 12) ? a.aadhar_number : (existing.aadhar_number || a.aadhar_number),
+        aadhar_number: finalAadhar,
         aadhar_doc: (a.aadhar_doc && a.aadhar_doc.length > 50) ? a.aadhar_doc : (existing.aadhar_doc || a.aadhar_doc),
         marksheet_doc: (a.marksheet_doc && a.marksheet_doc.length > 50) ? a.marksheet_doc : (existing.marksheet_doc || a.marksheet_doc),
         resume_doc: (a.resume_doc && a.resume_doc.length > 50) ? a.resume_doc : (existing.resume_doc || a.resume_doc),
@@ -333,20 +399,30 @@ async function getCareersPersistentState(force = false) {
     return jobApplications;
   }
   try {
-    const res = await fetch(`${CAREERS_SYNC_URL}/raw?poll=1&limit=5`, { signal: AbortSignal.timeout(3000) });
+    const res = await safeHttpGet(`${CAREERS_SYNC_URL}/raw?poll=1&limit=5`, 3500);
     if (res.ok) {
       const rawText = await res.text();
       if (rawText && rawText.trim()) {
-        const lines = rawText.trim().split('\n').filter(Boolean);
-        for (let i = lines.length - 1; i >= 0; i--) {
-          try {
-            const parsed = JSON.parse(lines[i]);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              lastCareersCloudFetchTime = now;
-              jobApplications = deduplicateJobApplications([...jobApplications, ...parsed]);
-              break;
-            }
-          } catch (_) {}
+        let loaded = null;
+        try {
+          const direct = JSON.parse(rawText.trim());
+          if (Array.isArray(direct) && direct.length > 0) loaded = direct;
+        } catch (_) {}
+        if (!loaded) {
+          const lines = rawText.trim().split('\n').filter(Boolean);
+          for (let i = lines.length - 1; i >= 0; i--) {
+            try {
+              const parsed = JSON.parse(lines[i]);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                loaded = parsed;
+                break;
+              }
+            } catch (_) {}
+          }
+        }
+        if (Array.isArray(loaded) && loaded.length > 0) {
+          lastCareersCloudFetchTime = now;
+          jobApplications = deduplicateJobApplications([...jobApplications, ...loaded]);
         }
       }
     }
@@ -376,12 +452,7 @@ async function saveCareersPersistentState() {
       reviewed_at: a.reviewed_at || null
     }));
 
-    await fetch(CAREERS_SYNC_URL, {
-      method: "POST",
-      body: JSON.stringify(cleanList),
-      headers: { "Title": "Careers Sync", "Priority": "high" },
-      signal: AbortSignal.timeout(3500)
-    });
+    await safeHttpPost(CAREERS_SYNC_URL, cleanList, { "Title": "Careers Sync", "Priority": "high" }, 3500);
   } catch (e) {
     console.warn("Careers cloud state save error:", e.message);
   }

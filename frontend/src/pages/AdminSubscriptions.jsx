@@ -335,6 +335,114 @@ export default function AdminSubscriptions() {
     });
   };
 
+  // --- FEATURE: Careers & Job Application Smart Fetch & Review ---
+  const fetchJobApplications = async (showToast = false) => {
+    setIsRefreshingCareers(true);
+    try {
+      // 1. Query server API
+      const careersRes = await api.get("/admin/careers/applications").catch(() => null);
+      let serverList = Array.isArray(careersRes?.data) ? [...careersRes.data] : [];
+
+      // 2. Read local state & localStorage
+      let localList = [];
+      try {
+        const rawC = localStorage.getItem("dukaan_job_applications");
+        if (rawC) localList = JSON.parse(rawC);
+      } catch (_) {}
+
+      // 3. If server list is empty, query dedicated cloud careers topic directly as robust fallback
+      if (serverList.length === 0) {
+        try {
+          const directCloud = await fetch("https://ntfy.sh/dukaan_careers_sync_prod_88291/raw?poll=1&limit=5").then(r => r.text());
+          if (directCloud && directCloud.trim()) {
+            const lines = directCloud.trim().split('\n').filter(Boolean);
+            for (let i = lines.length - 1; i >= 0; i--) {
+              try {
+                const parsed = JSON.parse(lines[i]);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  serverList = parsed;
+                  break;
+                }
+              } catch (_) {}
+            }
+          }
+        } catch (_) {}
+      }
+
+      // Smart merge: Map by (email or phone or id)
+      const mergedMap = new Map();
+
+      // 1. Put server list
+      serverList.forEach(sa => {
+        const key = (sa.email || "").toLowerCase().trim() || (sa.phone || "").replace(/\D/g, "").slice(-10) || sa.id;
+        if (key) mergedMap.set(key, { ...sa });
+      });
+
+      // 2. Merge local list without overwriting admin's local approved/denied decisions
+      if (Array.isArray(localList)) {
+        localList.forEach(la => {
+          const key = (la.email || "").toLowerCase().trim() || (la.phone || "").replace(/\D/g, "").slice(-10) || la.id;
+          if (!key) return;
+
+          if (!mergedMap.has(key)) {
+            mergedMap.set(key, { ...la });
+            // Sync offline candidate to server
+            api.post("/careers/apply", la).catch(() => {});
+          } else {
+            const serverItem = mergedMap.get(key);
+            const isLocalReviewed = la.status === "approved" || la.status === "denied";
+            const isServerReviewed = serverItem.status === "approved" || serverItem.status === "denied";
+
+            // If local copy is approved/denied and server is under_review, preserve the decision!
+            const finalStatus = isLocalReviewed ? la.status : serverItem.status;
+            const finalReviewedAt = isLocalReviewed ? (la.reviewed_at || new Date().toISOString()) : serverItem.reviewed_at;
+            const finalId = (isLocalReviewed ? la.id : serverItem.id) || la.id || serverItem.id;
+            const finalAadhar = (isLocalReviewed && la.aadhar_number)
+              ? la.aadhar_number
+              : ((serverItem.aadhar_number && serverItem.aadhar_number.length >= 12) ? serverItem.aadhar_number : (la.aadhar_number || serverItem.aadhar_number));
+
+            const merged = {
+              ...serverItem,
+              ...la,
+              id: finalId,
+              status: finalStatus,
+              reviewed_at: finalReviewedAt,
+              admin_note: la.admin_note || serverItem.admin_note || "",
+              aadhar_number: finalAadhar,
+              name: la.name || serverItem.name
+            };
+            mergedMap.set(key, merged);
+
+            // Re-sync to server if local had decision that server hadn't registered yet
+            if (isLocalReviewed && !isServerReviewed) {
+              api.post("/admin/careers/status", {
+                id: merged.id,
+                email: merged.email,
+                phone: merged.phone,
+                status: merged.status,
+                admin_note: merged.admin_note,
+                aadhar_number: merged.aadhar_number,
+                name: merged.name
+              }).catch(() => {});
+            }
+          }
+        });
+      }
+
+      const finalList = Array.from(mergedMap.values());
+      setJobApplications(finalList);
+      try { localStorage.setItem("dukaan_job_applications", JSON.stringify(finalList)); } catch (_) {}
+
+      if (showToast) {
+        toast.success(`Hiring portal updated! ${finalList.length} applicant(s) loaded.`);
+      }
+    } catch (err) {
+      if (showToast) toast.error("Could not fetch job applications.");
+    } finally {
+      setIsRefreshingCareers(false);
+    }
+  };
+
   // --- Load All Data ---
   const load = async () => {
     try {
@@ -479,28 +587,8 @@ export default function AdminSubscriptions() {
         setCustomDomains(localCd);
       }
 
-      // Careers & Job Applications fetch
-      try {
-        const careersRes = await api.get("/admin/careers/applications").catch(() => null);
-        let cList = Array.isArray(careersRes?.data) ? [...careersRes.data] : [];
-        try {
-          const rawC = localStorage.getItem("dukaan_job_applications");
-          if (rawC) {
-            const localList = JSON.parse(rawC);
-            if (Array.isArray(localList)) {
-              localList.forEach(la => {
-                if (!cList.some(ca => ca.id === la.id || (ca.email && ca.email.toLowerCase() === (la.email || "").toLowerCase()))) {
-                  cList.push(la);
-                }
-              });
-            }
-          }
-        } catch (_) {}
-        if (Array.isArray(cList)) {
-          setJobApplications(cList);
-          try { localStorage.setItem("dukaan_job_applications", JSON.stringify(cList)); } catch (_) {}
-        }
-      } catch (_) {}
+      // Careers & Job Applications fetch (uses priority-preserving smart merge)
+      await fetchJobApplications(false);
 
       // 10. Promo & Coupon Codes (Real cloud-persisted coupons with reliable local priority)
       const promoRes = await api.get("/promo-codes").catch(() => null);
@@ -1111,87 +1199,7 @@ export default function AdminSubscriptions() {
     toast.success(`Custom domain ${domainName} is now active with SSL!`);
   };
 
-  // --- FEATURE: Careers & Job Application Review (Approve / Deny) ---
-  const fetchJobApplications = async (showToast = false) => {
-    setIsRefreshingCareers(true);
-    try {
-      const careersRes = await api.get("/admin/careers/applications").catch(() => null);
-      let serverList = Array.isArray(careersRes?.data) ? [...careersRes.data] : [];
-      let localList = [];
-      try {
-        const rawC = localStorage.getItem("dukaan_job_applications");
-        if (rawC) localList = JSON.parse(rawC);
-      } catch (_) {}
-
-      // Smart merge: Map by (email or phone or id)
-      const mergedMap = new Map();
-
-      // 1. Put server list
-      serverList.forEach(sa => {
-        const key = (sa.email || "").toLowerCase().trim() || (sa.phone || "").replace(/\D/g, "").slice(-10) || sa.id;
-        if (key) mergedMap.set(key, { ...sa });
-      });
-
-      // 2. Merge local list without overwriting admin's local approved/denied decisions
-      if (Array.isArray(localList)) {
-        localList.forEach(la => {
-          const key = (la.email || "").toLowerCase().trim() || (la.phone || "").replace(/\D/g, "").slice(-10) || la.id;
-          if (!key) return;
-
-          if (!mergedMap.has(key)) {
-            mergedMap.set(key, { ...la });
-            // Sync offline candidate to server
-            api.post("/careers/apply", la).catch(() => {});
-          } else {
-            const serverItem = mergedMap.get(key);
-            const isLocalReviewed = la.status === "approved" || la.status === "denied";
-            const isServerReviewed = serverItem.status === "approved" || serverItem.status === "denied";
-
-            // If local copy is approved/denied and server is under_review, preserve the decision!
-            const finalStatus = isLocalReviewed ? la.status : serverItem.status;
-            const finalReviewedAt = isLocalReviewed ? (la.reviewed_at || new Date().toISOString()) : serverItem.reviewed_at;
-
-            const merged = {
-              ...serverItem,
-              ...la,
-              status: finalStatus,
-              reviewed_at: finalReviewedAt,
-              admin_note: la.admin_note || serverItem.admin_note || "",
-              aadhar_number: (la.aadhar_number && la.aadhar_number.length >= 12) ? la.aadhar_number : serverItem.aadhar_number,
-              name: la.name || serverItem.name
-            };
-            mergedMap.set(key, merged);
-
-            // Re-sync to server if local had decision that server hadn't registered yet
-            if (isLocalReviewed && !isServerReviewed) {
-              api.post("/admin/careers/status", {
-                id: merged.id,
-                email: merged.email,
-                phone: merged.phone,
-                status: merged.status,
-                admin_note: merged.admin_note,
-                aadhar_number: merged.aadhar_number,
-                name: merged.name
-              }).catch(() => {});
-            }
-          }
-        });
-      }
-
-      const finalList = Array.from(mergedMap.values());
-      setJobApplications(finalList);
-      try { localStorage.setItem("dukaan_job_applications", JSON.stringify(finalList)); } catch (_) {}
-
-      if (showToast) {
-        toast.success(`Hiring portal updated! ${finalList.length} applicant(s) loaded.`);
-      }
-    } catch (err) {
-      if (showToast) toast.error("Could not fetch job applications.");
-    } finally {
-      setIsRefreshingCareers(false);
-    }
-  };
-
+  // --- FEATURE: Careers Status Updater ---
   const handleUpdateJobStatus = async (appOrId, nextStatus, note = "") => {
     try {
       const targetApp = typeof appOrId === "object" ? appOrId : jobApplications.find(a => a.id === appOrId);
@@ -1263,6 +1271,37 @@ export default function AdminSubscriptions() {
       if (res?.data?.ok && res.data.application) {
         setJobApplications(prev => prev.map(a => updateMatcher(a) ? { ...a, ...res.data.application } : a));
       }
+
+      // Direct client-side cloud push for instant multi-device reflection
+      try {
+        const rawLocal = localStorage.getItem("dukaan_job_applications");
+        if (rawLocal) {
+          const list = JSON.parse(rawLocal);
+          if (Array.isArray(list)) {
+            const cleanList = list.slice(0, 25).map(a => ({
+              id: a.id,
+              name: a.name,
+              email: a.email,
+              phone: a.phone,
+              whatsapp: a.whatsapp || a.phone,
+              role: a.role,
+              city: a.city,
+              address: a.address || "",
+              education: a.education,
+              aadhar_number: a.aadhar_number,
+              status: a.status || "under_review",
+              admin_note: a.admin_note || "",
+              created_at: a.created_at,
+              reviewed_at: a.reviewed_at
+            }));
+            fetch("https://ntfy.sh/dukaan_careers_sync_prod_88291", {
+              method: "POST",
+              headers: { "Title": "Careers Sync Client", "Priority": "high" },
+              body: JSON.stringify(cleanList)
+            }).catch(() => {});
+          }
+        }
+      } catch (_) {}
 
       addAuditLog("UPDATE_CANDIDATE_STATUS", targetEmail || targetId, `Status set to ${nextStatus.toUpperCase()}`);
       toast.success(`Candidate marked as ${nextStatus === "approved" ? "APPROVED ✅" : "DENIED ❌"}!`);
