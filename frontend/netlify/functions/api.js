@@ -89,7 +89,17 @@ async function getPersistentState(force = false) {
       const rawText = await res.text();
       if (rawText && rawText.trim()) {
         const lines = rawText.trim().split('\n').filter(Boolean);
-        const json = JSON.parse(lines[lines.length - 1]);
+        let json = null;
+        for (let i = lines.length - 1; i >= 0; i--) {
+          try {
+            const parsed = JSON.parse(lines[i]);
+            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+              json = parsed;
+              break;
+            }
+          } catch (_) {}
+        }
+
         if (json) {
           lastCloudFetchTime = now;
           if (typeof json.maintenance_mode === "boolean") {
@@ -148,17 +158,18 @@ async function getPersistentState(force = false) {
             const j = JSON.parse(lines[i]);
             if (Array.isArray(j.job_applications) && j.job_applications.length > 0) {
               for (const rApp of j.job_applications) {
-                const exIdx = jobApplications.findIndex(x => x.id === rApp.id || (x.email && x.email.toLowerCase() === (rApp.email || "").toLowerCase()));
+                const exIdx = jobApplications.findIndex(x => x.id === rApp.id || (x.email && (x.email || "").toLowerCase().trim() === (rApp.email || "").toLowerCase().trim()));
                 if (exIdx === -1) {
-                  jobApplications.unshift(rApp);
+                  jobApplications.push(rApp);
                 } else {
-                  jobApplications[exIdx] = { ...rApp, ...jobApplications[exIdx] };
+                  jobApplications[exIdx] = { ...jobApplications[exIdx], ...rApp };
                 }
               }
               break;
             }
           } catch (_) {}
         }
+        jobApplications = deduplicateJobApplications(jobApplications);
           if (Array.isArray(json.registered_users)) {
             for (const u of json.registered_users) {
               if (!u || !u.email) continue;
@@ -185,16 +196,6 @@ async function getPersistentState(force = false) {
           }
           if (Array.isArray(json.gst_requests)) {
             gstRequests = json.gst_requests;
-          }
-          if (Array.isArray(json.job_applications)) {
-            for (const rApp of json.job_applications) {
-              const exIdx = jobApplications.findIndex(x => x.id === rApp.id || (x.email && x.email === rApp.email));
-              if (exIdx === -1) {
-                jobApplications.unshift(rApp);
-              } else {
-                jobApplications[exIdx] = { ...rApp, ...jobApplications[exIdx] };
-              }
-            }
           }
           if (Array.isArray(json.referral_codes)) {
             referralCodes = json.referral_codes;
