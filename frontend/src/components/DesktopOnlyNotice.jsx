@@ -57,12 +57,12 @@ export default function DesktopOnlyNotice({ target = 'dashboard' }) {
       <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-brand-terracotta/25 rounded-full blur-[130px] pointer-events-none" />
 
       {/* Top Header Bar */}
-      <header className="relative z-10 max-w-xl mx-auto w-full flex items-center justify-between pt-2 pb-4 border-b border-white/10">
-        <Link to="/" className="flex items-center gap-2.5 group">
+      <header className="relative z-10 max-w-md mx-auto w-full flex items-center justify-between pt-2 pb-4 border-b border-white/10 px-1">
+        <Link to="/" className="flex items-center gap-2 group shrink-0">
           <img 
             src="/logo.png" 
             alt="Dukaan" 
-            className="h-8 w-auto object-contain brightness-110 drop-shadow" 
+            className="h-7 sm:h-8 w-auto object-contain brightness-110 drop-shadow" 
           />
           <div className="flex flex-col border-l border-white/20 pl-2">
             <span className="text-[8px] font-bold uppercase tracking-wider text-white/40 font-mono leading-none">by</span>
@@ -70,23 +70,23 @@ export default function DesktopOnlyNotice({ target = 'dashboard' }) {
           </div>
         </Link>
 
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-terracotta/20 border border-brand-terracotta/40 text-[11px] font-bold text-orange-200">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-terracotta/20 border border-brand-terracotta/40 text-[10px] font-bold text-orange-200 shrink-0">
           <Monitor className="w-3 h-3 text-brand-terracotta" />
           <span>Desktop Required</span>
         </span>
       </header>
 
       {/* Main Notice Card */}
-      <main className="relative z-10 max-w-xl mx-auto w-full my-auto py-6 space-y-5">
+      <main className="relative z-10 max-w-md mx-auto w-full my-auto py-5 space-y-4">
         
         {/* Visual Illustration Badge */}
         <div className="text-center">
           <div className="relative inline-block">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-tr from-brand-terracotta to-orange-500 p-0.5 shadow-2xl mx-auto mb-4">
+            <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-3xl bg-gradient-to-tr from-brand-terracotta to-orange-500 p-0.5 shadow-2xl mx-auto mb-3">
               <div className="w-full h-full rounded-[22px] bg-[#151238] flex items-center justify-center relative overflow-hidden">
-                <Monitor className="w-10 h-10 sm:w-12 sm:h-12 text-white drop-shadow" />
-                <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-brand-terracotta flex items-center justify-center shadow-md border-2 border-[#151238]">
-                  <Laptop className="w-4 h-4 text-white" />
+                <Monitor className="w-9 h-9 sm:w-10 sm:h-10 text-white drop-shadow" />
+                <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-brand-terracotta flex items-center justify-center shadow-md border-2 border-[#151238]">
+                  <Laptop className="w-3.5 h-3.5 text-white" />
                 </div>
               </div>
             </div>
@@ -96,7 +96,7 @@ export default function DesktopOnlyNotice({ target = 'dashboard' }) {
             </div>
           </div>
 
-          <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-snug px-2">
+          <h1 className="font-display text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-snug px-1">
             {isSub 
               ? 'Subscriptions are Available on Desktop & Laptop' 
               : 'Dukaan Counter POS is Built for Desktop & Laptop'}

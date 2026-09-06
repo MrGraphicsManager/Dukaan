@@ -416,8 +416,8 @@ export default function Landing() {
               Made for Indian Local Shops & Kiranas
             </div>
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/80 border border-brand-mitti text-brand-indigo text-xs font-bold shadow-2xs backdrop-blur-md">
-              <Smartphone className="w-3.5 h-3.5 text-brand-terracotta" />
-              <span>Mobile 2.0 Ready · Touch Optimized</span>
+              <Monitor className="w-3.5 h-3.5 text-brand-terracotta" />
+              <span>PC Counter & Laptop POS</span>
             </div>
           </div>
 
@@ -459,7 +459,7 @@ export default function Landing() {
           {/* Trust points */}
           <div className="mt-8 flex items-center gap-4 sm:gap-6 text-xs text-brand-indigo/65 font-semibold flex-wrap">
             <span className="flex items-center gap-1.5">
-              <Smartphone className="w-4 h-4 text-brand-terracotta" /> Mobile & Tablet Optimized
+              <Laptop className="w-4 h-4 text-brand-terracotta" /> Desktop & Laptop Counter
             </span>
             <span>·</span>
             <span className="flex items-center gap-1.5">
