@@ -169,14 +169,7 @@ export default function GoogleAuthCallback() {
             return;
           }
 
-          const isMobileAuth = sessionStorage.getItem("dukaan_mobile_auth") === "true";
-          const isMobDevice = window.innerWidth < 768 || /Android|iPhone|iPod|BlackBerry/i.test(navigator.userAgent);
-          if (isMobileAuth || isMobDevice) {
-            sessionStorage.removeItem("dukaan_mobile_auth");
-            nav('/mobile?view=dashboard');
-            return;
-          }
-
+          sessionStorage.removeItem("dukaan_mobile_auth");
           const hasSub = Boolean(isSubActive(sub));
           nav(hasSub ? '/app' : '/subscribe');
         } else {

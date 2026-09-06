@@ -37,8 +37,6 @@ import Card3D from "@/components/Card3D";
 import ThreeDHeroKiosk from "@/components/ThreeDHeroKiosk";
 import ThreeDCounterModeShowcase from "@/components/ThreeDCounterModeShowcase";
 import ThreeDBackground from "@/components/ThreeDBackground";
-import MobileWelcome from "@/pages/MobileWelcome";
-import { useIsMobile } from "@/lib/device";
 
 const FEATURES = [
   { 
@@ -139,14 +137,9 @@ function Reveal({ children, className = "", id }) {
 }
 
 export default function Landing() {
-  const isMobile = useIsMobile();
   const nav = useNavigate();
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  if (isMobile) {
-    return <MobileWelcome />;
-  }
 
   return (
     <div className="min-h-screen bg-brand-sand text-brand-indigo noise relative overflow-x-hidden">
@@ -155,14 +148,14 @@ export default function Landing() {
       <ThreeDBackground />
 
       {/* =========================================================
-          TOP ANNOUNCEMENT BAR: DESKTOP & LAPTOP COUNTER POS
+          TOP ANNOUNCEMENT BAR: CLOUD POS & STORE MANAGEMENT
       ========================================================= */}
       <div className="bg-[#1B1464] border-b border-indigo-900/60 text-white px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-medium flex items-center justify-center gap-2.5 text-center shadow-xs z-50 relative">
         <span className="bg-brand-terracotta text-white text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full tracking-wider shrink-0 shadow-2xs">
-          Counter Edition
+          Universal POS
         </span>
         <span className="text-white/95">
-          💻 <strong>Desktop & Laptop POS:</strong> Dukaan Store Management is designed for PC counters & laptops. Mobile app coming soon!
+          🚀 <strong>Dukaan Store Management:</strong> Seamlessly access your billing counter across PC, Laptop, and Mobile devices!
         </span>
       </div>
 

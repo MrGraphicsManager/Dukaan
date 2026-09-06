@@ -8,8 +8,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import RenewalBanner from "@/components/RenewalBanner";
-import DesktopOnlyNotice from "@/components/DesktopOnlyNotice";
-import { useIsMobile } from "@/lib/device";
 
 const NAV = [
   { to: "/app", key: "dashboard", Icon: LayoutDashboard, end: true },
@@ -389,11 +387,7 @@ export default function AppLayout() {
     };
   }, [checkPlatformConfig]);
 
-  // Feature: Mobile restriction - Dukaan Dashboard is PC/Laptop only
-  const isMobile = useIsMobile();
-  if (isMobile) {
-    return <DesktopOnlyNotice target="dashboard" />;
-  }
+
 
   // Feature 9: Store Freeze & Fraud Security Shield
   const activeShopId = currentShopId || localStorage.getItem("dukaan_shop_id");
