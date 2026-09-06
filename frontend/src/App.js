@@ -44,6 +44,7 @@ import RefundPolicy from "./pages/RefundPolicy";
 import Info from "./pages/Info.jsx";
 import Careers from "./pages/Careers";
 import DesktopOnlyNotice from "@/components/DesktopOnlyNotice";
+import MobileWelcome from "@/pages/MobileWelcome";
 import { useIsMobile } from "@/lib/device";
 
 
@@ -236,6 +237,11 @@ function LaunchController() {
       <Route
         path="/stores"
         element={<PublicStoreDirectory />}
+      />
+
+      <Route
+        path="/mobile"
+        element={<MobileWelcome />}
       />
 
       {/* ===================================================

@@ -37,6 +37,8 @@ import Card3D from "@/components/Card3D";
 import ThreeDHeroKiosk from "@/components/ThreeDHeroKiosk";
 import ThreeDCounterModeShowcase from "@/components/ThreeDCounterModeShowcase";
 import ThreeDBackground from "@/components/ThreeDBackground";
+import MobileWelcome from "@/pages/MobileWelcome";
+import { useIsMobile } from "@/lib/device";
 
 const FEATURES = [
   { 
@@ -137,9 +139,14 @@ function Reveal({ children, className = "", id }) {
 }
 
 export default function Landing() {
+  const isMobile = useIsMobile();
   const nav = useNavigate();
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  if (isMobile) {
+    return <MobileWelcome />;
+  }
 
   return (
     <div className="min-h-screen bg-brand-sand text-brand-indigo noise relative overflow-x-hidden">
