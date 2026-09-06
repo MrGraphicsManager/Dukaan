@@ -1116,27 +1116,74 @@ export default function AdminSubscriptions() {
     setIsRefreshingCareers(true);
     try {
       const careersRes = await api.get("/admin/careers/applications").catch(() => null);
-      let cList = Array.isArray(careersRes?.data) ? [...careersRes.data] : [];
+      let serverList = Array.isArray(careersRes?.data) ? [...careersRes.data] : [];
+      let localList = [];
       try {
         const rawC = localStorage.getItem("dukaan_job_applications");
-        if (rawC) {
-          const localList = JSON.parse(rawC);
-          if (Array.isArray(localList)) {
-            localList.forEach(la => {
-              if (!cList.some(ca => ca.id === la.id || (ca.email && ca.email.toLowerCase() === (la.email || "").toLowerCase()))) {
-                cList.push(la);
-              }
-            });
-          }
-        }
+        if (rawC) localList = JSON.parse(rawC);
       } catch (_) {}
 
-      if (Array.isArray(cList)) {
-        setJobApplications(cList);
-        try { localStorage.setItem("dukaan_job_applications", JSON.stringify(cList)); } catch (_) {}
-        if (showToast) {
-          toast.success(`Hiring portal updated! ${cList.length} applicant(s) loaded.`);
-        }
+      // Smart merge: Map by (email or phone or id)
+      const mergedMap = new Map();
+
+      // 1. Put server list
+      serverList.forEach(sa => {
+        const key = (sa.email || "").toLowerCase().trim() || (sa.phone || "").replace(/\D/g, "").slice(-10) || sa.id;
+        if (key) mergedMap.set(key, { ...sa });
+      });
+
+      // 2. Merge local list without overwriting admin's local approved/denied decisions
+      if (Array.isArray(localList)) {
+        localList.forEach(la => {
+          const key = (la.email || "").toLowerCase().trim() || (la.phone || "").replace(/\D/g, "").slice(-10) || la.id;
+          if (!key) return;
+
+          if (!mergedMap.has(key)) {
+            mergedMap.set(key, { ...la });
+            // Sync offline candidate to server
+            api.post("/careers/apply", la).catch(() => {});
+          } else {
+            const serverItem = mergedMap.get(key);
+            const isLocalReviewed = la.status === "approved" || la.status === "denied";
+            const isServerReviewed = serverItem.status === "approved" || serverItem.status === "denied";
+
+            // If local copy is approved/denied and server is under_review, preserve the decision!
+            const finalStatus = isLocalReviewed ? la.status : serverItem.status;
+            const finalReviewedAt = isLocalReviewed ? (la.reviewed_at || new Date().toISOString()) : serverItem.reviewed_at;
+
+            const merged = {
+              ...serverItem,
+              ...la,
+              status: finalStatus,
+              reviewed_at: finalReviewedAt,
+              admin_note: la.admin_note || serverItem.admin_note || "",
+              aadhar_number: (la.aadhar_number && la.aadhar_number.length >= 12) ? la.aadhar_number : serverItem.aadhar_number,
+              name: la.name || serverItem.name
+            };
+            mergedMap.set(key, merged);
+
+            // Re-sync to server if local had decision that server hadn't registered yet
+            if (isLocalReviewed && !isServerReviewed) {
+              api.post("/admin/careers/status", {
+                id: merged.id,
+                email: merged.email,
+                phone: merged.phone,
+                status: merged.status,
+                admin_note: merged.admin_note,
+                aadhar_number: merged.aadhar_number,
+                name: merged.name
+              }).catch(() => {});
+            }
+          }
+        });
+      }
+
+      const finalList = Array.from(mergedMap.values());
+      setJobApplications(finalList);
+      try { localStorage.setItem("dukaan_job_applications", JSON.stringify(finalList)); } catch (_) {}
+
+      if (showToast) {
+        toast.success(`Hiring portal updated! ${finalList.length} applicant(s) loaded.`);
       }
     } catch (err) {
       if (showToast) toast.error("Could not fetch job applications.");
@@ -1145,17 +1192,30 @@ export default function AdminSubscriptions() {
     }
   };
 
-  const handleUpdateJobStatus = async (appId, nextStatus, note = "") => {
+  const handleUpdateJobStatus = async (appOrId, nextStatus, note = "") => {
     try {
-      // 1. Optimistic UI update
-      setJobApplications(prev => prev.map(a => a.id === appId ? {
+      const targetApp = typeof appOrId === "object" ? appOrId : jobApplications.find(a => a.id === appOrId);
+      const targetId = targetApp?.id || (typeof appOrId === "string" ? appOrId : "");
+      const targetEmail = (targetApp?.email || "").toLowerCase().trim();
+      const targetPhone = (targetApp?.phone || "").replace(/\D/g, "").slice(-10);
+
+      const updateMatcher = (a) => {
+        if (!a) return false;
+        if (targetId && a.id === targetId) return true;
+        if (targetEmail && (a.email || "").toLowerCase().trim() === targetEmail) return true;
+        if (targetPhone && (a.phone || "").replace(/\D/g, "").endsWith(targetPhone)) return true;
+        return false;
+      };
+
+      // 1. Optimistic UI update across state
+      setJobApplications(prev => prev.map(a => updateMatcher(a) ? {
         ...a,
         status: nextStatus,
         reviewed_at: new Date().toISOString(),
         admin_note: note || a.admin_note
       } : a));
 
-      if (selectedJobModal && selectedJobModal.id === appId) {
+      if (selectedJobModal && updateMatcher(selectedJobModal)) {
         setSelectedJobModal(prev => ({
           ...prev,
           status: nextStatus,
@@ -1164,24 +1224,48 @@ export default function AdminSubscriptions() {
         }));
       }
 
-      // 2. Call cloud API
-      await api.post("/admin/careers/status", { id: appId, status: nextStatus, admin_note: note }).catch(() => {});
-
-      // 3. LocalStorage persistence
+      // 2. Persist to localStorage immediately
       try {
         const raw = localStorage.getItem("dukaan_job_applications") || "[]";
         const list = JSON.parse(raw);
-        const idx = list.findIndex(a => a.id === appId);
-        if (idx >= 0) {
-          list[idx].status = nextStatus;
-          list[idx].reviewed_at = new Date().toISOString();
-          if (note) list[idx].admin_note = note;
+        if (Array.isArray(list)) {
+          let found = false;
+          list.forEach(a => {
+            if (updateMatcher(a)) {
+              a.status = nextStatus;
+              a.reviewed_at = new Date().toISOString();
+              if (note) a.admin_note = note;
+              found = true;
+            }
+          });
+          if (!found && targetApp) {
+            list.unshift({ ...targetApp, status: nextStatus, reviewed_at: new Date().toISOString() });
+          }
           localStorage.setItem("dukaan_job_applications", JSON.stringify(list));
         }
       } catch (_) {}
 
-      addAuditLog("UPDATE_CANDIDATE_STATUS", appId, `Status set to ${nextStatus.toUpperCase()}`);
-      toast.success(`Candidate status updated to ${nextStatus === "approved" ? "APPROVED ✅" : "DENIED ❌"}!`);
+      // 3. Call cloud API with full identification
+      const payload = {
+        id: targetId,
+        email: targetApp?.email || targetEmail,
+        phone: targetApp?.phone || targetPhone,
+        name: targetApp?.name,
+        role: targetApp?.role,
+        status: nextStatus,
+        admin_note: note,
+        aadhar_number: targetApp?.aadhar_number,
+        education: targetApp?.education,
+        city: targetApp?.city
+      };
+
+      const res = await api.post("/admin/careers/status", payload).catch(() => null);
+      if (res?.data?.ok && res.data.application) {
+        setJobApplications(prev => prev.map(a => updateMatcher(a) ? { ...a, ...res.data.application } : a));
+      }
+
+      addAuditLog("UPDATE_CANDIDATE_STATUS", targetEmail || targetId, `Status set to ${nextStatus.toUpperCase()}`);
+      toast.success(`Candidate marked as ${nextStatus === "approved" ? "APPROVED ✅" : "DENIED ❌"}!`);
     } catch (e) {
       toast.error("Failed to update candidate status.");
     }
@@ -2716,7 +2800,7 @@ export default function AdminSubscriptions() {
                                   {app.status !== "approved" && (
                                     <Button
                                       size="sm"
-                                      onClick={() => handleUpdateJobStatus(app.id, "approved")}
+                                      onClick={() => handleUpdateJobStatus(app, "approved")}
                                       className="h-8 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
                                       title="Approve Application"
                                     >
@@ -2727,7 +2811,7 @@ export default function AdminSubscriptions() {
                                   {app.status !== "denied" && (
                                     <Button
                                       size="sm"
-                                      onClick={() => handleUpdateJobStatus(app.id, "denied")}
+                                      onClick={() => handleUpdateJobStatus(app, "denied")}
                                       className="h-8 px-2.5 rounded-lg bg-rose-600/80 hover:bg-rose-600 text-white font-bold text-xs"
                                       title="Denie Application"
                                     >
@@ -2905,14 +2989,14 @@ export default function AdminSubscriptions() {
                   <div className="flex items-center gap-2">
                     <Button
                       size="sm"
-                      onClick={() => handleUpdateJobStatus(selectedJobModal.id, "denied")}
+                      onClick={() => handleUpdateJobStatus(selectedJobModal, "denied")}
                       className="rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold px-4"
                     >
                       Deny Candidate
                     </Button>
                     <Button
                       size="sm"
-                      onClick={() => handleUpdateJobStatus(selectedJobModal.id, "approved")}
+                      onClick={() => handleUpdateJobStatus(selectedJobModal, "approved")}
                       className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4"
                     >
                       Approve Candidate

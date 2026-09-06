@@ -274,6 +274,53 @@ function recordRegisteredUser(userObj) {
   }
 }
 
+function deduplicateJobApplications(apps) {
+  if (!Array.isArray(apps)) return [];
+  const map = new Map();
+  for (const a of apps) {
+    if (!a) continue;
+    const cleanEmail = (a.email || "").trim().toLowerCase();
+    const cleanPhone = (a.phone || "").trim().replace(/\D/g, "").slice(-10);
+    const key = cleanEmail || cleanPhone || a.id;
+    if (!key) continue;
+
+    if (!map.has(key)) {
+      map.set(key, { ...a });
+    } else {
+      const existing = map.get(key);
+      const isExistingReviewed = existing.status === "approved" || existing.status === "denied";
+      const isNewReviewed = a.status === "approved" || a.status === "denied";
+
+      const finalStatus = isExistingReviewed
+        ? existing.status
+        : (isNewReviewed ? a.status : (existing.status || a.status || "under_review"));
+
+      const finalReviewedAt = isExistingReviewed
+        ? (existing.reviewed_at || a.reviewed_at)
+        : (a.reviewed_at || existing.reviewed_at);
+
+      const finalNote = existing.admin_note || a.admin_note || "";
+
+      map.set(key, {
+        ...existing,
+        ...a,
+        status: finalStatus,
+        reviewed_at: finalReviewedAt,
+        admin_note: finalNote,
+        aadhar_number: (a.aadhar_number && a.aadhar_number.length >= 12) ? a.aadhar_number : (existing.aadhar_number || a.aadhar_number),
+        aadhar_doc: (a.aadhar_doc && a.aadhar_doc.length > 50) ? a.aadhar_doc : (existing.aadhar_doc || a.aadhar_doc),
+        marksheet_doc: (a.marksheet_doc && a.marksheet_doc.length > 50) ? a.marksheet_doc : (existing.marksheet_doc || a.marksheet_doc),
+        resume_doc: (a.resume_doc && a.resume_doc.length > 50) ? a.resume_doc : (existing.resume_doc || a.resume_doc),
+        name: a.name || existing.name,
+        education: a.education || existing.education,
+        role: a.role || existing.role,
+        city: a.city || existing.city
+      });
+    }
+  }
+  return Array.from(map.values());
+}
+
 let jobApplications = [];
 
 let promoCodes = [
@@ -1417,6 +1464,7 @@ exports.handler = async (event, context) => {
     // 16. CAREERS & HIRING PORTAL ENGINE
     if (path === "/careers/check" && event.httpMethod === "POST") {
       await getPersistentState();
+      jobApplications = deduplicateJobApplications(jobApplications);
       const email = (body.email || "").trim().toLowerCase();
       const phone = (body.phone || "").trim().replace(/\D/g, "");
       
@@ -1443,12 +1491,12 @@ exports.handler = async (event, context) => {
       }
 
       const newApp = {
-        id: "APP-" + Date.now().toString().slice(-6),
+        id: body.id || "APP-" + Date.now().toString().slice(-6),
         name,
         email,
         phone,
         whatsapp: (body.whatsapp || phone).trim(),
-        role: body.role || "Social Media & Content",
+        role: body.role || "Field Sales Intern",
         city: body.city || "Navsari",
         address: body.address || "",
         dob: body.dob || "",
@@ -1461,44 +1509,108 @@ exports.handler = async (event, context) => {
         resume_doc: body.resume_doc || "",
         portfolio_url: body.portfolio_url || "",
         why_hire: body.why_hire || "",
-        status: "under_review",
-        admin_note: "",
-        created_at: new Date().toISOString(),
-        reviewed_at: null
+        status: body.status || "under_review",
+        admin_note: body.admin_note || "",
+        created_at: body.created_at || new Date().toISOString(),
+        reviewed_at: body.reviewed_at || null
       };
 
       const existingIdx = jobApplications.findIndex(a => 
-        (a.email && a.email.toLowerCase() === email) || 
+        (a.email && a.email.toLowerCase().trim() === email) || 
         (a.phone && a.phone.replace(/\D/g, "").endsWith(phone.slice(-10)))
       );
       if (existingIdx >= 0) {
+        // If already reviewed (approved/denied) by admin, preserve that status!
+        const curStatus = jobApplications[existingIdx].status;
+        if ((curStatus === "approved" || curStatus === "denied") && newApp.status === "under_review") {
+          newApp.status = curStatus;
+          newApp.reviewed_at = jobApplications[existingIdx].reviewed_at;
+          newApp.admin_note = jobApplications[existingIdx].admin_note;
+        }
         jobApplications[existingIdx] = { ...jobApplications[existingIdx], ...newApp };
       } else {
         jobApplications.unshift(newApp);
       }
 
+      jobApplications = deduplicateJobApplications(jobApplications);
       await savePersistentState();
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true, application: newApp }) };
     }
 
     if (path === "/admin/careers/applications" && event.httpMethod === "GET") {
       await getPersistentState();
+      jobApplications = deduplicateJobApplications(jobApplications);
       return { statusCode: 200, headers, body: JSON.stringify(jobApplications) };
     }
 
     if (path === "/admin/careers/status" && event.httpMethod === "POST") {
       await getPersistentState();
-      const { id, status, admin_note } = body;
-      const idx = jobApplications.findIndex(a => a.id === id);
-      if (idx === -1) {
-        return { statusCode: 404, headers, body: JSON.stringify({ detail: "Application not found." }) };
-      }
-      jobApplications[idx].status = status || "under_review";
-      if (admin_note !== undefined) jobApplications[idx].admin_note = admin_note;
-      jobApplications[idx].reviewed_at = new Date().toISOString();
+      const { id, email, phone, status, admin_note, aadhar_number, name } = body;
+      const cleanEmail = (email || "").trim().toLowerCase();
+      const cleanPhone = (phone || "").trim().replace(/\D/g, "");
 
+      // Find all matching applications by id OR email OR phone
+      let matchedIndices = [];
+      jobApplications.forEach((a, i) => {
+        const aEmail = (a.email || "").trim().toLowerCase();
+        const aPhone = (a.phone || "").trim().replace(/\D/g, "");
+        if (id && a.id === id) matchedIndices.push(i);
+        else if (cleanEmail && aEmail && aEmail === cleanEmail) matchedIndices.push(i);
+        else if (cleanPhone && aPhone && aPhone.endsWith(cleanPhone.slice(-10))) matchedIndices.push(i);
+      });
+
+      if (matchedIndices.length === 0) {
+        // Candidate not found in memory yet: create / upsert!
+        if (cleanEmail || cleanPhone || name) {
+          const newApp = {
+            id: id || "APP-" + Date.now().toString().slice(-6),
+            name: name || "Candidate",
+            email: cleanEmail || "candidate@dukaan.in",
+            phone: cleanPhone || "7016430577",
+            whatsapp: body.whatsapp || cleanPhone || "7016430577",
+            role: body.role || "Field Sales Intern",
+            city: body.city || "Bardoli",
+            address: body.address || "",
+            education: body.education || "12th Pass",
+            aadhar_number: aadhar_number || "",
+            aadhar_doc: body.aadhar_doc || "",
+            marksheet_doc: body.marksheet_doc || "",
+            resume_doc: body.resume_doc || "",
+            status: status || "under_review",
+            admin_note: admin_note || "",
+            created_at: body.created_at || new Date().toISOString(),
+            reviewed_at: new Date().toISOString()
+          };
+          jobApplications.unshift(newApp);
+          matchedIndices.push(0);
+        } else {
+          return { statusCode: 404, headers, body: JSON.stringify({ detail: "Application not found." }) };
+        }
+      }
+
+      // Update ALL matched records
+      matchedIndices.forEach(idx => {
+        jobApplications[idx].status = status || "under_review";
+        if (admin_note !== undefined) jobApplications[idx].admin_note = admin_note;
+        jobApplications[idx].reviewed_at = new Date().toISOString();
+        if (id) jobApplications[idx].id = id;
+        if (aadhar_number) jobApplications[idx].aadhar_number = aadhar_number;
+        if (name) jobApplications[idx].name = name;
+        if (body.education) jobApplications[idx].education = body.education;
+        if (body.role) jobApplications[idx].role = body.role;
+        if (body.city) jobApplications[idx].city = body.city;
+      });
+
+      jobApplications = deduplicateJobApplications(jobApplications);
       await savePersistentState();
-      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, application: jobApplications[idx] }) };
+
+      const updated = jobApplications.find(a => 
+        (id && a.id === id) || 
+        (cleanEmail && (a.email || "").toLowerCase().trim() === cleanEmail) ||
+        (cleanPhone && (a.phone || "").replace(/\D/g, "").endsWith(cleanPhone.slice(-10)))
+      ) || jobApplications[0];
+
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, application: updated }) };
     }
 
     // 15. PROMO & COUPON CODES ENGINE (Cloud-synced & live across checkout)
