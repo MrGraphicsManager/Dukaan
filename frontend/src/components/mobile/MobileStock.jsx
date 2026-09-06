@@ -1,43 +1,52 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ArrowLeft, Search, AlertTriangle, CheckCircle2, Warehouse, RefreshCw, Plus, Check } from "lucide-react";
 import { toast } from "sonner";
 import MobileBottomNav from "./MobileBottomNav";
-
-const initialStockItems = [
-  { id: 1, name: "Coca-Cola Original 750ml", category: "Beverages", stock: 4, maxStock: 25, minStock: 10, status: "low" },
-  { id: 2, name: "Tide Plus Detergent 1kg", category: "Cleaning", stock: 2, maxStock: 20, minStock: 8, status: "low" },
-  { id: 3, name: "Farm Fresh Eggs (6 pcs)", category: "Dairy", stock: 1, maxStock: 30, minStock: 12, status: "critical" },
-  { id: 4, name: "Harvest Gold Bread 400g", category: "Bakery", stock: 0, maxStock: 20, minStock: 10, status: "out" },
-  { id: 5, name: "Amul Butter 100g", category: "Dairy", stock: 24, maxStock: 30, minStock: 10, status: "good" },
-  { id: 6, name: "Aashirvaad Atta 5kg", category: "Grocery", stock: 18, maxStock: 25, minStock: 10, status: "good" },
-  { id: 7, name: "Tata Salt 1kg", category: "Grocery", stock: 45, maxStock: 50, minStock: 15, status: "good" },
-];
+import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
 
 export default function MobileStock({ onBack, onTabChange }) {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const [stockList, setStockList] = useState(initialStockItems);
+  const [stockList, setStockList] = useState(() => getStoredProducts());
 
-  const lowCount = stockList.filter((s) => s.stock > 0 && s.stock <= s.minStock).length;
-  const outCount = stockList.filter((s) => s.stock === 0).length;
+  useEffect(() => {
+    setStockList(getStoredProducts());
+  }, []);
+
+  const getMinStock = (item) => item.min_stock !== undefined ? item.min_stock : 5;
+  const getStock = (item) => item.stock !== undefined ? item.stock : 10;
+
+  const lowCount = stockList.filter((s) => getStock(s) > 0 && getStock(s) <= getMinStock(s)).length;
+  const outCount = stockList.filter((s) => getStock(s) === 0).length;
 
   const filtered = stockList.filter((item) => {
-    if (filter === "low") return item.stock > 0 && item.stock <= item.minStock;
-    if (filter === "out") return item.stock === 0;
+    const s = getStock(item);
+    const min = getMinStock(item);
+    if (filter === "low") return s > 0 && s <= min;
+    if (filter === "out") return s === 0;
     return true;
-  }).filter((item) => item.name.toLowerCase().includes(search.toLowerCase()));
+  }).filter((item) => (item.name || "").toLowerCase().includes(search.toLowerCase()));
 
   const handleRestock = (id) => {
-    setStockList((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, stock: item.stock + 10, status: "good" } : item))
+    const updated = stockList.map((item) =>
+      item.id === id ? { ...item, stock: getStock(item) + 10 } : item
     );
+    setStockList(updated);
+    saveStoredProducts(updated);
     toast.success("Added +10 units to inventory");
   };
 
   const handleBulkRestock = () => {
-    setStockList((prev) =>
-      prev.map((item) => (item.stock <= item.minStock ? { ...item, stock: item.minStock + 10 } : item))
-    );
+    const updated = stockList.map((item) => {
+      const s = getStock(item);
+      const min = getMinStock(item);
+      if (s <= min) {
+        return { ...item, stock: min + 15 };
+      }
+      return item;
+    });
+    setStockList(updated);
+    saveStoredProducts(updated);
     toast.success("Restocked all low & out-of-stock items!");
   };
 
@@ -70,7 +79,7 @@ export default function MobileStock({ onBack, onTabChange }) {
         {/* Quick summary cards */}
         <div className="grid grid-cols-2 gap-2 mt-3">
           <div
-            onClick={() => setFilter("low")}
+            onClick={() => setFilter(filter === "low" ? "all" : "low")}
             className={`p-2.5 rounded-2xl border cursor-pointer transition-all ${
               filter === "low" ? "bg-amber-100/70 border-amber-300 shadow-xs" : "bg-amber-50 border-amber-200/60"
             }`}
@@ -79,7 +88,7 @@ export default function MobileStock({ onBack, onTabChange }) {
             <div className="text-lg font-black text-amber-900 mt-0.5">{lowCount} Items</div>
           </div>
           <div
-            onClick={() => setFilter("out")}
+            onClick={() => setFilter(filter === "out" ? "all" : "out")}
             className={`p-2.5 rounded-2xl border cursor-pointer transition-all ${
               filter === "out" ? "bg-red-100/70 border-red-300 shadow-xs" : "bg-red-50 border-red-200/60"
             }`}
@@ -100,77 +109,69 @@ export default function MobileStock({ onBack, onTabChange }) {
             className="w-full bg-slate-50 pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#0066FF] focus:bg-white transition-all"
           />
         </div>
-
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-1.5 mt-2">
-          {["all", "low", "out"].map((t) => (
-            <button
-              key={t}
-              onClick={() => setFilter(t)}
-              className={`px-3 py-1 rounded-full text-xs font-black capitalize transition-colors cursor-pointer ${
-                filter === t ? "bg-[#0066FF] text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              {t === "all" ? `All (${stockList.length})` : t === "low" ? `Low (${lowCount})` : `Out (${outCount})`}
-            </button>
-          ))}
-        </div>
       </header>
 
-      {/* Stock Items List */}
+      {/* Inventory Item Rows */}
       <div className="p-4 space-y-2.5">
         {filtered.map((item) => {
-          const isOut = item.stock === 0;
-          const isLow = item.stock > 0 && item.stock <= item.minStock;
-          const fillPercent = Math.min(100, Math.round((item.stock / item.maxStock) * 100));
+          const s = getStock(item);
+          const min = getMinStock(item);
+          const isOut = s === 0;
+          const isLow = s > 0 && s <= min;
+          const status = isOut ? "out" : isLow ? "low" : "good";
+          const maxStock = Math.max(s + 10, 30);
+          const percent = Math.min(100, Math.round((s / maxStock) * 100));
 
           return (
             <div
               key={item.id}
-              className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-2xs space-y-2"
+              className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-2xs space-y-2.5"
             >
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">{item.category}</span>
-                    {isOut ? (
-                      <span className="text-[9px] font-black bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">
-                        OUT OF STOCK
-                      </span>
-                    ) : isLow ? (
-                      <span className="text-[9px] font-black bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
-                        LOW ({item.stock} left)
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
-                        IN STOCK ({item.stock})
-                      </span>
-                    )}
+                  <h3 className="text-xs font-bold text-slate-900 truncate">{item.name}</h3>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[10px] font-semibold text-slate-400">{item.category || "General"}</span>
+                    <span className="text-slate-300">·</span>
+                    <span
+                      className={`text-[10px] font-extrabold uppercase ${
+                        status === "out"
+                          ? "text-red-600"
+                          : status === "low"
+                          ? "text-amber-600"
+                          : "text-emerald-600"
+                      }`}
+                    >
+                      {status === "out" ? "Out of Stock" : status === "low" ? "Low Stock" : "Sufficient"}
+                    </span>
                   </div>
-                  <div className="text-xs font-black text-slate-800 truncate mt-1">{item.name}</div>
                 </div>
 
                 <button
                   onClick={() => handleRestock(item.id)}
-                  className="px-3 py-1.5 bg-blue-50 text-[#0066FF] hover:bg-[#0066FF] hover:text-white rounded-xl text-xs font-black flex items-center gap-1 transition-colors cursor-pointer active:scale-95 shadow-xs shrink-0"
+                  className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#0066FF] font-black text-xs active:scale-95 transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>+10</span>
                 </button>
               </div>
 
-              {/* Capacity Progress Bar */}
+              {/* Stock Bar */}
               <div>
-                <div className="flex justify-between text-[10px] text-slate-400 font-semibold mb-1">
-                  <span>Capacity</span>
-                  <span>{item.stock} / {item.maxStock} units</span>
+                <div className="flex justify-between text-[10px] font-bold mb-1">
+                  <span className="text-slate-500">Available: {s} {item.unit || "units"}</span>
+                  <span className="text-slate-400">Min Alert: {min}</span>
                 </div>
-                <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                   <div
-                    style={{ width: `${fillPercent}%` }}
-                    className={`h-full rounded-full transition-all ${
-                      isOut ? "bg-rose-500" : isLow ? "bg-amber-500" : "bg-[#0066FF]"
+                    className={`h-full rounded-full ${
+                      status === "out"
+                        ? "bg-red-500"
+                        : status === "low"
+                        ? "bg-amber-500"
+                        : "bg-emerald-500"
                     }`}
+                    style={{ width: `${percent}%` }}
                   />
                 </div>
               </div>
@@ -179,7 +180,8 @@ export default function MobileStock({ onBack, onTabChange }) {
         })}
       </div>
 
-      <MobileBottomNav activeTab="products" onTabChange={onTabChange} />
+      {/* Dock Nav */}
+      <MobileBottomNav activeTab="more" onTabChange={onTabChange} />
     </div>
   );
 }

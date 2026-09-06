@@ -1,60 +1,79 @@
-import React, { useState } from "react";
-import { ArrowLeft, Search, Plus, MessageSquare, Check, AlertCircle, ArrowUpRight, ArrowDownLeft, X } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { ArrowLeft, Search, Plus, MessageSquare, Check, AlertCircle, ArrowUpRight, ArrowDownLeft, X, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import MobileBottomNav from "./MobileBottomNav";
 import { playVoiceSoundbox } from "@/lib/soundbox";
 
-const initialUdhaarRecords = [
-  { id: 1, customer: "Manish Bhai Cloth", phone: "9712398451", amount: 1200, date: "02 Sep", status: "pending", items: "Atta 5kg, Oil 1L" },
-  { id: 2, customer: "Kishore Bhai Dairy", phone: "9909988112", amount: 650, date: "03 Sep", status: "pending", items: "Amul Butter, Biscuits" },
-  { id: 3, customer: "Ramesh Sharma", phone: "9825123456", amount: 450, date: "04 Sep", status: "pending", items: "Tata Salt, Maggie" },
-  { id: 4, customer: "Suresh Chauhan", phone: "9879055443", amount: 220, date: "05 Sep", status: "pending", items: "Bread, Eggs" },
-  { id: 5, customer: "Amit Kumar Patel", phone: "9898011223", amount: 800, date: "28 Aug", status: "cleared", items: "Groceries" },
-  { id: 6, customer: "Pooja Ben Joshi", phone: "9426788912", amount: 1500, date: "20 Aug", status: "cleared", items: "Monthly Ration" },
-];
-
 export default function MobileUdhaar({ onBack, onTabChange }) {
-  const [tab, setTab] = useState("all");
-  const [records, setRecords] = useState(initialUdhaarRecords);
+  const [tab, setTab] = useState("pending");
   const [search, setSearch] = useState("");
-  const [settleModalRecord, setSettleModalRecord] = useState(null);
+  const [settleModalCust, setSettleModalCust] = useState(null);
+  const [settleAmount, setSettleAmount] = useState("");
+  const [customers, setCustomers] = useState([]);
 
-  const pendingTotal = records
-    .filter((r) => r.status === "pending")
-    .reduce((sum, r) => sum + r.amount, 0);
+  const loadCustomers = () => {
+    try {
+      const raw = localStorage.getItem("dukaan_customers");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setCustomers(parsed);
+          return;
+        }
+      }
+    } catch {}
+    setCustomers([]);
+  };
 
-  const clearedTotal = records
-    .filter((r) => r.status === "cleared")
-    .reduce((sum, r) => sum + r.amount, 0);
+  useEffect(() => {
+    loadCustomers();
+  }, []);
 
-  const filtered = records.filter((r) => {
-    if (tab === "pending") return r.status === "pending";
-    if (tab === "cleared") return r.status === "cleared";
+  const pendingTotal = customers.reduce((sum, c) => sum + (c.udhaar || 0), 0);
+
+  const filtered = customers.filter((c) => {
+    const u = c.udhaar || 0;
+    if (tab === "pending") return u > 0;
+    if (tab === "cleared") return u === 0;
     return true;
-  }).filter((r) => r.customer.toLowerCase().includes(search.toLowerCase()) || r.phone.includes(search));
+  }).filter((c) => (c.name || "").toLowerCase().includes(search.toLowerCase()) || (c.phone || "").includes(search));
 
-  const handleSendReminder = (r) => {
+  const handleSendReminder = (c) => {
     const text = encodeURIComponent(
-      `🙏 *Namaste ${r.customer} ji*\n\n` +
+      `🙏 *Namaste ${c.name} ji*\n\n` +
       `This is a gentle payment reminder from *ABC General Store*.\n` +
-      `Your outstanding udhaar balance is *₹${r.amount}* for ${r.items}.\n\n` +
-      `Kindly pay via UPI or at the shop counter.\n` +
+      `Your outstanding udhaar balance is *₹${c.udhaar}*.\n\n` +
+      `Kindly pay via UPI or at the shop counter at your convenience.\n` +
       `Thank you for your continued support!`
     );
-    window.open(`https://wa.me/91${r.phone}?text=${text}`, "_blank");
-    toast.success(`WhatsApp reminder opened for ${r.customer}`);
+    window.open(`https://wa.me/91${c.phone}?text=${text}`, "_blank");
+    toast.success(`WhatsApp reminder opened for ${c.name}`);
   };
 
   const handleConfirmSettlement = () => {
-    if (!settleModalRecord) return;
-    setRecords((prev) =>
-      prev.map((r) => (r.id === settleModalRecord.id ? { ...r, status: "cleared" } : r))
-    );
+    if (!settleModalCust) return;
+    const amountToSettle = parseFloat(settleAmount) || settleModalCust.udhaar || 0;
+    if (amountToSettle <= 0) return;
+
+    const updated = customers.map((c) => {
+      if (c.id === settleModalCust.id) {
+        return { ...c, udhaar: Math.max(0, (c.udhaar || 0) - amountToSettle) };
+      }
+      return c;
+    });
+
+    setCustomers(updated);
     try {
-      playVoiceSoundbox(settleModalRecord.amount, "cash", "en");
+      localStorage.setItem("dukaan_customers", JSON.stringify(updated));
     } catch {}
-    toast.success(`Payment of ₹${settleModalRecord.amount} settled for ${settleModalRecord.customer}!`);
-    setSettleModalRecord(null);
+
+    try {
+      playVoiceSoundbox(amountToSettle, "cash", "en");
+    } catch {}
+
+    toast.success(`Payment of ₹${amountToSettle} received & settled for ${settleModalCust.name}!`);
+    setSettleModalCust(null);
+    setSettleAmount("");
   };
 
   return (
@@ -88,9 +107,9 @@ export default function MobileUdhaar({ onBack, onTabChange }) {
           <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200/80">
             <div className="flex items-center gap-1 text-[10px] font-black text-emerald-700 uppercase">
               <ArrowDownLeft className="w-3.5 h-3.5" />
-              <span>Settled</span>
+              <span>Khata Status</span>
             </div>
-            <div className="text-lg font-black text-emerald-900 mt-1">₹ {clearedTotal}</div>
+            <div className="text-lg font-black text-emerald-900 mt-1">{customers.filter(c => (c.udhaar || 0) > 0).length} Due</div>
           </div>
         </div>
 
@@ -99,112 +118,141 @@ export default function MobileUdhaar({ onBack, onTabChange }) {
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search customer udhaar..."
+            placeholder="Search customer name or phone..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full bg-slate-50 pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#0066FF] focus:bg-white transition-all"
           />
         </div>
 
-        {/* Tabs */}
+        {/* Filter Tabs */}
         <div className="flex items-center gap-1.5 mt-2">
-          {["all", "pending", "cleared"].map((t) => (
+          {[
+            { id: "pending", label: "Due / Pending" },
+            { id: "cleared", label: "Fully Settled" },
+            { id: "all", label: "All Customers" },
+          ].map((t) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-3 py-1 rounded-full text-xs font-black capitalize transition-colors cursor-pointer ${
-                tab === t ? "bg-[#0066FF] text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-colors cursor-pointer ${
+                tab === t.id ? "bg-[#0066FF] text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              {t}
+              {t.label}
             </button>
           ))}
         </div>
       </header>
 
-      {/* Ledger list */}
+      {/* Records List */}
       <div className="p-4 space-y-2.5">
-        {filtered.map((r) => {
-          const isPending = r.status === "pending";
+        {filtered.map((c) => {
+          const isPending = (c.udhaar || 0) > 0;
           return (
             <div
-              key={r.id}
+              key={c.id}
               className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-2xs flex items-center justify-between gap-3"
             >
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-slate-900">{r.customer}</span>
-                  <span className={`text-xs font-black ${isPending ? "text-amber-700" : "text-emerald-600"}`}>
-                    ₹ {r.amount}
-                  </span>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xs font-bold text-slate-900 truncate">{c.name}</h3>
+                  <span className="text-[10px] text-slate-400">{c.phone}</span>
                 </div>
-                <div className="text-[11px] text-slate-500 mt-0.5">{r.items}</div>
-                <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-2">
-                  <span>Due date: {r.date}</span>
+                <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-2">
+                  <span>{c.bills || 0} Bills</span>
                   <span className="text-slate-300">·</span>
-                  <span>+91 {r.phone}</span>
+                  <span className="text-slate-400">{c.address || "Customer"}</span>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1.5 items-end shrink-0">
-                {isPending ? (
-                  <>
-                    <button
-                      onClick={() => handleSendReminder(r)}
-                      className="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-[10px] font-black flex items-center gap-1 transition-colors cursor-pointer"
-                    >
-                      <MessageSquare className="w-3 h-3" />
-                      Remind
-                    </button>
-                    <button
-                      onClick={() => setSettleModalRecord(r)}
-                      className="px-2.5 py-1 bg-blue-50 text-[#0066FF] hover:bg-blue-100 rounded-lg text-[10px] font-black flex items-center gap-1 transition-colors cursor-pointer"
-                    >
-                      <Check className="w-3 h-3" />
-                      Receive
-                    </button>
-                  </>
-                ) : (
-                  <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">
-                    Cleared
-                  </span>
-                )}
+              <div className="text-right flex flex-col items-end gap-1.5">
+                <div className={`text-sm font-black ${isPending ? "text-amber-700" : "text-emerald-600"}`}>
+                  ₹ {c.udhaar || 0}
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  {isPending && (
+                    <>
+                      <button
+                        onClick={() => handleSendReminder(c)}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <MessageSquare className="w-3 h-3" />
+                        <span>Remind</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setSettleModalCust(c);
+                          setSettleAmount(String(c.udhaar || 0));
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-blue-50 text-[#0066FF] hover:bg-blue-100 text-[11px] font-black flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <Check className="w-3 h-3" />
+                        <span>Settle</span>
+                      </button>
+                    </>
+                  )}
+                  {!isPending && (
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                      No Dues
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Settle Payment Modal */}
-      {settleModalRecord && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-end justify-center p-4">
-          <div className="bg-white w-full max-w-sm rounded-3xl p-5 select-none animate-in slide-in-from-bottom duration-200 space-y-3">
-            <h4 className="text-sm font-black text-slate-900">Settle Khata Payment</h4>
-            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
-              <div className="text-xs font-black text-slate-900">{settleModalRecord.customer}</div>
-              <div className="text-sm font-black text-[#0066FF] mt-1">₹ {settleModalRecord.amount}</div>
-              <div className="text-[10px] text-slate-400 mt-0.5">{settleModalRecord.items}</div>
+      {/* Settle Modal */}
+      {settleModalCust && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl animate-in slide-in-from-bottom duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h2 className="text-base font-black text-slate-900">Receive Udhaar Payment</h2>
+              <button
+                onClick={() => setSettleModalCust(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5 pt-2">
-              <button
-                onClick={() => setSettleModalRecord(null)}
-                className="py-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
-              >
-                Cancel
-              </button>
+            <div className="mt-4 space-y-3 text-left">
+              <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200">
+                <div className="text-xs font-bold text-amber-900">{settleModalCust.name}</div>
+                <div className="text-[11px] text-amber-700 mt-0.5">
+                  Total Outstanding Balance: <strong>₹{settleModalCust.udhaar}</strong>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                  Amount Received (₹)
+                </label>
+                <input
+                  type="number"
+                  value={settleAmount}
+                  onChange={(e) => setSettleAmount(e.target.value)}
+                  className="w-full bg-slate-50 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-900 outline-none focus:border-[#0066FF]"
+                />
+              </div>
+
               <button
                 onClick={handleConfirmSettlement}
-                className="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-md cursor-pointer flex items-center justify-center gap-1"
+                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <Check className="w-3.5 h-3.5" />
-                <span>Confirm Paid</span>
+                <Check className="w-4 h-4" />
+                <span>Confirm & Record Payment (Soundbox Alert)</span>
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Dock Nav */}
       <MobileBottomNav activeTab="more" onTabChange={onTabChange} />
     </div>
   );

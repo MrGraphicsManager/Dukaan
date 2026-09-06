@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "@/lib/AuthContext";
+import { AlertTriangle, Lock, ShieldAlert } from "lucide-react";
 
 // Onboarding Steps
 import Screen1Welcome from "./Screen1Welcome";
@@ -53,15 +55,28 @@ const variants = {
 
 export default function MobileFlow() {
   const nav = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
+  const { user, logout, shops } = useAuth();
 
   // Initial params
   const paramView = searchParams.get("view");
   const paramStep = parseInt(searchParams.get("step") || "1", 10);
 
-  // View state: 'onboarding' | 'login' | 'forgot-password' | 'otp' | 'reset-password' | 'reset-success' | 'dashboard' | core screens
+  // View state with Session Persistence:
+  // If user is already logged in (or has stored session), ALWAYS resume to dashboard on reload!
   const [currentView, setCurrentView] = useState(() => {
     if (paramView) return paramView;
+
+    try {
+      const storedUser = localStorage.getItem("dukaan_user");
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        if (parsed && (parsed.email || parsed.phone)) {
+          return "dashboard";
+        }
+      }
+    } catch {}
+
     if (paramStep === 8) return "dashboard";
     return "onboarding";
   });
@@ -73,24 +88,69 @@ export default function MobileFlow() {
   const [direction, setDirection] = useState(1);
   const [registeredPhone, setRegisteredPhone] = useState("9876543210");
 
-  // Merchant state
-  const [merchantData, setMerchantData] = useState({
-    selectedLang: "en",
-    fullName: "Priyen Naik",
-    phone: "9876543210",
-    email: "priyen@dukaan.app",
-    password: "",
-    businessName: "ABC General Store",
-    businessType: "Grocery Store",
-    category: "Retail",
-    address: "Navsari, Gujarat",
-    logoUrl: null,
-    plan: "free",
+  // Merchant state initialized from active user and shop
+  const [merchantData, setMerchantData] = useState(() => {
+    let name = "Priyen Naik";
+    let phone = "9876543210";
+    let email = "priyen@dukaan.app";
+    let businessName = "ABC General Store";
+    let businessType = "Grocery Store";
+    let address = "Navsari, Gujarat";
+    let plan = "free";
+
+    try {
+      const storedUser = JSON.parse(localStorage.getItem("dukaan_user") || "{}");
+      if (storedUser.name) name = storedUser.name;
+      if (storedUser.phone) phone = storedUser.phone;
+      if (storedUser.email) email = storedUser.email;
+      if (storedUser.subscription?.plan) plan = storedUser.subscription.plan;
+    } catch {}
+
+    try {
+      const storedShops = JSON.parse(localStorage.getItem("dukaan_shops") || "[]");
+      if (storedShops && storedShops.length > 0) {
+        if (storedShops[0].name) businessName = storedShops[0].name;
+        if (storedShops[0].store_category) businessType = storedShops[0].store_category;
+        if (storedShops[0].address) address = storedShops[0].address;
+      }
+    } catch {}
+
+    return {
+      selectedLang: "en",
+      fullName: name,
+      phone: phone,
+      email: email,
+      password: "",
+      businessName: businessName,
+      businessType: businessType,
+      category: "Retail",
+      address: address,
+      logoUrl: null,
+      plan: plan,
+    };
   });
 
-  const updateFormData = (patch) => {
-    setMerchantData((prev) => ({ ...prev, ...patch }));
-  };
+  // Sync state if AuthContext user logs in or updates
+  useEffect(() => {
+    if (user) {
+      setMerchantData((prev) => ({
+        ...prev,
+        fullName: user.name || prev.fullName,
+        phone: user.phone || prev.phone,
+        email: user.email || prev.email,
+        plan: user.subscription?.plan || prev.plan,
+        businessName: (shops && shops[0]?.name) || prev.businessName,
+        businessType: (shops && shops[0]?.store_category) || prev.businessType,
+        address: (shops && shops[0]?.address) || prev.address,
+      }));
+
+      // If user is logged in and on onboarding/login, promote to dashboard
+      if (currentView === "onboarding" || currentView === "login") {
+        setCurrentView("dashboard");
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, shops]);
 
   // Sync state if URL query params change
   useEffect(() => {
@@ -99,12 +159,16 @@ export default function MobileFlow() {
     } else if (paramStep) {
       if (paramStep === 8) {
         setCurrentView("dashboard");
-      } else {
+      } else if (!user) {
         setCurrentView("onboarding");
         setOnboardingStep(paramStep);
       }
     }
-  }, [paramView, paramStep]);
+  }, [paramView, paramStep, user]);
+
+  const updateFormData = (patch) => {
+    setMerchantData((prev) => ({ ...prev, ...patch }));
+  };
 
   const goToView = (viewName, dir = 1) => {
     setDirection(dir);
@@ -117,6 +181,15 @@ export default function MobileFlow() {
     setCurrentView("onboarding");
   };
 
+  const handleLogout = async () => {
+    try {
+      if (logout) await logout();
+    } catch {}
+    localStorage.removeItem("dukaan_user");
+    localStorage.removeItem("dukaan_access_token");
+    goToView("login", -1);
+  };
+
   // Bottom dock tab router
   const handleTabChange = (tabId) => {
     if (tabId === "home") goToView("dashboard");
@@ -126,8 +199,46 @@ export default function MobileFlow() {
     else if (tabId === "more") goToView("settings");
   };
 
+  // Check Admin Lockout Control
+  let mobileControl = { enabled: true, broadcast_message: "" };
+  try {
+    const rawCtrl = localStorage.getItem("dukaan_mobile_control");
+    if (rawCtrl) mobileControl = JSON.parse(rawCtrl);
+  } catch {}
+
+  if (mobileControl.enabled === false && !user?.is_admin) {
+    return (
+      <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-6 text-center select-none">
+        <div className="w-16 h-16 rounded-3xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center mb-4 shadow-xl">
+          <Lock className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-extrabold text-white tracking-tight">Mobile Access Paused</h2>
+        <p className="text-xs text-slate-400 mt-2 max-w-xs leading-relaxed">
+          {mobileControl.lock_reason || "Store Administrator has temporarily paused mobile companion access for maintenance."}
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-6 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg cursor-pointer"
+        >
+          Check Again
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="mobile-shell min-h-screen bg-white overflow-x-hidden relative select-none">
+      
+      {/* Admin Broadcast Banner if active */}
+      {mobileControl.broadcast_message && (
+        <div className="bg-amber-500 text-slate-950 px-4 py-2 text-xs font-bold flex items-center justify-between shadow-xs sticky top-0 z-50">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 shrink-0" />
+            <span className="truncate">{mobileControl.broadcast_message}</span>
+          </div>
+        </div>
+      )}
+
       <AnimatePresence mode="wait" custom={direction}>
         <motion.div
           key={`${currentView}-${onboardingStep}`}
@@ -325,7 +436,7 @@ export default function MobileFlow() {
               merchantData={merchantData}
               onBack={() => goToView("dashboard", -1)}
               onTabChange={handleTabChange}
-              onLogout={() => goToView("login")}
+              onLogout={handleLogout}
             />
           )}
 
@@ -354,7 +465,7 @@ export default function MobileFlow() {
               merchantData={merchantData}
               onBack={() => goToView("dashboard", -1)}
               onTabChange={handleTabChange}
-              onLogout={() => goToView("login")}
+              onLogout={handleLogout}
               onUpgrade={() => goToView("upgrade")}
             />
           )}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   ArrowLeft, 
   Search, 
@@ -14,42 +14,47 @@ import {
   Banknote, 
   QrCode, 
   Wallet,
-  Sparkles
+  Sparkles,
+  Camera,
+  User,
+  Phone
 } from "lucide-react";
 import { toast } from "sonner";
 import MobileBottomNav from "./MobileBottomNav";
 import MobileThermalReceiptModal from "./MobileThermalReceiptModal";
+import MobileBarcodeScannerModal from "./MobileBarcodeScannerModal";
 import { playVoiceSoundbox } from "@/lib/soundbox";
-
-const initialCatalog = [
-  { id: 1, name: "Aashirvaad Shudh Chakki Atta 5kg", category: "Grocery", price: 245, stock: 18, unit: "bag" },
-  { id: 2, name: "Amul Butter Pasteurized 100g", category: "Dairy", price: 56, stock: 24, unit: "pack" },
-  { id: 3, name: "Tata Salt Vacuum Evaporated 1kg", category: "Grocery", price: 28, stock: 45, unit: "pack" },
-  { id: 4, name: "Fortune Sunlite Sunflower Oil 1L", category: "Grocery", price: 165, stock: 12, unit: "pouch" },
-  { id: 5, name: "Maggi 2-Minute Noodles 70g", category: "Snacks", price: 14, stock: 80, unit: "pack" },
-  { id: 6, name: "Coca-Cola Original Taste 750ml", category: "Beverages", price: 40, stock: 4, unit: "bottle" },
-  { id: 7, name: "Britannia Good Day Cookies", category: "Snacks", price: 30, stock: 35, unit: "pack" },
-  { id: 8, name: "Parle-G Gold Biscuits 1kg", category: "Snacks", price: 75, stock: 20, unit: "pack" },
-];
+import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
 
 export default function MobileNewBill({ onBack, onTabChange, merchantData }) {
+  const [products, setProducts] = useState(() => getStoredProducts());
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCat, setSelectedCat] = useState("All");
-  const [cart, setCart] = useState({ 1: 1, 2: 1 });
+  const [cart, setCart] = useState({});
   const [customerName, setCustomerName] = useState("Ramesh Sharma");
   const [customerPhone, setCustomerPhone] = useState("9825123456");
   const [paymentMode, setPaymentMode] = useState("Cash");
   const [discountAmount, setDiscountAmount] = useState(0);
   const [cashTendered, setCashTendered] = useState("");
   const [completedBill, setCompletedBill] = useState(null);
+  const [showScanner, setShowScanner] = useState(false);
 
-  const categories = ["All", "Grocery", "Dairy", "Snacks", "Beverages"];
+  // Sync products on mount
+  useEffect(() => {
+    setProducts(getStoredProducts());
+  }, []);
 
-  const filteredProducts = initialCatalog.filter((p) => {
-    const matchesCat = selectedCat === "All" || p.category === selectedCat;
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
+  const categories = ["All", "Kirana & Grains", "Dairy & Eggs", "Biscuits & Snacks", "Beverages & Tea", "Spices & Masala", "Household & Soaps"];
+
+  const filteredProducts = products.filter((p) => {
+    const pName = p.name || "";
+    const pCat = p.category || "General";
+    const matchesCat = selectedCat === "All" || pCat.toLowerCase().includes(selectedCat.toLowerCase());
+    const matchesSearch = pName.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCat && matchesSearch;
   });
+
+  const getProductPrice = (p) => p.price || p.selling_price || 0;
 
   const updateQty = (id, delta) => {
     setCart((prev) => {
@@ -65,52 +70,142 @@ export default function MobileNewBill({ onBack, onTabChange, merchantData }) {
   };
 
   const totalItemsCount = Object.values(cart).reduce((a, b) => a + b, 0);
+
   const subtotal = Object.entries(cart).reduce((sum, [id, qty]) => {
-    const p = initialCatalog.find((item) => item.id === parseInt(id, 10));
-    return sum + (p ? p.price * qty : 0);
+    const p = products.find((item) => String(item.id) === String(id));
+    return sum + (p ? getProductPrice(p) * qty : 0);
   }, 0);
 
   const grandTotal = Math.max(0, subtotal - discountAmount);
   const changeToReturn = cashTendered ? Math.max(0, parseFloat(cashTendered) - grandTotal) : 0;
 
+  const handleProductScanned = (scannedProduct) => {
+    let target = products.find(
+      (p) =>
+        String(p.id) === String(scannedProduct.id) ||
+        (p.barcode && String(p.barcode) === String(scannedProduct.barcode)) ||
+        p.name.toLowerCase() === scannedProduct.name.toLowerCase()
+    );
+
+    if (!target) {
+      target = {
+        id: scannedProduct.id || "prod_" + Date.now(),
+        name: scannedProduct.name,
+        selling_price: scannedProduct.price || 50,
+        purchase_price: Math.round((scannedProduct.price || 50) * 0.8),
+        stock: 25,
+        min_stock: 5,
+        category: scannedProduct.category || "Grocery",
+      };
+      const updatedList = [target, ...products];
+      setProducts(updatedList);
+      saveStoredProducts(updatedList);
+    }
+
+    updateQty(target.id, 1);
+  };
+
   const handleCreateBill = () => {
-    if (totalItemsCount === 0) return;
+    if (totalItemsCount === 0) {
+      toast.error("Cart is empty. Please add items first.");
+      return;
+    }
 
     const itemsList = Object.entries(cart).map(([id, qty]) => {
-      const p = initialCatalog.find((item) => item.id === parseInt(id, 10));
+      const p = products.find((item) => String(item.id) === String(id));
+      const rate = p ? getProductPrice(p) : 0;
       return {
         name: p ? p.name : "Item",
         qty,
-        rate: p ? p.price : 0,
-        total: (p ? p.price : 0) * qty,
+        rate,
+        total: rate * qty,
       };
     });
 
+    const billId = `B${Math.floor(1000 + Math.random() * 9000)}`;
+    const now = new Date();
+    const dateStr =
+      now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) +
+      ", " +
+      now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+
     const billRecord = {
-      id: `#B${Math.floor(1000 + Math.random() * 9000)}`,
-      date: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) + ", " + new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+      id: `#${billId}`,
+      date: dateStr,
       customer: customerName || "Walk-in Guest",
-      customerPhone: customerPhone,
+      customerPhone: customerPhone || "9825123456",
       payment: paymentMode,
       discount: discountAmount,
       itemsList,
       total: grandTotal,
+      items_count: totalItemsCount,
+      source: "mobile",
+      channel: "Mobile POS",
+      status: paymentMode === "Udhaar" ? "pending" : "completed",
+      created_at: now.toISOString(),
     };
 
-    // Play Voice Soundbox (like Paytm/PhonePe soundbox!)
+    // 1. Deduct Stock in persistent products store
+    try {
+      const stored = getStoredProducts();
+      const updated = stored.map((p) => {
+        const qtyBought = cart[p.id] || 0;
+        if (qtyBought > 0 && !p.unlimited_stock) {
+          const curStock = p.stock !== undefined ? p.stock : 10;
+          return { ...p, stock: Math.max(0, curStock - qtyBought) };
+        }
+        return p;
+      });
+      saveStoredProducts(updated);
+      setProducts(updated);
+    } catch (e) {
+      console.warn("Stock deduction fallback:", e);
+    }
+
+    // 2. Persist order in dukaan_orders
+    try {
+      const savedOrders = JSON.parse(localStorage.getItem("dukaan_orders") || "[]");
+      localStorage.setItem("dukaan_orders", JSON.stringify([billRecord, ...savedOrders]));
+    } catch (e) {
+      console.warn("Order persistence fallback:", e);
+    }
+
+    // 3. Update Customer & Udhaar Ledger
+    try {
+      let customers = JSON.parse(localStorage.getItem("dukaan_customers") || "[]");
+      const cleanPhone = (customerPhone || "").trim();
+      const cIdx = customers.findIndex((c) => c.phone === cleanPhone || c.name === customerName);
+
+      if (cIdx >= 0) {
+        customers[cIdx].bills = (customers[cIdx].bills || 0) + 1;
+        customers[cIdx].totalSpent = (customers[cIdx].totalSpent || 0) + grandTotal;
+        if (paymentMode === "Udhaar") {
+          customers[cIdx].udhaar = (customers[cIdx].udhaar || 0) + grandTotal;
+        }
+      } else if (cleanPhone || customerName) {
+        customers.push({
+          id: "cust_" + Date.now(),
+          name: customerName || "Customer",
+          phone: cleanPhone || "9876543210",
+          bills: 1,
+          totalSpent: grandTotal,
+          udhaar: paymentMode === "Udhaar" ? grandTotal : 0,
+          address: "Navsari",
+        });
+      }
+      localStorage.setItem("dukaan_customers", JSON.stringify(customers));
+    } catch (e) {
+      console.warn("Customer ledger fallback:", e);
+    }
+
+    // 4. Play Voice Soundbox chime (Paytm / PhonePe Soundbox)
     try {
       playVoiceSoundbox(grandTotal, paymentMode.toLowerCase(), "en");
     } catch {}
 
     setCompletedBill(billRecord);
-    toast.success(`Bill ${billRecord.id} generated!`);
-  };
-
-  const handleScanSimulation = () => {
-    // Simulate barcode beep & adding an FMCG product
-    const randomProduct = initialCatalog[Math.floor(Math.random() * initialCatalog.length)];
-    updateQty(randomProduct.id, 1);
-    toast.success(`Scanned: ${randomProduct.name} (₹${randomProduct.price})`);
+    setCart({});
+    toast.success(`Bill #${billId} generated & inventory updated!`);
   };
 
   return (
@@ -119,13 +214,17 @@ export default function MobileNewBill({ onBack, onTabChange, merchantData }) {
       {/* Thermal Receipt Modal on Bill Completion */}
       <MobileThermalReceiptModal
         isOpen={Boolean(completedBill)}
-        onClose={() => {
-          setCompletedBill(null);
-          setCart({});
-          if (onBack) onBack();
-        }}
         billData={completedBill}
         merchantData={merchantData}
+        onClose={() => setCompletedBill(null)}
+      />
+
+      {/* Real Camera Barcode Scanner Modal */}
+      <MobileBarcodeScannerModal
+        isOpen={showScanner}
+        onClose={() => setShowScanner(false)}
+        onProductScanned={handleProductScanned}
+        catalog={products}
       />
 
       {/* Top Header */}
@@ -139,53 +238,36 @@ export default function MobileNewBill({ onBack, onTabChange, merchantData }) {
               <ArrowLeft className="w-4 h-4" />
             </button>
             <div>
-              <h1 className="text-base font-black text-slate-900 leading-tight">New Bill</h1>
-              <p className="text-[11px] font-semibold text-slate-400">Terminal POS · Quick Billing</p>
+              <h1 className="text-base font-black text-slate-900 leading-tight">Mobile Counter POS</h1>
+              <p className="text-[11px] font-semibold text-slate-400">Quick 2-Second Checkout</p>
             </div>
           </div>
 
-          <button
-            onClick={handleScanSimulation}
-            className="px-2.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#0066FF] font-extrabold text-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all shadow-2xs"
-          >
-            <Barcode className="w-4 h-4" />
-            <span>Scan</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowScanner(true)}
+              className="px-3 py-1.5 bg-[#0066FF] hover:bg-blue-700 active:scale-95 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-md shadow-blue-500/20 cursor-pointer"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>Camera Scan</span>
+            </button>
+          </div>
         </div>
 
-        {/* Customer Input Card */}
-        <div className="mt-3 grid grid-cols-2 gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200/70">
-          <input
-            type="text"
-            placeholder="Customer Name"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            className="bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#0066FF]"
-          />
-          <input
-            type="tel"
-            maxLength={10}
-            placeholder="Mobile Number"
-            value={customerPhone}
-            onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, ""))}
-            className="bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#0066FF]"
-          />
-        </div>
-
-        {/* Search */}
-        <div className="mt-2 relative">
+        {/* Search & Category Filter */}
+        <div className="mt-3 relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search items or brand name..."
+            placeholder="Search items or tap scan..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-slate-50 pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#0066FF] focus:bg-white transition-all"
           />
         </div>
 
-        {/* Category Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto py-2 no-scrollbar">
+        {/* Category horizontal scroll */}
+        <div className="flex items-center gap-1.5 mt-2.5 overflow-x-auto pb-1 scrollbar-none">
           {categories.map((cat) => (
             <button
               key={cat}
@@ -202,132 +284,147 @@ export default function MobileNewBill({ onBack, onTabChange, merchantData }) {
         </div>
       </header>
 
-      {/* Product List */}
-      <div className="p-4 space-y-2.5">
-        {filteredProducts.map((p) => {
-          const qty = cart[p.id] || 0;
-          return (
-            <div
-              key={p.id}
-              className="bg-white p-3 rounded-2xl border border-slate-100 shadow-2xs flex items-center justify-between gap-3"
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    {p.category}
-                  </span>
-                  {p.stock <= 5 && (
-                    <span className="text-[9px] font-black bg-amber-50 text-amber-600 px-1.5 py-0.2 rounded">
-                      Low: {p.stock}
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs font-bold text-slate-800 truncate mt-0.5">{p.name}</div>
-                <div className="text-xs font-black text-[#0066FF] mt-1">
-                  ₹ {p.price}{" "}
-                  <span className="text-[10px] text-slate-400 font-normal">/ {p.unit}</span>
-                </div>
-              </div>
+      {/* Customer Quick Input Card */}
+      <div className="p-4">
+        <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-2xs space-y-2">
+          <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+            <span className="flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-blue-600" />
+              <span>Customer Details</span>
+            </span>
+            <span className="text-[10px] text-slate-400 font-semibold">Khata / Udhaar Synced</span>
+          </div>
 
-              {/* Stepper */}
-              {qty === 0 ? (
-                <button
-                  onClick={() => updateQty(p.id, 1)}
-                  className="px-3.5 py-1.5 bg-blue-50 text-[#0066FF] hover:bg-[#0066FF] hover:text-white rounded-xl text-xs font-black flex items-center gap-1 transition-colors cursor-pointer active:scale-95"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add</span>
-                </button>
-              ) : (
-                <div className="flex items-center gap-2 bg-blue-50/80 border border-blue-200/60 rounded-xl p-1">
-                  <button
-                    onClick={() => updateQty(p.id, -1)}
-                    className="w-7 h-7 bg-white rounded-lg flex items-center justify-center text-slate-700 shadow-xs active:scale-90 transition-transform cursor-pointer"
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="text-xs font-black text-[#0066FF] w-4 text-center">
-                    {qty}
-                  </span>
-                  <button
-                    onClick={() => updateQty(p.id, 1)}
-                    className="w-7 h-7 bg-[#0066FF] rounded-lg flex items-center justify-center text-white shadow-xs active:scale-90 transition-transform cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })}
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              type="text"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              placeholder="Customer Name"
+              className="bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#0066FF]"
+            />
+            <input
+              type="tel"
+              value={customerPhone}
+              onChange={(e) => setCustomerPhone(e.target.value)}
+              placeholder="Mobile Number"
+              className="bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#0066FF]"
+            />
+          </div>
+        </div>
       </div>
 
-      {/* Floating Bottom Checkout Panel */}
-      {totalItemsCount > 0 && (
-        <div className="fixed bottom-14 left-0 right-0 max-w-md mx-auto px-4 z-40 animate-in slide-in-from-bottom duration-200">
-          <div className="bg-slate-900 text-white p-3.5 rounded-3xl shadow-2xl border border-slate-800 space-y-2.5">
-            
-            {/* Payment Method & Discount Selector */}
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              {/* Payment tabs */}
-              <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-xl">
-                {["Cash", "UPI", "Udhaar"].map((m) => (
+      {/* Product Grid / List */}
+      <div className="px-4 space-y-2">
+        <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+          Store Catalog ({filteredProducts.length} items)
+        </div>
+
+        <div className="grid grid-cols-1 gap-2">
+          {filteredProducts.map((p) => {
+            const qty = cart[p.id] || 0;
+            const price = getProductPrice(p);
+            return (
+              <div
+                key={p.id}
+                className="bg-white p-3 rounded-2xl border border-slate-100 shadow-2xs flex items-center justify-between gap-3"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-bold text-slate-900 truncate">{p.name}</div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs font-black text-[#0066FF]">₹ {price}</span>
+                    <span className="text-[10px] text-slate-400 font-medium">{p.category || "General"}</span>
+                    {p.stock !== undefined && (
+                      <span className={`text-[10px] font-bold ${p.stock <= 5 ? "text-rose-500" : "text-slate-400"}`}>
+                        · {p.stock} left
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {qty === 0 ? (
                   <button
-                    key={m}
-                    onClick={() => setPaymentMode(m)}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
-                      paymentMode === m ? "bg-[#0066FF] text-white shadow-xs" : "text-slate-400 hover:text-white"
+                    onClick={() => updateQty(p.id, 1)}
+                    className="px-4 py-1.5 rounded-xl bg-blue-50 text-[#0066FF] hover:bg-blue-100 font-black text-xs active:scale-95 transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>ADD</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center bg-[#0066FF] text-white rounded-xl shadow-xs overflow-hidden">
+                    <button
+                      onClick={() => updateQty(p.id, -1)}
+                      className="p-1.5 hover:bg-blue-700 active:scale-90 cursor-pointer"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="px-2 text-xs font-black select-none">{qty}</span>
+                    <button
+                      onClick={() => updateQty(p.id, 1)}
+                      className="p-1.5 hover:bg-blue-700 active:scale-90 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Cart Dock & Checkout Bar */}
+      {totalItemsCount > 0 && (
+        <div className="fixed bottom-14 left-0 right-0 max-w-md mx-auto p-3 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-2xl">
+          <div className="space-y-2.5">
+            {/* Payment Mode Selector */}
+            <div className="flex items-center justify-between gap-1.5">
+              {[
+                { id: "Cash", icon: Banknote },
+                { id: "UPI", icon: QrCode },
+                { id: "Udhaar", icon: Wallet },
+              ].map((m) => {
+                const Icon = m.icon;
+                const active = paymentMode === m.id;
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => setPaymentMode(m.id)}
+                    className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      active
+                        ? "bg-[#0066FF] text-white shadow-xs"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                     }`}
                   >
-                    {m}
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{m.id}</span>
                   </button>
-                ))}
-              </div>
-
-              {/* Discount toggle */}
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setDiscountAmount(discountAmount > 0 ? 0 : 20)}
-                  className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-colors cursor-pointer ${
-                    discountAmount > 0 ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "bg-slate-800 text-slate-400 border-slate-700"
-                  }`}
-                >
-                  {discountAmount > 0 ? "₹20 OFF applied" : "+ Discount"}
-                </button>
-              </div>
+                );
+              })}
             </div>
 
-            {/* Total Row & CTA */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#0066FF] flex items-center justify-center font-bold text-white shadow-md">
-                  <ShoppingBag className="w-5 h-5" />
+            {/* Total and Print Bill Action Button */}
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase">
+                  {totalItemsCount} {totalItemsCount === 1 ? "Item" : "Items"} in Cart
                 </div>
-                <div>
-                  <div className="text-[11px] font-bold text-slate-400">
-                    {totalItemsCount} items · {paymentMode}
-                  </div>
-                  <div className="text-base font-black text-white">
-                    ₹ {grandTotal}{" "}
-                    {discountAmount > 0 && <span className="text-xs line-through text-slate-500">₹{subtotal}</span>}
-                  </div>
-                </div>
+                <div className="text-xl font-black text-slate-900">₹ {grandTotal}</div>
               </div>
 
               <button
                 onClick={handleCreateBill}
-                className="px-5 py-2.5 bg-[#0066FF] hover:bg-blue-600 active:scale-95 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all"
               >
-                <span>Create Bill</span>
                 <Check className="w-4 h-4" />
+                <span>FINISH BILL & PRINT</span>
               </button>
             </div>
-
           </div>
         </div>
       )}
 
-      {/* Bottom Nav */}
+      {/* Dock Nav */}
       <MobileBottomNav activeTab="billing" onTabChange={onTabChange} />
     </div>
   );

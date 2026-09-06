@@ -141,7 +141,25 @@ export default function Screen3CreateAccount({ formData, updateFormData, onNext,
         <Button
           variant="outline"
           onClick={() => {
-            window.location.href = "https://officialdukaan.in/auth/google";
+            try {
+              sessionStorage.setItem("dukaan_mobile_auth", "true");
+              const clientId = (process.env.REACT_APP_GOOGLE_CLIENT_ID || "682420913410-dfarb0n3e5a44vsh32fh1hh5j4ig0n6r.apps.googleusercontent.com").trim();
+              const redirectUri = `${window.location.origin}/auth/google/callback`;
+              const state = "mob_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+              const nonce = String(Date.now());
+              const params = new URLSearchParams({
+                client_id: clientId,
+                redirect_uri: redirectUri,
+                response_type: "token id_token",
+                scope: "openid email profile https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
+                prompt: "select_account",
+                nonce: nonce,
+                state: state,
+              });
+              window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString().replace(/\\+/g, "%20")}`;
+            } catch (e) {
+              window.location.href = "/auth/google/callback";
+            }
           }}
           className="w-full h-12 rounded-2xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center justify-center gap-2.5 active:scale-98 transition-all"
         >

@@ -1,18 +1,8 @@
-import React, { useState } from "react";
-import { ArrowLeft, Search, Plus, Package, Edit, MoreVertical, Filter, Tag, Percent, Trash2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { ArrowLeft, Search, Plus, Package, Edit, MoreVertical, Filter, Tag, Percent, Trash2, X, Check } from "lucide-react";
 import { toast } from "sonner";
 import MobileBottomNav from "./MobileBottomNav";
-
-const initialProducts = [
-  { id: 1, name: "Aashirvaad Shudh Chakki Atta 5kg", category: "Grocery", price: 245, costPrice: 210, stock: 18, unit: "bag" },
-  { id: 2, name: "Amul Butter Pasteurized 100g", category: "Dairy", price: 56, costPrice: 48, stock: 24, unit: "pack" },
-  { id: 3, name: "Tata Salt Vacuum Evaporated 1kg", category: "Grocery", price: 28, costPrice: 22, stock: 45, unit: "pack" },
-  { id: 4, name: "Fortune Sunlite Sunflower Oil 1L", category: "Grocery", price: 165, costPrice: 145, stock: 12, unit: "pouch" },
-  { id: 5, name: "Maggi 2-Minute Noodles 70g", category: "Snacks", price: 14, costPrice: 11, stock: 80, unit: "pack" },
-  { id: 6, name: "Coca-Cola Original Taste 750ml", category: "Beverages", price: 40, costPrice: 32, stock: 4, unit: "bottle" },
-  { id: 7, name: "Tide Plus Detergent Powder 1kg", category: "Cleaning", price: 110, costPrice: 92, stock: 2, unit: "pack" },
-  { id: 8, name: "Farm Fresh White Eggs 6 pcs", category: "Dairy", price: 42, costPrice: 35, stock: 1, unit: "tray" },
-];
+import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
 
 export default function MobileProducts({ onBack, onTabChange }) {
   const [search, setSearch] = useState("");
@@ -23,44 +13,90 @@ export default function MobileProducts({ onBack, onTabChange }) {
   const [newProductPrice, setNewProductPrice] = useState("");
   const [newProductCost, setNewProductCost] = useState("");
   const [newProductStock, setNewProductStock] = useState("");
-  const [items, setItems] = useState(initialProducts);
+  const [newProductCat, setNewProductCat] = useState("Kirana & Grains");
+  const [items, setItems] = useState(() => getStoredProducts());
 
-  const categories = ["All", "Grocery", "Dairy", "Snacks", "Beverages", "Cleaning"];
+  useEffect(() => {
+    setItems(getStoredProducts());
+  }, []);
+
+  const categories = ["All", "Kirana & Grains", "Dairy & Eggs", "Biscuits & Snacks", "Beverages & Tea", "Spices & Masala", "Household & Soaps"];
+
+  const getPrice = (p) => p.price || p.selling_price || 0;
+  const getCost = (p) => p.costPrice || p.purchase_price || Math.round(getPrice(p) * 0.85);
 
   const filtered = items.filter((p) => {
-    const catMatch = activeTab === "All" || p.category === activeTab;
-    const searchMatch = p.name.toLowerCase().includes(search.toLowerCase());
+    const pCat = p.category || "General";
+    const catMatch = activeTab === "All" || pCat.toLowerCase().includes(activeTab.toLowerCase());
+    const searchMatch = (p.name || "").toLowerCase().includes(search.toLowerCase());
     return catMatch && searchMatch;
   });
 
   const handleAddProduct = (e) => {
     e.preventDefault();
-    if (!newProductName || !newProductPrice) return;
+    if (!newProductName.trim() || !newProductPrice) {
+      toast.error("Please enter product name and selling price.");
+      return;
+    }
     const priceNum = parseFloat(newProductPrice) || 0;
-    const costNum = parseFloat(newProductCost) || Math.round(priceNum * 0.85);
+    const costNum = parseFloat(newProductCost) || Math.round(priceNum * 0.82);
 
     const newItem = {
-      id: Date.now(),
-      name: newProductName,
-      category: "Grocery",
+      id: "prod_" + Date.now(),
+      name: newProductName.trim(),
+      category: newProductCat,
+      selling_price: priceNum,
       price: priceNum,
+      purchase_price: costNum,
       costPrice: costNum,
-      stock: parseInt(newProductStock, 10) || 10,
+      stock: parseInt(newProductStock, 10) || 15,
+      min_stock: 5,
       unit: "pack",
+      unlimited_stock: false,
     };
-    setItems([newItem, ...items]);
+
+    const updated = [newItem, ...items];
+    setItems(updated);
+    saveStoredProducts(updated);
+
     setShowAddModal(false);
     setNewProductName("");
     setNewProductPrice("");
     setNewProductCost("");
     setNewProductStock("");
-    toast.success(`${newItem.name} added to catalog!`);
+    toast.success(`${newItem.name} saved to inventory!`);
+  };
+
+  const handleSaveEdit = (e) => {
+    e.preventDefault();
+    if (!editProduct) return;
+
+    const updated = items.map((it) => {
+      if (it.id === editProduct.id) {
+        return {
+          ...it,
+          name: editProduct.name,
+          selling_price: parseFloat(editProduct.selling_price || editProduct.price) || 0,
+          price: parseFloat(editProduct.selling_price || editProduct.price) || 0,
+          stock: parseInt(editProduct.stock, 10) || 0,
+          category: editProduct.category || it.category,
+        };
+      }
+      return it;
+    });
+
+    setItems(updated);
+    saveStoredProducts(updated);
+    setEditProduct(null);
+    toast.success("Product updated successfully!");
   };
 
   const handleDeleteProduct = (id) => {
-    setItems(items.filter((it) => it.id !== id));
+    const updated = items.filter((it) => it.id !== id);
+    setItems(updated);
+    saveStoredProducts(updated);
     setEditProduct(null);
-    toast.success("Product deleted");
+    toast.success("Product removed from inventory.");
   };
 
   return (
@@ -77,7 +113,7 @@ export default function MobileProducts({ onBack, onTabChange }) {
             </button>
             <div>
               <h1 className="text-base font-black text-slate-900 leading-tight">Products Catalog</h1>
-              <p className="text-[11px] font-semibold text-slate-400">{items.length} Total Inventory Items</p>
+              <p className="text-[11px] font-semibold text-slate-400">{items.length} Live Inventory Items</p>
             </div>
           </div>
           <button
@@ -101,157 +137,217 @@ export default function MobileProducts({ onBack, onTabChange }) {
           />
         </div>
 
-        {/* Category Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto py-2 no-scrollbar">
-          {categories.map((c) => (
+        {/* Category horizontal scroll */}
+        <div className="flex items-center gap-1.5 mt-2.5 overflow-x-auto pb-1 scrollbar-none">
+          {categories.map((cat) => (
             <button
-              key={c}
-              onClick={() => setActiveTab(c)}
-              className={`px-3 py-1 rounded-full text-xs font-black whitespace-nowrap transition-colors cursor-pointer ${
-                activeTab === c
+              key={cat}
+              onClick={() => setActiveTab(cat)}
+              className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
+                activeTab === cat
                   ? "bg-[#0066FF] text-white shadow-xs"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              {c}
+              {cat}
             </button>
           ))}
         </div>
       </header>
 
       {/* Product List */}
-      <div className="p-4 space-y-2.5">
+      <div className="p-4 space-y-2">
         {filtered.map((item) => {
-          const margin = Math.round(((item.price - item.costPrice) / item.price) * 100);
+          const price = getPrice(item);
+          const cost = getCost(item);
+          const margin = price > 0 ? Math.round(((price - cost) / price) * 100) : 0;
           return (
             <div
               key={item.id}
-              onClick={() => setEditProduct(item)}
-              className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-2xs flex items-center justify-between gap-3 hover:border-blue-100 transition-all cursor-pointer"
+              className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-2xs flex items-center justify-between gap-3"
             >
-              <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#0066FF] shrink-0 font-black">
-                <Package className="w-5 h-5" />
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-black text-slate-900 truncate">{item.name}</div>
-                <div className="text-[10px] text-slate-400 mt-0.5">
-                  Category: <strong className="text-slate-600">{item.category}</strong>
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#0066FF] flex items-center justify-center font-bold text-sm shrink-0">
+                  <Package className="w-5 h-5" />
                 </div>
-                <div className="flex items-center gap-2 mt-1.5 text-xs">
-                  <span className="font-black text-[#0066FF]">₹ {item.price}</span>
-                  <span className="text-[10px] text-slate-400">Cost: ₹{item.costPrice}</span>
-                  <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-600">
-                    +{margin}% margin
-                  </span>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xs font-bold text-slate-900 truncate">{item.name}</h3>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs font-black text-slate-900">₹ {price}</span>
+                    <span className="text-[10px] font-semibold text-slate-400">CP: ₹ {cost}</span>
+                    <span className="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 px-1 rounded">
+                      {margin}% margin
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="text-right shrink-0">
-                <span
-                  className={`text-[9px] font-black px-2 py-0.5 rounded-full block ${
-                    item.stock <= 4 ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600"
-                  }`}
+              <div className="flex items-center gap-2">
+                <div className="text-right">
+                  <div className={`text-xs font-bold ${item.stock <= 3 ? "text-rose-600" : "text-slate-700"}`}>
+                    {item.stock} in stock
+                  </div>
+                  <div className="text-[9px] text-slate-400 font-semibold uppercase">{item.unit || "pack"}</div>
+                </div>
+                <button
+                  onClick={() => setEditProduct({ ...item })}
+                  className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 cursor-pointer"
                 >
-                  {item.stock} left
-                </span>
+                  <Edit className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Edit Product Modal */}
-      {editProduct && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-end justify-center p-4">
-          <div className="bg-white w-full max-w-sm rounded-3xl p-5 select-none animate-in slide-in-from-bottom duration-200 space-y-3">
-            <h3 className="text-sm font-black text-slate-900">Product Details</h3>
-            <div className="text-xs font-bold text-slate-800">{editProduct.name}</div>
-            
-            <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-xl text-xs">
-              <div>
-                <span className="text-[10px] text-slate-400 block font-bold">Selling Price</span>
-                <span className="font-black text-[#0066FF]">₹ {editProduct.price}</span>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-400 block font-bold">Cost Price</span>
-                <span className="font-bold text-slate-700">₹ {editProduct.costPrice}</span>
-              </div>
+      {/* Add Product Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl animate-in slide-in-from-bottom duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h2 className="text-base font-black text-slate-900">Add New Inventory Item</h2>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5 pt-2">
+            <form onSubmit={handleAddProduct} className="mt-4 space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Product Title</label>
+                <input
+                  type="text"
+                  required
+                  value={newProductName}
+                  onChange={(e) => setNewProductName(e.target.value)}
+                  placeholder="e.g. Fortune Sunflower Oil 1L"
+                  className="w-full bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#0066FF]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Selling Price (₹)</label>
+                  <input
+                    type="number"
+                    required
+                    value={newProductPrice}
+                    onChange={(e) => setNewProductPrice(e.target.value)}
+                    placeholder="245"
+                    className="w-full bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#0066FF]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Purchase / Cost (₹)</label>
+                  <input
+                    type="number"
+                    value={newProductCost}
+                    onChange={(e) => setNewProductCost(e.target.value)}
+                    placeholder="210"
+                    className="w-full bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#0066FF]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Opening Stock</label>
+                  <input
+                    type="number"
+                    value={newProductStock}
+                    onChange={(e) => setNewProductStock(e.target.value)}
+                    placeholder="20"
+                    className="w-full bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#0066FF]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Category</label>
+                  <select
+                    value={newProductCat}
+                    onChange={(e) => setNewProductCat(e.target.value)}
+                    className="w-full bg-slate-50 px-2 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none"
+                  >
+                    {categories.filter((c) => c !== "All").map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <button
-                onClick={() => handleDeleteProduct(editProduct.id)}
-                className="py-2.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-xl text-xs font-bold flex items-center justify-center gap-1 cursor-pointer"
+                type="submit"
+                className="w-full mt-2 py-3 bg-[#0066FF] hover:bg-blue-700 active:scale-[0.99] text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
               >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Delete</span>
+                Save Product
               </button>
-              <button
-                onClick={() => setEditProduct(null)}
-                className="py-2.5 bg-[#0066FF] text-white rounded-xl text-xs font-black cursor-pointer shadow-md"
-              >
-                Close
-              </button>
-            </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* Add Product Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-end justify-center p-4">
-          <div className="bg-white w-full max-w-sm rounded-3xl p-5 select-none animate-in slide-in-from-bottom duration-200">
-            <h3 className="text-sm font-black text-slate-900 mb-3">Add New Inventory Item</h3>
-            <form onSubmit={handleAddProduct} className="space-y-3">
+      {/* Edit Product Modal */}
+      {editProduct && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl animate-in slide-in-from-bottom duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h2 className="text-base font-black text-slate-900">Edit Product</h2>
+              <button
+                onClick={() => setEditProduct(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="mt-4 space-y-3">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Product Title</label>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Title</label>
                 <input
                   type="text"
-                  required
-                  placeholder="e.g. Parle Hide & Seek 120g"
-                  value={newProductName}
-                  onChange={(e) => setNewProductName(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-[#0066FF]"
+                  value={editProduct.name}
+                  onChange={(e) => setEditProduct({ ...editProduct, name: e.target.value })}
+                  className="w-full bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#0066FF]"
                 />
               </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Selling Price (₹)</label>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Selling Price (₹)</label>
                   <input
                     type="number"
-                    required
-                    placeholder="35"
-                    value={newProductPrice}
-                    onChange={(e) => setNewProductPrice(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-[#0066FF]"
+                    value={editProduct.selling_price || editProduct.price}
+                    onChange={(e) => setEditProduct({ ...editProduct, price: e.target.value, selling_price: e.target.value })}
+                    className="w-full bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#0066FF]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Opening Stock</label>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Stock</label>
                   <input
                     type="number"
-                    placeholder="25"
-                    value={newProductStock}
-                    onChange={(e) => setNewProductStock(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-[#0066FF]"
+                    value={editProduct.stock}
+                    onChange={(e) => setEditProduct({ ...editProduct, stock: e.target.value })}
+                    className="w-full bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#0066FF]"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 pt-2">
+              <div className="flex gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="py-2.5 border border-slate-200 rounded-xl font-bold text-xs text-slate-600 hover:bg-slate-50 cursor-pointer"
+                  onClick={() => handleDeleteProduct(editProduct.id)}
+                  className="px-4 py-2.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  Cancel
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete</span>
                 </button>
                 <button
                   type="submit"
-                  className="py-2.5 bg-[#0066FF] text-white rounded-xl font-black text-xs cursor-pointer shadow-md shadow-blue-500/20"
+                  className="flex-1 py-2.5 rounded-xl bg-[#0066FF] hover:bg-blue-700 text-white text-xs font-bold shadow-md cursor-pointer"
                 >
-                  Save Product
+                  Save Changes
                 </button>
               </div>
             </form>
@@ -259,7 +355,7 @@ export default function MobileProducts({ onBack, onTabChange }) {
         </div>
       )}
 
-      {/* Bottom Nav */}
+      {/* Dock Nav */}
       <MobileBottomNav activeTab="products" onTabChange={onTabChange} />
     </div>
   );

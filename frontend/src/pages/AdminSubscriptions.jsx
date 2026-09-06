@@ -260,6 +260,57 @@ export default function AdminSubscriptions() {
     trial_days: 14
   });
 
+  // Feature #35: Mobile Companion & Terminal Control (Executive Admin)
+  const [mobileControl, setMobileControl] = useState(() => {
+    try {
+      const raw = localStorage.getItem("dukaan_mobile_control");
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return {
+      enabled: true,
+      companion_sync: true,
+      soundbox_alerts: true,
+      camera_scanner: true,
+      lock_reason: "Mobile companion is undergoing scheduled performance upgrades.",
+      broadcast_message: "",
+    };
+  });
+  const [mobileBroadcastInput, setMobileBroadcastInput] = useState(() => {
+    try {
+      const raw = localStorage.getItem("dukaan_mobile_control");
+      if (raw) return JSON.parse(raw).broadcast_message || "";
+    } catch {}
+    return "";
+  });
+
+  const updateMobileControl = (patch) => {
+    setMobileControl((prev) => {
+      const next = { ...prev, ...patch };
+      try {
+        localStorage.setItem("dukaan_mobile_control", JSON.stringify(next));
+      } catch {}
+      toast.success("Mobile control settings updated!");
+      return next;
+    });
+  };
+
+  const mobileOrders = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("dukaan_orders");
+      if (raw) {
+        const orders = JSON.parse(raw);
+        if (Array.isArray(orders)) {
+          return orders.filter((o) => o.source === "mobile" || o.channel === "Mobile POS" || (o.id && String(o.id).startsWith("#B")));
+        }
+      }
+    } catch {}
+    return [];
+  }, []);
+
+  const mobileTotalGMV = useMemo(() => {
+    return mobileOrders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
+  }, [mobileOrders]);
+
   // Feature #14 & #30: Platform Controls
   const [maintenanceMode, setMaintenanceMode] = useState(() => {
     return localStorage.getItem("dukaan_platform_maintenance") === "true";
@@ -1981,6 +2032,7 @@ export default function AdminSubscriptions() {
             {[
               { id: "overview", label: "Executive Overview & Pulse", icon: Activity },
               { id: "users", label: `Merchants & Leaderboard (${usersList.length})`, icon: Users },
+              { id: "mobile", label: `Mobile Terminal Control (${mobileOrders.length})`, icon: Smartphone },
               { id: "monetization", label: `Monetization, Plans & Coupons (${rows.length})`, icon: CreditCard },
               { id: "careers", label: `Hiring & Job Applications (${jobApplications.length})`, icon: Briefcase },
               { id: "controls", label: "Platform & Hardware Controls", icon: Settings },
@@ -3442,6 +3494,273 @@ export default function AdminSubscriptions() {
                           </td>
                         </tr>
                       ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* TAB: MOBILE APP & TERMINAL CONTROLS */}
+          {activeTab === "mobile" && (
+            <div className="space-y-6 animate-fade-up">
+              
+              {/* Telemetry Header KPIs */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-sm space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase">
+                    <span>Mobile Orders</span>
+                    <Smartphone className="w-4 h-4 text-blue-400" />
+                  </div>
+                  <div className="text-2xl font-black text-white">{mobileOrders.length}</div>
+                  <div className="text-[11px] font-semibold text-emerald-400">Live POS mobile checkouts</div>
+                </div>
+
+                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-sm space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase">
+                    <span>Mobile GMV Volume</span>
+                    <DollarSign className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <div className="text-2xl font-black text-white">₹ {mobileTotalGMV.toLocaleString("en-IN")}</div>
+                  <div className="text-[11px] font-semibold text-slate-400">Total processed on phones</div>
+                </div>
+
+                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-sm space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase">
+                    <span>Terminal Status</span>
+                    <Radio className={`w-4 h-4 ${mobileControl.enabled ? "text-emerald-400 animate-pulse" : "text-amber-400"}`} />
+                  </div>
+                  <div className={`text-xl font-black ${mobileControl.enabled ? "text-emerald-400" : "text-amber-400"}`}>
+                    {mobileControl.enabled ? "LIVE & OPERATIONAL" : "PAUSED (LOCKOUT)"}
+                  </div>
+                  <div className="text-[11px] font-semibold text-slate-400">
+                    {mobileControl.enabled ? "All store mobiles active" : "Access temporarily paused"}
+                  </div>
+                </div>
+
+                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-sm space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase">
+                    <span>Mobile Emulator</span>
+                    <ExternalLink className="w-4 h-4 text-indigo-400" />
+                  </div>
+                  <Button
+                    onClick={() => window.open("/mobile?view=dashboard", "_blank")}
+                    className="w-full h-9 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs"
+                  >
+                    Open Live Mobile POS
+                  </Button>
+                  <div className="text-[11px] font-semibold text-slate-400 text-center">Simulate store device</div>
+                </div>
+              </div>
+
+              {/* Master Switches Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Switch 1: Master Enable / Disable */}
+                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border ${
+                        mobileControl.enabled ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                      }`}>
+                        <Smartphone className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-white text-base">Mobile Web App Access</h3>
+                        <p className="text-xs text-slate-400">Master switch to permit merchants using mobile POS</p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => updateMobileControl({ enabled: !mobileControl.enabled })}
+                      className={`rounded-xl font-bold text-xs h-8 px-3.5 ${
+                        mobileControl.enabled ? "bg-amber-600 hover:bg-amber-500 text-white" : "bg-emerald-600 hover:bg-emerald-500 text-white"
+                      }`}
+                    >
+                      {mobileControl.enabled ? "Pause Access" : "Enable Access"}
+                    </Button>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
+                    <span className="text-slate-300">Status: <strong className={mobileControl.enabled ? "text-emerald-400" : "text-amber-400"}>{mobileControl.enabled ? "ONLINE & ACCESSIBLE" : "LOCKED"}</strong></span>
+                    <span className="text-slate-500 text-[11px]">Route: /mobile</span>
+                  </div>
+                </div>
+
+                {/* Switch 2: Camera Barcode Scanner */}
+                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center">
+                        <Zap className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-white text-base">Camera Barcode Scanner Mode</h3>
+                        <p className="text-xs text-slate-400">Enable rear phone camera optical laser scanning</p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => updateMobileControl({ camera_scanner: !mobileControl.camera_scanner })}
+                      className={`rounded-xl font-bold text-xs h-8 px-3.5 ${
+                        mobileControl.camera_scanner ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-300"
+                      }`}
+                    >
+                      {mobileControl.camera_scanner ? "Active" : "Disabled"}
+                    </Button>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
+                    <span className="text-slate-300">Optical Engine: <strong>BarcodeDetector + FMCG Presets</strong></span>
+                    <span className="text-slate-500 text-[11px]">Hardware Torch Capable</span>
+                  </div>
+                </div>
+
+                {/* Switch 3: Voice Soundbox Alerts */}
+                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center">
+                        <Volume2 className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-white text-base">Mobile Payment Soundbox Chime</h3>
+                        <p className="text-xs text-slate-400">Audio voice announcement on completed bills</p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => updateMobileControl({ soundbox_alerts: !mobileControl.soundbox_alerts })}
+                      className={`rounded-xl font-bold text-xs h-8 px-3.5 ${
+                        mobileControl.soundbox_alerts ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-300"
+                      }`}
+                    >
+                      {mobileControl.soundbox_alerts ? "Enabled" : "Muted"}
+                    </Button>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
+                    <span className="text-slate-300">Voice Synthesis: <strong>Hindi & English Speech</strong></span>
+                    <span className="text-slate-500 text-[11px]">Paytm / PhonePe Style</span>
+                  </div>
+                </div>
+
+                {/* Switch 4: Counter PC Companion Sync */}
+                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/30 text-purple-400 flex items-center justify-center">
+                        <RefreshCw className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-white text-base">Desktop POS Companion Sync</h3>
+                        <p className="text-xs text-slate-400">Synchronize inventory & bills between phone and counter PC</p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => updateMobileControl({ companion_sync: !mobileControl.companion_sync })}
+                      className={`rounded-xl font-bold text-xs h-8 px-3.5 ${
+                        mobileControl.companion_sync ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-300"
+                      }`}
+                    >
+                      {mobileControl.companion_sync ? "Synced" : "Paused"}
+                    </Button>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
+                    <span className="text-slate-300">Shared Data: <strong>dukaan_products + dukaan_orders</strong></span>
+                    <span className="text-slate-500 text-[11px]">Real-Time</span>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Push Broadcast Announcement Bar */}
+              <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center">
+                    <Bell className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-base">Broadcast Push to Mobile Terminals</h3>
+                    <p className="text-xs text-slate-400">Display top banner alert across all store smartphones</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="e.g. 📢 Evening Special: Thermal roll supplies dispatched. Check notifications."
+                    value={mobileBroadcastInput}
+                    onChange={(e) => setMobileBroadcastInput(e.target.value)}
+                    className="bg-slate-900 border-slate-800 text-white text-xs h-10 rounded-xl"
+                  />
+                  <Button
+                    onClick={() => updateMobileControl({ broadcast_message: mobileBroadcastInput.trim() })}
+                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs h-10 px-4 rounded-xl shrink-0"
+                  >
+                    Broadcast
+                  </Button>
+                  {mobileControl.broadcast_message && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setMobileBroadcastInput("");
+                        updateMobileControl({ broadcast_message: "" });
+                      }}
+                      className="border-slate-800 text-slate-400 hover:text-white text-xs h-10 px-3 rounded-xl shrink-0"
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Live Mobile Orders Feed */}
+              <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
+                      <Receipt className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-white text-base">Live Mobile POS Orders Feed</h3>
+                      <p className="text-xs text-slate-400">Bills created from smartphones and mobile counters</p>
+                    </div>
+                  </div>
+                  <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
+                    {mobileOrders.length} Invoices Processed
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-slate-300">
+                    <thead className="bg-slate-900 text-slate-400 uppercase font-mono text-[10px] border-b border-slate-800">
+                      <tr>
+                        <th className="p-3">Bill ID</th>
+                        <th className="p-3">Customer</th>
+                        <th className="p-3">Amount</th>
+                        <th className="p-3">Payment</th>
+                        <th className="p-3">Timestamp</th>
+                        <th className="p-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 font-sans">
+                      {mobileOrders.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="p-6 text-center text-slate-500">
+                            No mobile orders generated yet. Open the mobile POS and generate a bill to test live feed.
+                          </td>
+                        </tr>
+                      ) : (
+                        mobileOrders.slice(0, 8).map((o) => (
+                          <tr key={o.id} className="hover:bg-slate-900/50 transition-colors">
+                            <td className="p-3 font-mono font-bold text-blue-400">{o.id}</td>
+                            <td className="p-3 font-semibold text-white">{o.customer || "Walk-in Guest"}</td>
+                            <td className="p-3 font-black text-white">₹ {o.total}</td>
+                            <td className="p-3 font-bold text-slate-300">{o.payment || "Cash"}</td>
+                            <td className="p-3 text-slate-400 text-[11px]">{o.date || o.created_at || "Recent"}</td>
+                            <td className="p-3">
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold text-[10px]">
+                                Completed
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
