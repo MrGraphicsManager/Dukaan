@@ -163,6 +163,10 @@ export default function Landing() {
               <span className="bg-brand-terracotta/10 text-brand-terracotta text-[10px] font-bold px-1.5 py-0.5 rounded-full">3D</span>
             </a>
             <a href="#pricing" className="hover:text-brand-terracotta transition-colors">Pricing</a>
+            <Link to="/careers" className="text-blue-600 font-bold hover:text-blue-700 flex items-center gap-1.5 transition-colors">
+              <span>We're Hiring</span>
+              <span className="bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">2 Roles</span>
+            </Link>
             <a href="#faq" className="hover:text-brand-terracotta transition-colors">FAQ</a>
           </nav>
 
@@ -657,6 +661,7 @@ export default function Landing() {
           <a href="#features" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Features</a>
           <a href="#pricing" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Pricing Plans</a>
           <Link to="/subscribe" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Buy Subscription</Link>
+          <Link to="/careers" className="text-blue-600 font-bold hover:underline transition-colors">Careers (We're Hiring 🚀)</Link>
           <Link to="/privacy-policy" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Privacy Policy</Link>
           <Link to="/refund-policy" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Refund Policy</Link>
         </div>

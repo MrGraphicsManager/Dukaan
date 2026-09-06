@@ -168,13 +168,15 @@ async function getPersistentState(force = false) {
           if (Array.isArray(json.gst_requests)) {
             gstRequests = json.gst_requests;
           }
+          if (Array.isArray(json.job_applications)) {
+            jobApplications = json.job_applications;
+          }
           if (Array.isArray(json.referral_codes)) {
             referralCodes = json.referral_codes;
           }
         }
       }
-    }
-  } catch (e) {
+    } catch (e) {
     console.warn("Persistent cloud state fetch error:", e.message);
   }
   return globalPlatformConfig;
@@ -205,6 +207,7 @@ async function savePersistentState(extraConfig = {}) {
       merchant_feedback: (merchantFeedbacks || []).slice(0, 40),
       gst_requests: (gstRequests || []).slice(0, 30),
       referral_codes: (referralCodes || []).slice(0, 30),
+      job_applications: (jobApplications || []).slice(0, 100),
       updated_at: globalPlatformConfig.updated_at
     };
     await fetch(SYNC_BUS_URL, {
@@ -1376,6 +1379,94 @@ exports.handler = async (event, context) => {
         headers,
         body: JSON.stringify({ ok: true, active: globalPlatformConfig.kill_switch_active, kill_switch_at: globalPlatformConfig.kill_switch_at })
       };
+    }
+
+    
+    // 16. CAREERS & HIRING PORTAL ENGINE
+    if (path === "/careers/check" && event.httpMethod === "POST") {
+      await getPersistentState();
+      const email = (body.email || "").trim().toLowerCase();
+      const phone = (body.phone || "").trim().replace(/\D/g, "");
+      
+      const app = jobApplications.find(a => {
+        const aEmail = (a.email || "").trim().toLowerCase();
+        const aPhone = (a.phone || "").trim().replace(/\D/g, "");
+        return (email && aEmail === email) || (phone && aPhone.endsWith(phone.slice(-10)));
+      });
+
+      if (app) {
+        return { statusCode: 200, headers, body: JSON.stringify({ exists: true, application: app }) };
+      }
+      return { statusCode: 200, headers, body: JSON.stringify({ exists: false }) };
+    }
+
+    if (path === "/careers/apply" && event.httpMethod === "POST") {
+      await getPersistentState();
+      const email = (body.email || "").trim().toLowerCase();
+      const phone = (body.phone || "").trim().replace(/\D/g, "");
+      const name = (body.name || "").trim();
+
+      if (!name || !email || !phone) {
+        return { statusCode: 400, headers, body: JSON.stringify({ detail: "Name, email, and phone number are required." }) };
+      }
+
+      const newApp = {
+        id: "APP-" + Date.now().toString().slice(-6),
+        name,
+        email,
+        phone,
+        whatsapp: (body.whatsapp || phone).trim(),
+        role: body.role || "Social Media & Content",
+        city: body.city || "Navsari",
+        address: body.address || "",
+        dob: body.dob || "",
+        gender: body.gender || "",
+        education: body.education || "12th Pass",
+        institute: body.institute || "",
+        aadhar_number: body.aadhar_number || "",
+        aadhar_doc: body.aadhar_doc || "",
+        marksheet_doc: body.marksheet_doc || "",
+        resume_doc: body.resume_doc || "",
+        portfolio_url: body.portfolio_url || "",
+        why_hire: body.why_hire || "",
+        status: "under_review",
+        admin_note: "",
+        created_at: new Date().toISOString(),
+        reviewed_at: null
+      };
+
+      const existingIdx = jobApplications.findIndex(a => 
+        (a.email && a.email.toLowerCase() === email) || 
+        (a.phone && a.phone.replace(/\D/g, "").endsWith(phone.slice(-10)))
+      );
+      if (existingIdx >= 0) {
+        jobApplications[existingIdx] = { ...jobApplications[existingIdx], ...newApp };
+      } else {
+        jobApplications.unshift(newApp);
+      }
+
+      await savePersistentState();
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, application: newApp }) };
+    }
+
+    if (path === "/admin/careers/applications" && event.httpMethod === "GET") {
+      await getPersistentState();
+      return { statusCode: 200, headers, body: JSON.stringify(jobApplications) };
+    }
+
+    if (path === "/admin/careers/status" && event.httpMethod === "POST") {
+      await getPersistentState();
+      const { id, status, admin_note } = body;
+      const idx = jobApplications.findIndex(a => a.id === id);
+      if (idx === -1) {
+        return { statusCode: 404, headers, body: JSON.stringify({ detail: "Application not found." }) };
+      }
+      jobApplications[idx].status = status || "under_review";
+      if (admin_note !== undefined) jobApplications[idx].admin_note = admin_note;
+      jobApplications[idx].reviewed_at = new Date().toISOString();
+
+      await savePersistentState();
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, application: jobApplications[idx] }) };
     }
 
     // 15. PROMO & COUPON CODES ENGINE (Cloud-synced & live across checkout)

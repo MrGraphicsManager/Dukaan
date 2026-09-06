@@ -42,6 +42,7 @@ import PublicStoreDirectory from "@/pages/PublicStoreDirectory";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundPolicy from "./pages/RefundPolicy";
 import Info from "./pages/Info.jsx";
+import Careers from "./pages/Careers";
 
 /* =========================================================
    PROTECTED ROUTES
@@ -153,6 +154,22 @@ function LaunchController() {
       <Route
         path="/refund-policy"
         element={<RefundPolicy />}
+      />
+
+      {/* ===================================================
+          CAREERS & WE'RE HIRING PORTAL
+      =================================================== */}
+      <Route
+        path="/careers"
+        element={<Careers />}
+      />
+      <Route
+        path="/hiring"
+        element={<Careers />}
+      />
+      <Route
+        path="/jobs"
+        element={<Careers />}
       />
 
 

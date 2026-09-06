@@ -10,6 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
+  Briefcase,
+  Phone,
+  Mail,
+  ExternalLink,
+  FileCheck,
   ShieldCheck,
   Lock,
   Unlock,
@@ -223,6 +228,13 @@ export default function AdminSubscriptions() {
 
   // Feature #33: White-Label Custom Domains
   const [customDomains, setCustomDomains] = useState([]);
+
+  // Careers & Job Applications Studio State
+  const [jobApplications, setJobApplications] = useState([]);
+  const [jobStatusFilter, setJobStatusFilter] = useState("all");
+  const [jobRoleFilter, setJobRoleFilter] = useState("all");
+  const [jobSearchQuery, setJobSearchQuery] = useState("");
+  const [selectedJobModal, setSelectedJobModal] = useState(null);
 
   // Feature #3: Promo & Coupon Codes Studio
   const [promoList, setPromoList] = useState([]);
@@ -465,6 +477,19 @@ export default function AdminSubscriptions() {
         const localCd = JSON.parse(localStorage.getItem("dukaan_custom_domains") || "[]");
         setCustomDomains(localCd);
       }
+
+      // Careers & Job Applications fetch
+      try {
+        const careersRes = await api.get("/admin/careers/applications").catch(() => null);
+        let cList = careersRes?.data || [];
+        if (!Array.isArray(cList) || cList.length === 0) {
+          const rawC = localStorage.getItem("dukaan_job_applications");
+          if (rawC) cList = JSON.parse(rawC);
+        }
+        if (Array.isArray(cList)) {
+          setJobApplications(cList);
+        }
+      } catch (_) {}
 
       // 10. Promo & Coupon Codes (Real cloud-persisted coupons with reliable local priority)
       const promoRes = await api.get("/promo-codes").catch(() => null);
@@ -1735,6 +1760,7 @@ export default function AdminSubscriptions() {
               { id: "overview", label: "Executive Overview & Pulse", icon: Activity },
               { id: "users", label: `Merchants & Leaderboard (${usersList.length})`, icon: Users },
               { id: "monetization", label: `Monetization, Plans & Coupons (${rows.length})`, icon: CreditCard },
+              { id: "careers", label: `Hiring & Job Applications (${jobApplications.length})`, icon: Briefcase },
               { id: "controls", label: "Platform & Hardware Controls", icon: Settings },
               { id: "support", label: `Support & Feedback Desk (${supportTickets.length})`, icon: MessageSquare },
               { id: "reports", label: "Tax & Financial Reports", icon: FileSpreadsheet },
@@ -2346,6 +2372,447 @@ export default function AdminSubscriptions() {
 
             </div>
           )}
+
+          {/* TAB: CAREERS & JOB APPLICATIONS STUDIO */}
+          {activeTab === "careers" && (
+            <div className="space-y-6 animate-fade-up">
+              
+              {/* Studio Header Card */}
+              <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-5 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
+                      <h2 className="text-lg font-bold font-display text-white flex items-center gap-2">
+                        <Briefcase className="w-5 h-5 text-blue-400" />
+                        <span>Careers & Job Applications Studio</span>
+                      </h2>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Review candidate applications submitted from the official <strong>/careers</strong> hiring page. Approve or deny applications in real-time.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="text-xs font-mono text-amber-400 bg-amber-950/60 border border-amber-800/60 px-3.5 py-1.5 rounded-xl flex items-center gap-1.5">
+                      <Phone className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Salary Hotline: <strong>7016430577</strong></span>
+                    </div>
+
+                    <a
+                      href="/careers"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-sm flex items-center gap-1.5 transition-all"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>View /careers Page</span>
+                    </a>
+                  </div>
+                </div>
+
+                {/* KPI Metrics */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
+                    <span className="text-[11px] font-mono text-slate-400 uppercase font-bold">Total Applicants</span>
+                    <div className="text-2xl font-black text-white mt-1 font-display">{jobApplications.length}</div>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-amber-950/30 border border-amber-800/40">
+                    <span className="text-[11px] font-mono text-amber-400 uppercase font-bold">Pending Review</span>
+                    <div className="text-2xl font-black text-amber-300 mt-1 font-display">
+                      {jobApplications.filter(a => a.status === "under_review" || !a.status).length}
+                    </div>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-emerald-950/30 border border-emerald-800/40">
+                    <span className="text-[11px] font-mono text-emerald-400 uppercase font-bold">Approved</span>
+                    <div className="text-2xl font-black text-emerald-300 mt-1 font-display">
+                      {jobApplications.filter(a => a.status === "approved").length}
+                    </div>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-rose-950/30 border border-rose-800/40">
+                    <span className="text-[11px] font-mono text-rose-400 uppercase font-bold">Denied / Rejected</span>
+                    <div className="text-2xl font-black text-rose-300 mt-1 font-display">
+                      {jobApplications.filter(a => a.status === "denied").length}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Filter & Search Bar */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+                  <div className="relative flex-1 max-w-md">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <Input
+                      placeholder="Search by candidate name, phone, email, or city..."
+                      value={jobSearchQuery}
+                      onChange={(e) => setJobSearchQuery(e.target.value)}
+                      className="pl-10 h-10 rounded-xl bg-slate-900 border-slate-800 text-xs text-white"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={jobStatusFilter}
+                      onChange={(e) => setJobStatusFilter(e.target.value)}
+                      className="h-10 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300 px-3 focus:outline-none"
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="under_review">Under Review</option>
+                      <option value="approved">Approved</option>
+                      <option value="denied">Denied</option>
+                    </select>
+
+                    <select
+                      value={jobRoleFilter}
+                      onChange={(e) => setJobRoleFilter(e.target.value)}
+                      className="h-10 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300 px-3 focus:outline-none"
+                    >
+                      <option value="all">All Roles</option>
+                      <option value="Social Media & Content">Social Media & Content</option>
+                      <option value="Field Sales Intern">Field Sales Intern</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Applications Table / Cards */}
+                {(() => {
+                  const filtered = jobApplications.filter(app => {
+                    if (jobStatusFilter !== "all" && app.status !== jobStatusFilter) return false;
+                    if (jobRoleFilter !== "all" && app.role !== jobRoleFilter) return false;
+                    if (jobSearchQuery) {
+                      const q = jobSearchQuery.toLowerCase();
+                      const matchName = (app.name || "").toLowerCase().includes(q);
+                      const matchPhone = (app.phone || "").includes(q);
+                      const matchEmail = (app.email || "").toLowerCase().includes(q);
+                      const matchCity = (app.city || "").toLowerCase().includes(q);
+                      if (!matchName && !matchPhone && !matchEmail && !matchCity) return false;
+                    }
+                    return true;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="text-center py-12 border border-dashed border-slate-800 rounded-2xl bg-slate-900/40">
+                        <Briefcase className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                        <h4 className="text-sm font-bold text-slate-300">No Job Applications Found</h4>
+                        <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                          Jab candidates /careers page par form bharenge, unka pura data (Aadhar, Marksheet, Resume) yaha dikhega.
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="overflow-x-auto rounded-2xl border border-slate-800">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-900/90 text-slate-400 font-mono uppercase tracking-wider text-[10px] border-b border-slate-800">
+                          <tr>
+                            <th className="p-3.5">Candidate</th>
+                            <th className="p-3.5">Role</th>
+                            <th className="p-3.5">Contact</th>
+                            <th className="p-3.5">City & Education</th>
+                            <th className="p-3.5">Documents</th>
+                            <th className="p-3.5">Status</th>
+                            <th className="p-3.5 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/60 bg-slate-950/40">
+                          {filtered.map((app) => (
+                            <tr key={app.id || app.email} className="hover:bg-slate-900/50 transition-colors">
+                              <td className="p-3.5">
+                                <div className="font-bold text-white text-sm">{app.name}</div>
+                                <div className="text-[10px] font-mono text-slate-500">{app.id || "APP"} · {new Date(app.created_at || Date.now()).toLocaleDateString("en-IN")}</div>
+                              </td>
+
+                              <td className="p-3.5">
+                                <span className={`inline-block text-[11px] font-bold px-2.5 py-1 rounded-lg border ${
+                                  app.role?.includes("Sales")
+                                    ? "bg-indigo-950/80 border-indigo-500/50 text-indigo-300"
+                                    : "bg-blue-950/80 border-blue-500/50 text-blue-300"
+                                }`}>
+                                  {app.role || "Social Media"}
+                                </span>
+                              </td>
+
+                              <td className="p-3.5 space-y-1">
+                                <div className="flex items-center gap-1.5 font-mono text-slate-200">
+                                  <Phone className="w-3 h-3 text-slate-400" />
+                                  <span>{app.phone}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 text-slate-400 text-[11px] truncate max-w-[150px]">
+                                  <Mail className="w-3 h-3 text-slate-500 shrink-0" />
+                                  <span className="truncate">{app.email}</span>
+                                </div>
+                              </td>
+
+                              <td className="p-3.5">
+                                <div className="font-semibold text-slate-200">{app.city || "Navsari"}</div>
+                                <div className="text-[10px] text-slate-400 truncate max-w-[140px]">{app.education} ({app.institute || "School"})</div>
+                              </td>
+
+                              <td className="p-3.5">
+                                <div className="flex flex-col gap-1">
+                                  <span className={`text-[10px] font-medium flex items-center gap-1 ${app.aadhar_doc ? "text-emerald-400" : "text-slate-500"}`}>
+                                    <FileCheck className="w-3 h-3" /> Aadhar: {app.aadhar_number || "Yes"}
+                                  </span>
+                                  <span className={`text-[10px] font-medium flex items-center gap-1 ${app.marksheet_doc ? "text-emerald-400" : "text-slate-500"}`}>
+                                    <FileCheck className="w-3 h-3" /> Marksheet
+                                  </span>
+                                  {app.resume_doc && (
+                                    <span className="text-[10px] font-medium text-blue-400 flex items-center gap-1">
+                                      <FileText className="w-3 h-3" /> Resume
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+
+                              <td className="p-3.5">
+                                {app.status === "approved" ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/50 text-emerald-400 font-bold text-[10px]">
+                                    <CheckCircle2 className="w-3 h-3" /> Approved
+                                  </span>
+                                ) : app.status === "denied" ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-950/80 border border-rose-500/50 text-rose-400 font-bold text-[10px]">
+                                    <XCircle className="w-3 h-3" /> Denied
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-950/80 border border-amber-500/50 text-amber-400 font-bold text-[10px]">
+                                    <Clock className="w-3 h-3 animate-spin" /> Under Review
+                                  </span>
+                                )}
+                              </td>
+
+                              <td className="p-3.5 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => setSelectedJobModal(app)}
+                                    variant="outline"
+                                    className="h-8 px-2.5 rounded-lg border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs"
+                                    title="View Full Profile & Documents"
+                                  >
+                                    View Docs
+                                  </Button>
+
+                                  <a
+                                    href={`https://wa.me/91${app.whatsapp || app.phone}?text=Hello%20${encodeURIComponent(app.name)}%2C%20this%20is%20regarding%20your%20application%20for%20the%20${encodeURIComponent(app.role)}%20role%20at%20Dukaan.`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="h-8 w-8 rounded-lg bg-emerald-950 border border-emerald-800/60 hover:bg-emerald-900 text-emerald-400 flex items-center justify-center text-xs"
+                                    title="Chat on WhatsApp"
+                                  >
+                                    WA
+                                  </a>
+
+                                  {app.status !== "approved" && (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handleUpdateJobStatus(app.id, "approved")}
+                                      className="h-8 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
+                                      title="Approve Application"
+                                    >
+                                      Approve
+                                    </Button>
+                                  )}
+
+                                  {app.status !== "denied" && (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handleUpdateJobStatus(app.id, "denied")}
+                                      className="h-8 px-2.5 rounded-lg bg-rose-600/80 hover:bg-rose-600 text-white font-bold text-xs"
+                                      title="Denie Application"
+                                    >
+                                      Deny
+                                    </Button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+
+              </div>
+
+            </div>
+          )}
+
+          {/* CANDIDATE FULL DETAILS & LEGAL DOCUMENTS MODAL */}
+          {selectedJobModal && (
+            <Dialog open={!!selectedJobModal} onOpenChange={(open) => !open && setSelectedJobModal(null)}>
+              <DialogContent className="max-w-2xl bg-slate-950 border border-slate-800 text-white rounded-3xl p-6 max-h-[85vh] overflow-y-auto">
+                <DialogHeader className="border-b border-slate-800 pb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-mono text-slate-400 uppercase">Application Ref: {selectedJobModal.id}</span>
+                      <DialogTitle className="text-xl font-bold text-white mt-1">{selectedJobModal.name}</DialogTitle>
+                      <div className="text-xs text-blue-400 font-semibold">{selectedJobModal.role}</div>
+                    </div>
+
+                    <div className="text-right">
+                      <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full uppercase ${
+                        selectedJobModal.status === "approved"
+                          ? "bg-emerald-950 text-emerald-400 border border-emerald-600"
+                          : selectedJobModal.status === "denied"
+                          ? "bg-rose-950 text-rose-400 border border-rose-600"
+                          : "bg-amber-950 text-amber-400 border border-amber-600"
+                      }`}>
+                        {selectedJobModal.status || "Under Review"}
+                      </span>
+                    </div>
+                  </div>
+                </DialogHeader>
+
+                <div className="space-y-4 py-2 text-xs">
+                  {/* Personal Contact */}
+                  <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 grid grid-cols-2 gap-3">
+                    <div>
+                      <span className="text-slate-400">Mobile Phone:</span>
+                      <div className="font-bold text-white">{selectedJobModal.phone}</div>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">WhatsApp:</span>
+                      <div className="font-bold text-white">{selectedJobModal.whatsapp || selectedJobModal.phone}</div>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Email:</span>
+                      <div className="font-medium text-white">{selectedJobModal.email}</div>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">City / Location:</span>
+                      <div className="font-medium text-white">{selectedJobModal.city}</div>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-slate-400">Full Address:</span>
+                      <div className="text-slate-200 mt-0.5">{selectedJobModal.address || "Not specified"}</div>
+                    </div>
+                  </div>
+
+                  {/* Education & Why Hire */}
+                  <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-slate-400">Education Level:</span>
+                        <div className="font-bold text-white">{selectedJobModal.education}</div>
+                      </div>
+                      <div>
+                        <span className="text-slate-400">School / College:</span>
+                        <div className="font-bold text-white">{selectedJobModal.institute || "Not specified"}</div>
+                      </div>
+                    </div>
+
+                    {selectedJobModal.portfolio_url && (
+                      <div>
+                        <span className="text-slate-400">Portfolio / Work Links:</span>
+                        <div className="text-blue-400 font-mono break-all mt-0.5">{selectedJobModal.portfolio_url}</div>
+                      </div>
+                    )}
+
+                    <div>
+                      <span className="text-slate-400">Why should we hire you?</span>
+                      <p className="text-slate-200 mt-1 bg-slate-950 p-3 rounded-xl border border-slate-800/80 leading-relaxed italic">
+                        "{selectedJobModal.why_hire || "No statement provided"}"
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Legal Documents Preview */}
+                  <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-3">
+                    <div className="font-bold text-white flex items-center justify-between">
+                      <span>Attached Legal Proofs & Documents</span>
+                      <span className="text-slate-400 font-mono text-[10px]">Aadhar: {selectedJobModal.aadhar_number}</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {/* Aadhar Doc */}
+                      <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-center space-y-2">
+                        <span className="text-[11px] font-bold text-slate-300 block">Aadhar Card</span>
+                        {selectedJobModal.aadhar_doc ? (
+                          selectedJobModal.aadhar_doc.startsWith("data:image") ? (
+                            <img src={selectedJobModal.aadhar_doc} alt="Aadhar Card" className="h-28 w-full object-cover rounded-lg border border-slate-800" />
+                          ) : (
+                            <a href={selectedJobModal.aadhar_doc} download="Aadhar_Doc" target="_blank" rel="noreferrer" className="inline-block px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold">
+                              Download Aadhar
+                            </a>
+                          )
+                        ) : (
+                          <span className="text-slate-500 text-[10px]">No file attached</span>
+                        )}
+                      </div>
+
+                      {/* Marksheet Doc */}
+                      <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-center space-y-2">
+                        <span className="text-[11px] font-bold text-slate-300 block">Marksheet</span>
+                        {selectedJobModal.marksheet_doc ? (
+                          selectedJobModal.marksheet_doc.startsWith("data:image") ? (
+                            <img src={selectedJobModal.marksheet_doc} alt="Marksheet" className="h-28 w-full object-cover rounded-lg border border-slate-800" />
+                          ) : (
+                            <a href={selectedJobModal.marksheet_doc} download="Marksheet_Doc" target="_blank" rel="noreferrer" className="inline-block px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold">
+                              Download Marksheet
+                            </a>
+                          )
+                        ) : (
+                          <span className="text-slate-500 text-[10px]">No file attached</span>
+                        )}
+                      </div>
+
+                      {/* Resume Doc */}
+                      <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-center space-y-2">
+                        <span className="text-[11px] font-bold text-slate-300 block">Resume / CV</span>
+                        {selectedJobModal.resume_doc ? (
+                          <a href={selectedJobModal.resume_doc} download="Resume_Doc" target="_blank" rel="noreferrer" className="inline-block mt-8 px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold">
+                            Download Resume
+                          </a>
+                        ) : (
+                          <span className="text-slate-500 text-[10px] block mt-8">No resume attached</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <DialogFooter className="border-t border-slate-800 pt-4 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={`https://wa.me/91${selectedJobModal.whatsapp || selectedJobModal.phone}?text=Hello%20${encodeURIComponent(selectedJobModal.name)}%2C%20from%20Dukaan%20Team.`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5"
+                    >
+                      <span>WhatsApp Candidate</span>
+                    </a>
+                    <a
+                      href={`tel:${selectedJobModal.phone}`}
+                      className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold flex items-center gap-1.5"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      <span>Call</span>
+                    </a>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleUpdateJobStatus(selectedJobModal.id, "denied")}
+                      className="rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold px-4"
+                    >
+                      Deny Candidate
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleUpdateJobStatus(selectedJobModal.id, "approved")}
+                      className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4"
+                    >
+                      Approve Candidate
+                    </Button>
+                  </div>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+
 
           {/* TAB 3: MONETIZATION & ENTERPRISE SUBSCRIPTIONS */}
           {activeTab === "monetization" && (
