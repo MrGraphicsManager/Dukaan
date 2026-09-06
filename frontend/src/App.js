@@ -85,6 +85,20 @@ function Protected({ children }) {
       if (stored?.subscription) sub = stored.subscription;
     } catch {}
   }
+  if (!sub && user.email) {
+    const clean = user.email.toLowerCase().trim();
+    try {
+      const allSubs = JSON.parse(localStorage.getItem("dukaan_all_subscriptions") || "{}");
+      if (allSubs[clean]) sub = allSubs[clean];
+    } catch {}
+    if (!sub) {
+      try {
+        const regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
+        const found = regUsers.find(u => u.email && u.email.toLowerCase() === clean);
+        if (found?.subscription) sub = found.subscription;
+      } catch {}
+    }
+  }
 
   // If user has no active subscription and is not admin, redirect to subscribe
   const hasActiveSub = Boolean(isSubActive(sub));

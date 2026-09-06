@@ -20,6 +20,49 @@ const DEFAULT_SHOP = {
 export const ADMIN_EMAIL = "contact@officialdukaan.in";
 export const isAdminEmail = (email) => (email || "").toLowerCase().trim() === ADMIN_EMAIL;
 
+export function getPersistentSubscription(email) {
+  if (!email) return null;
+  const clean = email.toLowerCase().trim();
+  try {
+    const allSubs = JSON.parse(localStorage.getItem("dukaan_all_subscriptions") || "{}");
+    if (allSubs[clean]) return allSubs[clean];
+  } catch {}
+  try {
+    const regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
+    const found = regUsers.find(u => u.email && u.email.toLowerCase() === clean);
+    if (found?.subscription) return found.subscription;
+  } catch {}
+  return null;
+}
+
+export function savePersistentSubscription(email, subscription) {
+  if (!email || !subscription) return;
+  const clean = email.toLowerCase().trim();
+  try {
+    const allSubs = JSON.parse(localStorage.getItem("dukaan_all_subscriptions") || "{}");
+    allSubs[clean] = subscription;
+    localStorage.setItem("dukaan_all_subscriptions", JSON.stringify(allSubs));
+  } catch {}
+  try {
+    let regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
+    const idx = regUsers.findIndex(u => u.email && u.email.toLowerCase() === clean);
+    if (idx >= 0) {
+      regUsers[idx].subscription = subscription;
+      if (subscription.plan === "premium") regUsers[idx].is_premium = true;
+    } else {
+      regUsers.push({
+        id: `user_${Date.now()}`,
+        email: clean,
+        name: clean.split("@")[0],
+        subscription,
+        is_verified: true,
+        created_at: new Date().toISOString()
+      });
+    }
+    localStorage.setItem("dukaan_registered_users", JSON.stringify(regUsers));
+  } catch {}
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
@@ -140,11 +183,15 @@ export function AuthProvider({ children }) {
           localStorage.setItem("dukaan_access_token", "duk_" + b64);
         } catch {}
 
-        // Persist to registered users directory
+        // Persist to registered users directory & all subscriptions map
         if (next.email) {
+          const clean = next.email.toLowerCase().trim();
+          if (next.subscription) {
+            savePersistentSubscription(clean, next.subscription);
+          }
           const regRaw = localStorage.getItem("dukaan_registered_users") || "[]";
           let regUsers = JSON.parse(regRaw);
-          const idx = regUsers.findIndex((u) => u.email && u.email.toLowerCase() === next.email.toLowerCase());
+          const idx = regUsers.findIndex((u) => u.email && u.email.toLowerCase() === clean);
           if (idx >= 0) {
             regUsers[idx] = { ...regUsers[idx], ...next };
           } else {
@@ -163,8 +210,9 @@ export function AuthProvider({ children }) {
     try {
       const { data } = await api.get("/auth/me");
       if (data && data.email) {
+        const cleanEmail = (data.email || "").toLowerCase().trim();
         // If this is an admin account, ensure session is authenticated in this browser tab
-        if (isAdminEmail(data.email) || data.is_admin) {
+        if (isAdminEmail(cleanEmail) || data.is_admin) {
           const isSessionAuth = sessionStorage.getItem("dukaan_admin_authenticated");
           if (!isSessionAuth) {
             setUser(null);
@@ -182,6 +230,8 @@ export function AuthProvider({ children }) {
             localIsPremium = Boolean(parsed.is_premium);
           } catch {}
         }
+        const persistentSub = getPersistentSubscription(cleanEmail);
+
         // Query subscriptions endpoint directly for any live admin-granted plans
         let activeSubscription = data.subscription;
         try {
@@ -191,15 +241,19 @@ export function AuthProvider({ children }) {
           }
         } catch {}
 
-        const isUserAdmin = isAdminEmail(data.email);
+        const finalSub = activeSubscription || persistentSub || localSub || null;
+        const isUserAdmin = isAdminEmail(cleanEmail);
         const finalUser = {
           ...data,
           is_admin: isUserAdmin,
-          subscription: activeSubscription || localSub || null,
-          is_premium: data.is_premium || localIsPremium || (activeSubscription?.plan === "premium") || (localSub?.plan === "premium")
+          subscription: finalSub,
+          is_premium: data.is_premium || localIsPremium || (finalSub?.plan === "premium")
         };
         setUser(finalUser);
         localStorage.setItem("dukaan_user", JSON.stringify(finalUser));
+        if (finalSub) {
+          savePersistentSubscription(cleanEmail, finalSub);
+        }
         await loadShops(finalUser.default_shop_id);
         return finalUser;
       }
@@ -210,14 +264,20 @@ export function AuthProvider({ children }) {
         try {
           const current = JSON.parse(stored);
           if (current && current.email) {
-            if (isAdminEmail(current.email) || current.is_admin) {
+            const clean = current.email.toLowerCase().trim();
+            if (isAdminEmail(clean) || current.is_admin) {
               const isSessionAuth = sessionStorage.getItem("dukaan_admin_authenticated");
               if (!isSessionAuth) {
                 setUser(null);
                 return null;
               }
             }
-            current.is_admin = isAdminEmail(current.email);
+            current.is_admin = isAdminEmail(clean);
+            const persistentSub = getPersistentSubscription(clean);
+            if (!current.subscription && persistentSub) {
+              current.subscription = persistentSub;
+              if (persistentSub.plan === "premium") current.is_premium = true;
+            }
             setUser(current);
             return current;
           }
@@ -294,6 +354,8 @@ export function AuthProvider({ children }) {
       }
 
       const u = await refresh();
+      const persistentSub = getPersistentSubscription(cleanEmail);
+      const finalSub = persistentSub || localFound?.subscription || data?.user?.subscription || u?.subscription || null;
       const finalUser = {
         ...(localFound || {}),
         ...(data?.user || {}),
@@ -301,8 +363,12 @@ export function AuthProvider({ children }) {
         name: localFound?.name || data?.user?.name || cleanEmail.split("@")[0],
         email: cleanEmail,
         is_admin: isUserAdmin,
-        subscription: localFound?.subscription || data?.user?.subscription || u?.subscription || null
+        subscription: finalSub,
+        is_premium: Boolean((localFound || {}).is_premium || (data?.user || {}).is_premium || (u || {}).is_premium || finalSub?.plan === "premium")
       };
+      if (finalSub) {
+        savePersistentSubscription(cleanEmail, finalSub);
+      }
       setUser(finalUser);
       localStorage.setItem("dukaan_user", JSON.stringify(finalUser));
       return { ok: true, user: finalUser };
@@ -501,7 +567,10 @@ export function AuthProvider({ children }) {
     const cleanEmail = (email || "").toLowerCase().trim();
     const cleanName = (name || (provider === "google" ? "Google User" : "Apple User")).trim();
 
-    // 1. Clear any old session so old admin/owner account never persists
+    // 1. Check persistent subscription BEFORE clearing any session tokens
+    const persistentSub = getPersistentSubscription(cleanEmail);
+
+    // Clear session tokens so old accounts don't leak
     localStorage.removeItem("dukaan_user");
     localStorage.removeItem("dukaan_access_token");
     localStorage.removeItem("dukaan_shop_id");
@@ -514,7 +583,8 @@ export function AuthProvider({ children }) {
       is_verified: true,
       is_admin: false,
       provider,
-      subscription: null
+      subscription: persistentSub || null,
+      is_premium: persistentSub?.plan === "premium"
     };
 
     try {
@@ -557,20 +627,31 @@ export function AuthProvider({ children }) {
       const existing = regUsers.find(ru => ru.email && ru.email.toLowerCase() === cleanEmail);
       if (existing) {
         socialUser.id = existing.id || socialUser.id;
-        if (existing.subscription) socialUser.subscription = existing.subscription;
+        if (existing.subscription && !socialUser.subscription) {
+          socialUser.subscription = existing.subscription;
+        }
         socialUser.is_admin = isUserAdmin;
         existing.is_admin = isUserAdmin;
         existing.is_verified = true;
         existing.provider = provider;
         existing.name = cleanName;
         if (avatar) existing.avatar = avatar;
+        if (socialUser.subscription) existing.subscription = socialUser.subscription;
       } else {
         regUsers.push(socialUser);
       }
       localStorage.setItem("dukaan_registered_users", JSON.stringify(regUsers));
     } catch {}
 
-    // 3. Set the authenticated user state
+    // 3. Resolve best subscription between backend, registered users, and persistent map
+    const finalSub = socialUser.subscription || persistentSub || null;
+    socialUser.subscription = finalSub;
+    if (finalSub) {
+      if (finalSub.plan === "premium") socialUser.is_premium = true;
+      savePersistentSubscription(cleanEmail, finalSub);
+    }
+
+    // 4. Set the authenticated user state
     setUser(socialUser);
     localStorage.setItem("dukaan_user", JSON.stringify(socialUser));
 

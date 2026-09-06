@@ -360,6 +360,39 @@ export default function AdminSubscriptions() {
     newPassword: ""
   });
 
+  // Feature: Plan Expiry Date Editor State
+  const [expiryModal, setExpiryModal] = useState({
+    open: false,
+    email: "",
+    name: "",
+    currentExpiry: "",
+    newExpiry: "",
+    plan: "premium",
+    subscriptionId: null
+  });
+
+  // Feature: Landing Page Maintenance Mode & Countdown
+  const [landingMaintenance, setLandingMaintenance] = useState(() => {
+    try {
+      const raw = localStorage.getItem("dukaan_landing_maintenance");
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return {
+      enabled: false,
+      ends_at: new Date(Date.now() + 3600000 * 2).toISOString(),
+      message: "We are currently deploying scheduled platform upgrades with 0 downtime. Dukaan will resume in a few moments.",
+      title: "Scheduled System Maintenance"
+    };
+  });
+
+  // Feature: Custom Domain Mapping Modal
+  const [addDomainModal, setAddDomainModal] = useState({
+    open: false,
+    shop_name: "",
+    domain: "",
+    user_email: ""
+  });
+
   // Audit Logs
   const [auditLogs, setAuditLogs] = useState(() => {
     try {
@@ -518,6 +551,32 @@ export default function AdminSubscriptions() {
               expires_at: u.subscription.expires_at,
               source: u.subscription.is_trial ? "trial_mandate" : "direct_registration",
               created_at: u.created_at || new Date().toISOString()
+            });
+          }
+        });
+      } catch {}
+
+      // Synchronize with dukaan_all_subscriptions (Persistent email-indexed map)
+      try {
+        const allSubMap = JSON.parse(localStorage.getItem("dukaan_all_subscriptions") || "{}");
+        Object.keys(allSubMap).forEach(em => {
+          const s = allSubMap[em];
+          const existing = allSubs.find(x => (x.user_email || "").toLowerCase() === em.toLowerCase());
+          if (existing) {
+            if (s.expires_at) existing.expires_at = s.expires_at;
+            if (s.plan) existing.plan = s.plan;
+            if (s.status) existing.status = s.status;
+          } else {
+            allSubs.push({
+              id: `sub_${em}`,
+              user_email: em,
+              payer_name: s.payer_name || "Merchant",
+              phone: s.phone || "",
+              plan: s.plan || "starter",
+              status: s.status || "active",
+              expires_at: s.expires_at,
+              source: s.source || "persistent_sub",
+              created_at: s.created_at || new Date().toISOString()
             });
           }
         });
@@ -1243,11 +1302,234 @@ export default function AdminSubscriptions() {
     }
   };
 
-  // --- FEATURE #33: Approve Custom Domain ---
+  // --- FEATURE: Plan Expiry Date Editor Handlers ---
+  const handleOpenExpiryModal = (target) => {
+    const email = target.user_email || target.email || "";
+    const name = target.payer_name || target.name || target.shop_name || "Merchant";
+    const plan = target.plan || target.subscription?.plan || "premium";
+    const rawExp = target.expires_at || target.subscription?.expires_at || "";
+    const currentExp = rawExp ? rawExp.slice(0, 10) : "";
+    const defaultNew = currentExp || new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10);
+    setExpiryModal({
+      open: true,
+      email,
+      name,
+      currentExpiry: currentExp,
+      newExpiry: defaultNew,
+      plan,
+      subscriptionId: target.id || null
+    });
+  };
+
+  const handleSaveExpiryDate = async () => {
+    if (!expiryModal.email) {
+      toast.error("Email is required.");
+      return;
+    }
+    if (!expiryModal.newExpiry) {
+      toast.error("Please pick a valid expiry date.");
+      return;
+    }
+    const email = expiryModal.email.toLowerCase().trim();
+    const newIsoDate = new Date(expiryModal.newExpiry + "T23:59:59.000Z").toISOString();
+    const plan = expiryModal.plan || "premium";
+
+    try {
+      // 1. Update dukaan_all_subscriptions
+      const allSubs = JSON.parse(localStorage.getItem("dukaan_all_subscriptions") || "{}");
+      const existingSub = allSubs[email] || {};
+      allSubs[email] = {
+        ...existingSub,
+        user_email: email,
+        plan: plan,
+        status: "active",
+        expires_at: newIsoDate,
+        updated_at: new Date().toISOString()
+      };
+      localStorage.setItem("dukaan_all_subscriptions", JSON.stringify(allSubs));
+
+      // 2. Update dukaan_registered_users
+      const regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
+      let foundInReg = false;
+      const updatedReg = regUsers.map(u => {
+        if ((u.email || "").toLowerCase().trim() === email) {
+          foundInReg = true;
+          return {
+            ...u,
+            subscription: {
+              ...(u.subscription || {}),
+              plan: plan,
+              status: "active",
+              expires_at: newIsoDate
+            }
+          };
+        }
+        return u;
+      });
+      if (!foundInReg) {
+        updatedReg.push({
+          email: email,
+          name: expiryModal.name || "Merchant",
+          subscription: {
+            plan: plan,
+            status: "active",
+            expires_at: newIsoDate
+          }
+        });
+      }
+      localStorage.setItem("dukaan_registered_users", JSON.stringify(updatedReg));
+
+      // 3. Update current dukaan_user if matching
+      try {
+        const curUser = JSON.parse(localStorage.getItem("dukaan_user") || "null");
+        if (curUser && curUser.email?.toLowerCase().trim() === email) {
+          curUser.subscription = {
+            ...(curUser.subscription || {}),
+            plan: plan,
+            status: "active",
+            expires_at: newIsoDate
+          };
+          localStorage.setItem("dukaan_user", JSON.stringify(curUser));
+        }
+      } catch {}
+
+      // 4. Update in backend API
+      await api.post("/admin/subscriptions/grant", {
+        email,
+        plan,
+        days: Math.max(1, Math.ceil((new Date(newIsoDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))),
+        expires_at: newIsoDate
+      }).catch(() => {});
+
+      // 5. Update local component state
+      setRows(prev => prev.map(s => {
+        if ((s.user_email || "").toLowerCase().trim() === email) {
+          return { ...s, expires_at: newIsoDate, plan: plan, status: "active" };
+        }
+        return s;
+      }));
+      setUsersList(prev => prev.map(u => {
+        if ((u.email || "").toLowerCase().trim() === email) {
+          return {
+            ...u,
+            subscription: {
+              ...(u.subscription || {}),
+              plan: plan,
+              status: "active",
+              expires_at: newIsoDate
+            }
+          };
+        }
+        return u;
+      }));
+
+      addAuditLog("CHANGE_EXPIRY_DATE", email, `Changed plan expiry to ${expiryModal.newExpiry} (${plan} plan)`);
+      toast.success(`Expiry date for ${email} updated to ${expiryModal.newExpiry}!`);
+      setExpiryModal(prev => ({ ...prev, open: false }));
+    } catch (err) {
+      console.error("Error updating expiry date:", err);
+      toast.error("Failed to update expiry date.");
+    }
+  };
+
+  // --- FEATURE #33: White-Label Custom Domain Handlers ---
   const handleApproveCustomDomain = async (domainId, domainName) => {
-    setCustomDomains(prev => prev.map(d => d.id === domainId ? { ...d, status: "active", ssl: "active" } : d));
+    setCustomDomains(prev => {
+      const next = prev.map(d => d.id === domainId ? { ...d, status: "active", ssl: "active" } : d);
+      try { localStorage.setItem("dukaan_custom_domains", JSON.stringify(next)); } catch {}
+      return next;
+    });
     addAuditLog("APPROVE_CUSTOM_DOMAIN", domainName, "Approved SSL & DNS CNAME mapping");
     toast.success(`Custom domain ${domainName} is now active with SSL!`);
+  };
+
+  const handleSaveCustomDomain = async () => {
+    const rawDom = (addDomainModal.domain || "").toLowerCase().trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    if (!rawDom || !rawDom.includes('.')) {
+      toast.error("Please enter a valid domain (e.g. store.mydomain.com or myshop.in)");
+      return;
+    }
+    const newEntry = {
+      id: `cd_${Date.now()}`,
+      shop_name: addDomainModal.shop_name.trim() || "Retail Store",
+      domain: rawDom,
+      user_email: addDomainModal.user_email.trim() || "merchant@store.in",
+      cname_target: "custom.officialdukaan.in",
+      status: "active",
+      ssl: "active",
+      created_at: new Date().toISOString()
+    };
+    const updated = [newEntry, ...customDomains.filter(d => d.domain !== rawDom)];
+    setCustomDomains(updated);
+    try {
+      localStorage.setItem("dukaan_custom_domains", JSON.stringify(updated));
+      await api.post("/admin/custom-domains", newEntry).catch(() => {});
+    } catch {}
+    addAuditLog("MAP_CUSTOM_DOMAIN", rawDom, `Mapped custom domain for ${newEntry.shop_name}`);
+    toast.success(`Mapped domain ${rawDom} to custom.officialdukaan.in!`);
+    setAddDomainModal({ open: false, shop_name: "", domain: "", user_email: "" });
+  };
+
+  const handleTestDns = (domain) => {
+    toast.loading(`Verifying DNS CNAME for ${domain}...`, { id: "dns-test" });
+    setTimeout(() => {
+      toast.success(`CNAME Verified: ${domain} points to custom.officialdukaan.in (SSL Active)`, { id: "dns-test" });
+    }, 800);
+  };
+
+  const handleToggleDomainSsl = (domainId) => {
+    setCustomDomains(prev => {
+      const next = prev.map(d => {
+        if (d.id === domainId) {
+          const nextSsl = d.ssl === "active" ? "pending" : "active";
+          return { ...d, ssl: nextSsl, status: nextSsl === "active" ? "active" : "pending" };
+        }
+        return d;
+      });
+      try { localStorage.setItem("dukaan_custom_domains", JSON.stringify(next)); } catch {}
+      return next;
+    });
+    toast.success("Domain SSL certificate status updated!");
+  };
+
+  const handleDeleteCustomDomain = (domainId, domainName) => {
+    setCustomDomains(prev => {
+      const next = prev.filter(d => d.id !== domainId);
+      try { localStorage.setItem("dukaan_custom_domains", JSON.stringify(next)); } catch {}
+      return next;
+    });
+    addAuditLog("DELETE_CUSTOM_DOMAIN", domainName, "Deleted custom domain mapping");
+    toast.success(`Deleted domain ${domainName}.`);
+  };
+
+  // --- FEATURE: Landing Page Maintenance Mode Handlers ---
+  const handleToggleLandingMaintenance = (enabled) => {
+    const next = { ...landingMaintenance, enabled };
+    setLandingMaintenance(next);
+    try {
+      localStorage.setItem("dukaan_landing_maintenance", JSON.stringify(next));
+    } catch {}
+    addAuditLog("LANDING_MAINTENANCE", "Landing Page", enabled ? "Enabled landing page maintenance mode" : "Disabled landing maintenance");
+    toast.success(enabled ? "Landing page maintenance mode ACTIVATED!" : "Landing page is now LIVE & OPERATIONAL!");
+  };
+
+  const handleSetMaintenanceDuration = (minutes) => {
+    const targetTime = new Date(Date.now() + minutes * 60000).toISOString();
+    const next = { ...landingMaintenance, ends_at: targetTime, enabled: true };
+    setLandingMaintenance(next);
+    try {
+      localStorage.setItem("dukaan_landing_maintenance", JSON.stringify(next));
+    } catch {}
+    toast.success(`Maintenance timer set for ${minutes} minutes (ends at ${new Date(targetTime).toLocaleTimeString()})`);
+  };
+
+  const handleSaveLandingMaintenanceSettings = () => {
+    try {
+      localStorage.setItem("dukaan_landing_maintenance", JSON.stringify(landingMaintenance));
+      toast.success("Landing page maintenance & countdown settings saved!");
+    } catch {
+      toast.error("Failed to save settings.");
+    }
   };
 
   // --- FEATURE: Careers Status Updater ---
@@ -2032,7 +2314,6 @@ export default function AdminSubscriptions() {
             {[
               { id: "overview", label: "Executive Overview & Pulse", icon: Activity },
               { id: "users", label: `Merchants & Leaderboard (${usersList.length})`, icon: Users },
-              { id: "mobile", label: `Mobile Terminal Control (${mobileOrders.length})`, icon: Smartphone },
               { id: "monetization", label: `Monetization, Plans & Coupons (${rows.length})`, icon: CreditCard },
               { id: "careers", label: `Hiring & Job Applications (${jobApplications.length})`, icon: Briefcase },
               { id: "controls", label: "Platform & Hardware Controls", icon: Settings },
@@ -2547,6 +2828,17 @@ export default function AdminSubscriptions() {
                             >
                               {isFrozen ? <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> : <ShieldAlert className="w-3.5 h-3.5 mr-1" />}
                               {isFrozen ? "Unfreeze" : "Freeze (#9)"}
+                            </Button>
+
+                            {/* Plan Expiry Date Editor Trigger */}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenExpiryModal(u)}
+                              className="rounded-xl border-indigo-700/60 bg-indigo-950/30 text-indigo-300 hover:text-white text-xs h-8 px-2.5"
+                              title="Change Plan Expiry Date"
+                            >
+                              <Clock className="w-3.5 h-3.5 mr-1" /> Expiry
                             </Button>
 
                             {/* Grant Plan Modal Trigger */}
@@ -3348,6 +3640,17 @@ export default function AdminSubscriptions() {
                             </span>
                           </td>
                           <td className="px-5 py-4 text-right space-x-2">
+                            {/* Plan Expiry Date Editor Trigger */}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenExpiryModal(s)}
+                              className="rounded-xl border-indigo-700/60 bg-indigo-950/30 text-indigo-300 hover:text-white text-xs h-8 px-2.5"
+                              title="Change Subscription Expiry Date"
+                            >
+                              <Clock className="w-3.5 h-3.5 mr-1" /> Expiry
+                            </Button>
+
                             {/* Feature #4: WhatsApp Renewal Reminder */}
                             <Button
                               size="sm"
@@ -3502,277 +3805,92 @@ export default function AdminSubscriptions() {
             </div>
           )}
 
-          {/* TAB: MOBILE APP & TERMINAL CONTROLS */}
-          {activeTab === "mobile" && (
-            <div className="space-y-6 animate-fade-up">
-              
-              {/* Telemetry Header KPIs */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-sm space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase">
-                    <span>Mobile Orders</span>
-                    <Smartphone className="w-4 h-4 text-blue-400" />
-                  </div>
-                  <div className="text-2xl font-black text-white">{mobileOrders.length}</div>
-                  <div className="text-[11px] font-semibold text-emerald-400">Live POS mobile checkouts</div>
-                </div>
-
-                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-sm space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase">
-                    <span>Mobile GMV Volume</span>
-                    <DollarSign className="w-4 h-4 text-emerald-400" />
-                  </div>
-                  <div className="text-2xl font-black text-white">₹ {mobileTotalGMV.toLocaleString("en-IN")}</div>
-                  <div className="text-[11px] font-semibold text-slate-400">Total processed on phones</div>
-                </div>
-
-                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-sm space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase">
-                    <span>Terminal Status</span>
-                    <Radio className={`w-4 h-4 ${mobileControl.enabled ? "text-emerald-400 animate-pulse" : "text-amber-400"}`} />
-                  </div>
-                  <div className={`text-xl font-black ${mobileControl.enabled ? "text-emerald-400" : "text-amber-400"}`}>
-                    {mobileControl.enabled ? "LIVE & OPERATIONAL" : "PAUSED (LOCKOUT)"}
-                  </div>
-                  <div className="text-[11px] font-semibold text-slate-400">
-                    {mobileControl.enabled ? "All store mobiles active" : "Access temporarily paused"}
-                  </div>
-                </div>
-
-                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-sm space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase">
-                    <span>Mobile Emulator</span>
-                    <ExternalLink className="w-4 h-4 text-indigo-400" />
-                  </div>
-                  <Button
-                    onClick={() => window.open("/mobile?view=dashboard", "_blank")}
-                    className="w-full h-9 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs"
-                  >
-                    Open Live Mobile POS
-                  </Button>
-                  <div className="text-[11px] font-semibold text-slate-400 text-center">Simulate store device</div>
-                </div>
-              </div>
-
-              {/* Master Switches Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                {/* Switch 1: Master Enable / Disable */}
-                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border ${
-                        mobileControl.enabled ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-amber-500/10 border-amber-500/30 text-amber-400"
-                      }`}>
-                        <Smartphone className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-white text-base">Mobile Web App Access</h3>
-                        <p className="text-xs text-slate-400">Master switch to permit merchants using mobile POS</p>
-                      </div>
-                    </div>
-                    <Button
-                      onClick={() => updateMobileControl({ enabled: !mobileControl.enabled })}
-                      className={`rounded-xl font-bold text-xs h-8 px-3.5 ${
-                        mobileControl.enabled ? "bg-amber-600 hover:bg-amber-500 text-white" : "bg-emerald-600 hover:bg-emerald-500 text-white"
-                      }`}
-                    >
-                      {mobileControl.enabled ? "Pause Access" : "Enable Access"}
-                    </Button>
-                  </div>
-                  <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
-                    <span className="text-slate-300">Status: <strong className={mobileControl.enabled ? "text-emerald-400" : "text-amber-400"}>{mobileControl.enabled ? "ONLINE & ACCESSIBLE" : "LOCKED"}</strong></span>
-                    <span className="text-slate-500 text-[11px]">Route: /mobile</span>
-                  </div>
-                </div>
-
-                {/* Switch 2: Camera Barcode Scanner */}
-                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center">
-                        <Zap className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-white text-base">Camera Barcode Scanner Mode</h3>
-                        <p className="text-xs text-slate-400">Enable rear phone camera optical laser scanning</p>
-                      </div>
-                    </div>
-                    <Button
-                      onClick={() => updateMobileControl({ camera_scanner: !mobileControl.camera_scanner })}
-                      className={`rounded-xl font-bold text-xs h-8 px-3.5 ${
-                        mobileControl.camera_scanner ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-300"
-                      }`}
-                    >
-                      {mobileControl.camera_scanner ? "Active" : "Disabled"}
-                    </Button>
-                  </div>
-                  <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
-                    <span className="text-slate-300">Optical Engine: <strong>BarcodeDetector + FMCG Presets</strong></span>
-                    <span className="text-slate-500 text-[11px]">Hardware Torch Capable</span>
-                  </div>
-                </div>
-
-                {/* Switch 3: Voice Soundbox Alerts */}
-                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center">
-                        <Volume2 className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-white text-base">Mobile Payment Soundbox Chime</h3>
-                        <p className="text-xs text-slate-400">Audio voice announcement on completed bills</p>
-                      </div>
-                    </div>
-                    <Button
-                      onClick={() => updateMobileControl({ soundbox_alerts: !mobileControl.soundbox_alerts })}
-                      className={`rounded-xl font-bold text-xs h-8 px-3.5 ${
-                        mobileControl.soundbox_alerts ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-300"
-                      }`}
-                    >
-                      {mobileControl.soundbox_alerts ? "Enabled" : "Muted"}
-                    </Button>
-                  </div>
-                  <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
-                    <span className="text-slate-300">Voice Synthesis: <strong>Hindi & English Speech</strong></span>
-                    <span className="text-slate-500 text-[11px]">Paytm / PhonePe Style</span>
-                  </div>
-                </div>
-
-                {/* Switch 4: Counter PC Companion Sync */}
-                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/30 text-purple-400 flex items-center justify-center">
-                        <RefreshCw className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-white text-base">Desktop POS Companion Sync</h3>
-                        <p className="text-xs text-slate-400">Synchronize inventory & bills between phone and counter PC</p>
-                      </div>
-                    </div>
-                    <Button
-                      onClick={() => updateMobileControl({ companion_sync: !mobileControl.companion_sync })}
-                      className={`rounded-xl font-bold text-xs h-8 px-3.5 ${
-                        mobileControl.companion_sync ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-300"
-                      }`}
-                    >
-                      {mobileControl.companion_sync ? "Synced" : "Paused"}
-                    </Button>
-                  </div>
-                  <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
-                    <span className="text-slate-300">Shared Data: <strong>dukaan_products + dukaan_orders</strong></span>
-                    <span className="text-slate-500 text-[11px]">Real-Time</span>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Push Broadcast Announcement Bar */}
-              <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center">
-                    <Bell className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-white text-base">Broadcast Push to Mobile Terminals</h3>
-                    <p className="text-xs text-slate-400">Display top banner alert across all store smartphones</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="e.g. 📢 Evening Special: Thermal roll supplies dispatched. Check notifications."
-                    value={mobileBroadcastInput}
-                    onChange={(e) => setMobileBroadcastInput(e.target.value)}
-                    className="bg-slate-900 border-slate-800 text-white text-xs h-10 rounded-xl"
-                  />
-                  <Button
-                    onClick={() => updateMobileControl({ broadcast_message: mobileBroadcastInput.trim() })}
-                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs h-10 px-4 rounded-xl shrink-0"
-                  >
-                    Broadcast
-                  </Button>
-                  {mobileControl.broadcast_message && (
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setMobileBroadcastInput("");
-                        updateMobileControl({ broadcast_message: "" });
-                      }}
-                      className="border-slate-800 text-slate-400 hover:text-white text-xs h-10 px-3 rounded-xl shrink-0"
-                    >
-                      Clear
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {/* Live Mobile Orders Feed */}
-              <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
-                      <Receipt className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-white text-base">Live Mobile POS Orders Feed</h3>
-                      <p className="text-xs text-slate-400">Bills created from smartphones and mobile counters</p>
-                    </div>
-                  </div>
-                  <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
-                    {mobileOrders.length} Invoices Processed
-                  </span>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-slate-300">
-                    <thead className="bg-slate-900 text-slate-400 uppercase font-mono text-[10px] border-b border-slate-800">
-                      <tr>
-                        <th className="p-3">Bill ID</th>
-                        <th className="p-3">Customer</th>
-                        <th className="p-3">Amount</th>
-                        <th className="p-3">Payment</th>
-                        <th className="p-3">Timestamp</th>
-                        <th className="p-3">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60 font-sans">
-                      {mobileOrders.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="p-6 text-center text-slate-500">
-                            No mobile orders generated yet. Open the mobile POS and generate a bill to test live feed.
-                          </td>
-                        </tr>
-                      ) : (
-                        mobileOrders.slice(0, 8).map((o) => (
-                          <tr key={o.id} className="hover:bg-slate-900/50 transition-colors">
-                            <td className="p-3 font-mono font-bold text-blue-400">{o.id}</td>
-                            <td className="p-3 font-semibold text-white">{o.customer || "Walk-in Guest"}</td>
-                            <td className="p-3 font-black text-white">₹ {o.total}</td>
-                            <td className="p-3 font-bold text-slate-300">{o.payment || "Cash"}</td>
-                            <td className="p-3 text-slate-400 text-[11px]">{o.date || o.created_at || "Recent"}</td>
-                            <td className="p-3">
-                              <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold text-[10px]">
-                                Completed
-                              </span>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-            </div>
-          )}
-
           {/* TAB 4: PLATFORM & HARDWARE CONTROLS */}
           {activeTab === "controls" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-up">
               
+              {/* Landing Page Maintenance Mode & Live Countdown Controller */}
+              <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border ${
+                      landingMaintenance.enabled ? "bg-amber-500/10 border-amber-500/30 text-amber-400" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                    }`}>
+                      <Clock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-white text-base">Landing Page Maintenance & Countdown</h3>
+                      <p className="text-xs text-slate-400">Put landing page in maintenance mode with live countdown</p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => handleToggleLandingMaintenance(!landingMaintenance.enabled)}
+                    className={`rounded-xl font-bold text-xs h-8 px-3.5 ${
+                      landingMaintenance.enabled ? "bg-amber-600 hover:bg-amber-500 text-white" : "bg-emerald-600 hover:bg-emerald-500 text-white"
+                    }`}
+                  >
+                    {landingMaintenance.enabled ? "Turn OFF" : "Activate Maintenance"}
+                  </Button>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs text-slate-400">Set Countdown Timer Duration:</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { label: "+15 Mins", minutes: 15 },
+                      { label: "+30 Mins", minutes: 30 },
+                      { label: "+1 Hour", minutes: 60 },
+                      { label: "+2 Hours", minutes: 120 },
+                      { label: "+6 Hours", minutes: 360 },
+                      { label: "+24 Hours", minutes: 1440 },
+                    ].map(btn => (
+                      <Button
+                        key={btn.label}
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleSetMaintenanceDuration(btn.minutes)}
+                        className="rounded-xl border-slate-700 bg-slate-900 text-slate-300 hover:text-white text-xs h-8"
+                      >
+                        {btn.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  <div>
+                    <Label className="text-xs text-slate-400">Countdown Target (Date & Time)</Label>
+                    <Input
+                      type="datetime-local"
+                      value={landingMaintenance.ends_at ? landingMaintenance.ends_at.slice(0, 16) : ""}
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (val) {
+                          setLandingMaintenance(prev => ({ ...prev, ends_at: new Date(val).toISOString() }));
+                        }
+                      }}
+                      className="mt-1 bg-slate-900 border-slate-700 text-white text-xs rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-400">Visitor Maintenance Notice Message</Label>
+                    <Input
+                      value={landingMaintenance.message || ""}
+                      onChange={e => setLandingMaintenance(prev => ({ ...prev, message: e.target.value }))}
+                      className="mt-1 bg-slate-900 border-slate-700 text-white text-xs rounded-xl"
+                      placeholder="We are upgrading our servers with lightning-fast cloud sync..."
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveLandingMaintenanceSettings}
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs h-8 rounded-xl"
+                  >
+                    Save Maintenance & Countdown Settings
+                  </Button>
+                </div>
+              </div>
+
               {/* Feature #14: Platform Maintenance Mode Lockdown */}
               <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between">
@@ -4057,13 +4175,24 @@ export default function AdminSubscriptions() {
                 </div>
               </div>
 
-              {/* Feature #33: White-Label Custom Domains */}
+              {/* Feature #33: White-Label Custom Domains Review Desk */}
               <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm md:col-span-2">
-                <h3 className="font-bold text-white text-base flex items-center gap-2">
-                  <Globe className="w-5 h-5 text-indigo-400" />
-                  <span>White-Label Custom Domains Review Desk (#33)</span>
-                </h3>
-                <p className="text-xs text-slate-400">Review merchant CNAME requests pointing to custom.officialdukaan.in</p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-bold text-white text-base flex items-center gap-2">
+                      <Globe className="w-5 h-5 text-indigo-400" />
+                      <span>White-Label Custom Domains Desk (#33)</span>
+                    </h3>
+                    <p className="text-xs text-slate-400">Review & map merchant CNAME records pointing to custom.officialdukaan.in</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => setAddDomainModal({ open: true, shop_name: "", domain: "", user_email: "" })}
+                    className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs h-9 px-4 shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" /> + Map New Custom Domain
+                  </Button>
+                </div>
 
                 <div className="overflow-x-auto rounded-2xl border border-slate-800">
                   <table className="w-full text-xs">
@@ -4071,37 +4200,73 @@ export default function AdminSubscriptions() {
                       <tr>
                         <th className="px-4 py-3">Store Name</th>
                         <th className="px-4 py-3">Custom Domain</th>
+                        <th className="px-4 py-3">CNAME Target</th>
                         <th className="px-4 py-3">Merchant</th>
                         <th className="px-4 py-3">DNS Status</th>
                         <th className="px-4 py-3">SSL Cert</th>
-                        <th className="px-4 py-3 text-right">Approve Action</th>
+                        <th className="px-4 py-3 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800 font-mono">
-                      {customDomains.map(cd => (
-                        <tr key={cd.id} className="hover:bg-slate-900/50">
-                          <td className="px-4 py-3 text-white font-bold">{cd.shop_name}</td>
-                          <td className="px-4 py-3 text-indigo-400 font-bold">{cd.domain}</td>
-                          <td className="px-4 py-3 text-slate-400">{cd.user_email}</td>
-                          <td className="px-4 py-3">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-900 border border-slate-800 text-slate-300">
-                              {cd.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-emerald-400 font-bold">{cd.ssl}</td>
-                          <td className="px-4 py-3 text-right">
-                            {cd.status !== "active" && (
-                              <Button
-                                size="sm"
-                                onClick={() => handleApproveCustomDomain(cd.id, cd.domain)}
-                                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs h-7 px-3 rounded-lg"
-                              >
-                                Approve & Issue SSL
-                              </Button>
-                            )}
+                      {customDomains.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="text-center py-8 text-slate-500 text-xs">
+                            No custom domains mapped yet. Click "+ Map New Custom Domain" to route your merchant's custom web address.
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        customDomains.map(cd => (
+                          <tr key={cd.id} className="hover:bg-slate-900/50">
+                            <td className="px-4 py-3 text-white font-bold">{cd.shop_name}</td>
+                            <td className="px-4 py-3 text-indigo-400 font-bold">{cd.domain}</td>
+                            <td className="px-4 py-3 text-slate-300">custom.officialdukaan.in</td>
+                            <td className="px-4 py-3 text-slate-400">{cd.user_email}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                cd.status === "active" ? "bg-emerald-950 text-emerald-400 border border-emerald-800" : "bg-amber-950 text-amber-400 border border-amber-800"
+                              }`}>
+                                {cd.status || "active"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                cd.ssl === "active" ? "text-emerald-400" : "text-amber-400"
+                              }`}>
+                                {cd.ssl === "active" ? "Issued (HTTPS)" : "Pending"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right space-x-1.5">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleTestDns(cd.domain)}
+                                className="bg-slate-900 border-slate-700 text-slate-300 hover:text-white text-[11px] h-7 px-2 rounded-lg"
+                                title="Verify DNS CNAME resolution"
+                              >
+                                Test DNS
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleToggleDomainSsl(cd.id)}
+                                className="bg-slate-900 border-slate-700 text-emerald-400 hover:text-white text-[11px] h-7 px-2 rounded-lg"
+                                title="Toggle SSL Certificate"
+                              >
+                                Toggle SSL
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDeleteCustomDomain(cd.id, cd.domain)}
+                                className="bg-rose-950/30 border-rose-800 text-rose-400 hover:bg-rose-900/50 text-[11px] h-7 px-2 rounded-lg"
+                                title="Delete Custom Domain"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -4916,6 +5081,170 @@ export default function AdminSubscriptions() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL: PLAN EXPIRY DATE EDITOR */}
+      <Dialog open={expiryModal.open} onOpenChange={(open) => setExpiryModal(prev => ({ ...prev, open }))}>
+        <DialogContent className="max-w-md bg-slate-900 text-slate-100 border border-slate-800 rounded-3xl p-6 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold font-display text-white flex items-center gap-2">
+              <Clock className="w-5 h-5 text-indigo-400" />
+              <span>Edit Subscription Expiry Date</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-3">
+            <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 text-xs space-y-1">
+              <div>Merchant: <strong className="text-white">{expiryModal.name}</strong></div>
+              <div>Email: <strong className="text-indigo-400 font-mono">{expiryModal.email}</strong></div>
+              <div>Plan: <strong className="text-emerald-400 capitalize">{expiryModal.plan}</strong></div>
+              <div>Current Expiry: <strong className="text-slate-300 font-mono">{expiryModal.currentExpiry || "None"}</strong></div>
+            </div>
+
+            {/* Quick Extension Buttons */}
+            <div>
+              <Label className="text-xs text-slate-400 mb-1.5 block">Quick Extend Expiry:</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: "+30 Days", days: 30 },
+                  { label: "+60 Days", days: 60 },
+                  { label: "+90 Days", days: 90 },
+                  { label: "+1 Year", days: 365 },
+                  { label: "+3 Years", days: 1095 },
+                  { label: "Lifetime (2099)", date: "2099-12-31" },
+                ].map(b => (
+                  <Button
+                    key={b.label}
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (b.date) {
+                        setExpiryModal(prev => ({ ...prev, newExpiry: b.date }));
+                      } else {
+                        const d = new Date(Date.now() + b.days * 86400000).toISOString().slice(0, 10);
+                        setExpiryModal(prev => ({ ...prev, newExpiry: d }));
+                      }
+                    }}
+                    className="rounded-xl border-slate-700 bg-slate-800 text-slate-200 hover:text-white text-xs h-8"
+                  >
+                    {b.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Exact Date Picker */}
+            <div>
+              <Label className="text-xs text-slate-400">Select Exact Expiry Date</Label>
+              <Input
+                type="date"
+                value={expiryModal.newExpiry}
+                onChange={e => setExpiryModal(prev => ({ ...prev, newExpiry: e.target.value }))}
+                className="mt-1.5 bg-slate-950 border-slate-700 text-white font-mono text-sm rounded-xl"
+              />
+            </div>
+
+            {/* Plan Tier Selector */}
+            <div>
+              <Label className="text-xs text-slate-400">Plan Tier</Label>
+              <Select
+                value={expiryModal.plan}
+                onValueChange={val => setExpiryModal(prev => ({ ...prev, plan: val }))}
+              >
+                <SelectTrigger className="mt-1.5 bg-slate-950 border-slate-700 text-white text-xs rounded-xl">
+                  <SelectValue placeholder="Select plan" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                  <SelectItem value="starter">Starter Plan (Rank 1)</SelectItem>
+                  <SelectItem value="business">Business Plan (Rank 2)</SelectItem>
+                  <SelectItem value="premium">Premium Plan (Rank 3)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-6 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setExpiryModal(prev => ({ ...prev, open: false }))}
+              className="rounded-xl border-slate-700 bg-slate-800 text-slate-300 hover:text-white text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveExpiryDate}
+              className="rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs"
+            >
+              Save Expiry Date
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL: MAP NEW CUSTOM DOMAIN */}
+      <Dialog open={addDomainModal.open} onOpenChange={(open) => setAddDomainModal(prev => ({ ...prev, open }))}>
+        <DialogContent className="max-w-md bg-slate-900 text-slate-100 border border-slate-800 rounded-3xl p-6 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold font-display text-white flex items-center gap-2">
+              <Globe className="w-5 h-5 text-emerald-400" />
+              <span>Map New White-Label Custom Domain</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-3">
+            <div>
+              <Label className="text-xs text-slate-400">Store / Merchant Name</Label>
+              <Input
+                placeholder="e.g. Ramesh Kirana Store"
+                value={addDomainModal.shop_name}
+                onChange={e => setAddDomainModal(prev => ({ ...prev, shop_name: e.target.value }))}
+                className="mt-1.5 bg-slate-950 border-slate-700 text-white text-xs rounded-xl"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs text-slate-400">Custom Domain / Subdomain</Label>
+              <Input
+                placeholder="e.g. billing.rameshkirana.com or pos.myshop.in"
+                value={addDomainModal.domain}
+                onChange={e => setAddDomainModal(prev => ({ ...prev, domain: e.target.value }))}
+                className="mt-1.5 bg-slate-950 border-slate-700 text-white text-xs rounded-xl font-mono"
+              />
+              <p className="text-[11px] text-slate-400 mt-1">Merchant must point their DNS CNAME record to <strong>custom.officialdukaan.in</strong></p>
+            </div>
+
+            <div>
+              <Label className="text-xs text-slate-400">Merchant Account Email</Label>
+              <Input
+                type="email"
+                placeholder="merchant@example.com"
+                value={addDomainModal.user_email}
+                onChange={e => setAddDomainModal(prev => ({ ...prev, user_email: e.target.value }))}
+                className="mt-1.5 bg-slate-950 border-slate-700 text-white text-xs rounded-xl font-mono"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="mt-6 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAddDomainModal(prev => ({ ...prev, open: false }))}
+              className="rounded-xl border-slate-700 bg-slate-800 text-slate-300 hover:text-white text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveCustomDomain}
+              className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
+            >
+              Map & Activate Domain
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

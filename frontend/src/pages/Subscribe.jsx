@@ -27,9 +27,16 @@ import {
   X,
   AlertTriangle,
   BadgePercent,
-  Tag
+  Tag,
+  ArrowUpRight
 } from "lucide-react";
 import PremiumOnboarding, { EMPTY_PREMIUM_ONBOARDING } from "@/components/PremiumOnboarding";
+
+export const PLAN_RANK = {
+  starter: 1,
+  business: 2,
+  premium: 3,
+};
 
 const PLANS = {
   starter: { 
@@ -256,13 +263,32 @@ export default function Subscribe() {
     gst_enabled: false,
   }), []);
 
-  const userPlan = user?.subscription?.plan;
-  const hasUsedTrial = Boolean(
-    user?.subscription?.is_trial || 
-    user?.subscription?.trial_used || 
-    user?.trial_used ||
-    (user?.subscription?.status === "active" && userPlan && !user?.subscription?.is_trial)
+  const userSub = user?.subscription;
+  const isSubActiveNow = Boolean(
+    userSub && (userSub.status === "active" || userSub.status === "trial" || userSub.is_trial)
   );
+  const userPlanKey = isSubActiveNow && userSub?.plan ? userSub.plan.toLowerCase() : null;
+  const userRank = userPlanKey ? (PLAN_RANK[userPlanKey] || 0) : 0;
+  const userPlan = userSub?.plan;
+
+  const hasUsedTrial = Boolean(
+    userSub?.is_trial || 
+    userSub?.trial_used || 
+    user?.trial_used ||
+    (userSub?.status === "active" && userPlan && !userSub?.is_trial)
+  );
+
+  // Prevent selecting lower tier (downgrade) when current subscription is active
+  useEffect(() => {
+    if (isSubActiveNow && userRank > 0) {
+      const currentSelectedRank = PLAN_RANK[selected] || 0;
+      if (currentSelectedRank < userRank) {
+        if (userRank === 1) setSelected("business");
+        else if (userRank === 2) setSelected("premium");
+        else setSelected("premium");
+      }
+    }
+  }, [isSubActiveNow, userRank, selected]);
 
   useEffect(() => { 
     if (selected !== "premium") setPremiumReady(false); 
@@ -270,7 +296,10 @@ export default function Subscribe() {
 
   useEffect(() => { 
     if (!done) return; 
-    const timer = setTimeout(() => nav("/app", { replace: true }), 5200); 
+    const timer = setTimeout(() => {
+      nav("/app", { replace: true });
+      if (typeof window !== "undefined") window.location.href = "/app";
+    }, 1800); 
     return () => clearTimeout(timer); 
   }, [done, nav]);
 
@@ -327,12 +356,60 @@ export default function Subscribe() {
   };
 
   /* =========================================================
+     SUBSCRIPTION COMMITTAL & PERSISTENCE HELPER
+  ========================================================= */
+  const commitSubscription = (newSub) => {
+    const cleanEmail = (user?.email || "").toLowerCase().trim();
+    const rawUser = localStorage.getItem("dukaan_user");
+    const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
+    parsed.subscription = newSub;
+    if (newSub.plan === "premium") {
+      parsed.is_premium = true;
+    }
+    localStorage.setItem("dukaan_user", JSON.stringify(parsed));
+    if (updateUser) {
+      updateUser(parsed);
+    }
+    if (cleanEmail) {
+      try {
+        const all = JSON.parse(localStorage.getItem("dukaan_all_subscriptions") || "{}");
+        all[cleanEmail] = newSub;
+        localStorage.setItem("dukaan_all_subscriptions", JSON.stringify(all));
+      } catch {}
+      try {
+        let regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
+        const idx = regUsers.findIndex(u => u.email && u.email.toLowerCase() === cleanEmail);
+        if (idx >= 0) {
+          regUsers[idx].subscription = newSub;
+          if (newSub.plan === "premium") regUsers[idx].is_premium = true;
+        } else {
+          regUsers.push({
+            id: `usr_${Date.now()}`,
+            email: cleanEmail,
+            name: user?.name || cleanEmail.split("@")[0],
+            subscription: newSub,
+            is_verified: true,
+            created_at: new Date().toISOString()
+          });
+        }
+        localStorage.setItem("dukaan_registered_users", JSON.stringify(regUsers));
+      } catch {}
+    }
+    return parsed;
+  };
+
+  /* =========================================================
      FREE TRIAL WITH RAZORPAY AUTOPAY (₹1 CHARGE / MANDATE)
   ========================================================= */
   const startAutopayTrial = async () => {
     if (!user) {
       toast.info("Please create a shop account before starting your free trial.");
       nav(`/register?redirect=/subscribe?plan=${selected}`);
+      return;
+    }
+
+    if (isSubActiveNow && (PLAN_RANK[selected] || 0) < userRank) {
+      toast.error(`Downgrading from ${userPlanKey.toUpperCase()} plan is not permitted.`);
       return;
     }
 
@@ -382,18 +459,12 @@ export default function Subscribe() {
             activated_at: new Date().toISOString()
           };
 
-          parsed.subscription = newSub;
-          if (selected === "premium") {
-            parsed.is_premium = true;
-          }
-          localStorage.setItem("dukaan_user", JSON.stringify(parsed));
-          if (updateUser) {
-            updateUser(parsed);
-          }
+          commitSubscription(newSub);
 
           try {
             const apiRes = await api.post("/subscriptions/trial", { 
               plan: selected,
+              user_email: user?.email,
               razorpay_payment_id: response.razorpay_payment_id,
               mandate_verified: true,
               amount: 1,
@@ -426,8 +497,6 @@ export default function Subscribe() {
       } else {
         // Fallback simulation
         const expires = new Date(Date.now() + (plan.trial_days || 7) * 86400000);
-        const rawUser = localStorage.getItem("dukaan_user");
-        const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
         const fallbackSub = {
           plan: selected,
           status: "active",
@@ -436,10 +505,7 @@ export default function Subscribe() {
           expires_at: expires.toISOString(),
           activated_at: new Date().toISOString()
         };
-        parsed.subscription = fallbackSub;
-        if (selected === "premium") parsed.is_premium = true;
-        localStorage.setItem("dukaan_user", JSON.stringify(parsed));
-        if (updateUser) updateUser(parsed);
+        commitSubscription(fallbackSub);
 
         setDone({ 
           status: "trial", 
@@ -453,8 +519,6 @@ export default function Subscribe() {
     } catch (e) {
       // Offline fallback simulation
       const expires = new Date(Date.now() + (plan.trial_days || 7) * 86400000);
-      const rawUser = localStorage.getItem("dukaan_user");
-      const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
       const fallbackSub = {
         plan: selected,
         status: "active",
@@ -463,10 +527,7 @@ export default function Subscribe() {
         expires_at: expires.toISOString(),
         activated_at: new Date().toISOString()
       };
-      parsed.subscription = fallbackSub;
-      if (selected === "premium") parsed.is_premium = true;
-      localStorage.setItem("dukaan_user", JSON.stringify(parsed));
-      if (updateUser) updateUser(parsed);
+      commitSubscription(fallbackSub);
 
       setDone({ 
         status: "trial", 
@@ -490,6 +551,12 @@ export default function Subscribe() {
       nav(`/register?redirect=/subscribe?plan=${selected}`);
       return;
     }
+
+    if (isSubActiveNow && (PLAN_RANK[selected] || 0) < userRank) {
+      toast.error(`Downgrading from ${userPlanKey.toUpperCase()} plan is not permitted.`);
+      return;
+    }
+
     setBusy(true);
     const rawAmount = isAnnual ? plan.annual : plan.monthly;
     const discount = appliedPromo?.discount_amount || 0;
@@ -527,14 +594,7 @@ export default function Subscribe() {
             activated_at: new Date().toISOString()
           };
 
-          parsed.subscription = newSub;
-          if (selected === "premium") {
-            parsed.is_premium = true;
-          }
-          localStorage.setItem("dukaan_user", JSON.stringify(parsed));
-          if (updateUser) {
-            updateUser(parsed);
-          }
+          commitSubscription(newSub);
 
           try { 
             const apiRes = await api.post("/subscriptions/razorpay/verify", { 
@@ -544,6 +604,7 @@ export default function Subscribe() {
               plan: selected,
               annual: isAnnual,
               promo_code: appliedPromo?.code || null,
+              user_email: user?.email,
               expires_at: newExpiry.toISOString()
             }); 
             if (apiRes.data?.access_token) {
@@ -565,37 +626,31 @@ export default function Subscribe() {
         const r = new window.Razorpay(rzpOptions);
         r.open();
       } else {
-        const rawUser = localStorage.getItem("dukaan_user");
-        const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
-        const newExpiry = new Date(Date.now() + ((isAnnual ? 365 : 30) * 86400000));
-        parsed.subscription = { 
+        const durationDays = isAnnual ? 365 : 30;
+        const newExpiry = new Date(Date.now() + (durationDays * 86400000));
+        const fallbackSub = { 
           plan: selected, 
           status: "active", 
           is_annual: isAnnual, 
           expires_at: newExpiry.toISOString(),
           activated_at: new Date().toISOString()
         };
-        if (selected === "premium") parsed.is_premium = true;
-        localStorage.setItem("dukaan_user", JSON.stringify(parsed));
-        if (updateUser) updateUser(parsed);
+        commitSubscription(fallbackSub);
 
         setDone({ status: "active", plan: selected, annual: isAnnual, expires_at: newExpiry.toISOString() });
         toast.success(`${plan.name} Plan Activated!`);
       }
     } catch (e) { 
-      const rawUser = localStorage.getItem("dukaan_user");
-      const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
-      const newExpiry = new Date(Date.now() + ((isAnnual ? 365 : 30) * 86400000));
-      parsed.subscription = { 
+      const durationDays = isAnnual ? 365 : 30;
+      const newExpiry = new Date(Date.now() + (durationDays * 86400000));
+      const fallbackSub = { 
         plan: selected, 
         status: "active", 
         is_annual: isAnnual, 
         expires_at: newExpiry.toISOString(),
         activated_at: new Date().toISOString()
       };
-      if (selected === "premium") parsed.is_premium = true;
-      localStorage.setItem("dukaan_user", JSON.stringify(parsed));
-      if (updateUser) updateUser(parsed);
+      commitSubscription(fallbackSub);
 
       setDone({ status: "active", plan: selected, annual: isAnnual, expires_at: newExpiry.toISOString() });
       toast.success(`${plan.name} Plan Activated!`);
@@ -726,29 +781,50 @@ export default function Subscribe() {
           {Object.entries(PLANS).map(([key, value], index) => {
             const isSelected = selected === key;
             const isFeatured = value.featured;
-            const isCurrentActivePlan = user?.subscription?.status === "active" && userPlan === key;
+            const cardRank = PLAN_RANK[key] || 0;
+            const isDowngrade = isSubActiveNow && userRank > 0 && cardRank < userRank;
+            const isCurrentActivePlan = isSubActiveNow && userPlanKey === key;
+            const isUpgrade = isSubActiveNow && userRank > 0 && cardRank > userRank;
             const displayPrice = isAnnual ? Math.round(value.annual / 12) : value.monthly;
+
+            const handleCardClick = () => {
+              if (isDowngrade) {
+                toast.info(`You are currently on the ${userPlanKey?.toUpperCase()} tier. Downgrading is not permitted.`);
+                return;
+              }
+              setSelected(key);
+            };
 
             return (
               <motion.div
                 key={key}
-                onClick={() => setSelected(key)}
+                onClick={handleCardClick}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1, duration: 0.4 }}
-                whileHover={{ y: -6 }}
-                className={`relative rounded-3xl p-7 md:p-8 border-2 transition-all cursor-pointer flex flex-col justify-between ${
-                  isSelected
-                    ? "border-brand-terracotta bg-white shadow-xl ring-2 ring-brand-terracotta/20"
+                whileHover={isDowngrade ? {} : { y: -6 }}
+                className={`relative rounded-3xl p-7 md:p-8 border-2 transition-all flex flex-col justify-between ${
+                  isDowngrade
+                    ? "border-slate-200 bg-slate-50/70 opacity-60 cursor-not-allowed"
+                    : isSelected
+                    ? "border-brand-terracotta bg-white shadow-xl ring-2 ring-brand-terracotta/20 cursor-pointer"
                     : isFeatured
-                    ? "border-brand-indigo/30 bg-white shadow-md hover:border-brand-indigo"
-                    : "border-brand-mitti bg-white shadow-xs hover:border-brand-indigo/30"
+                    ? "border-brand-indigo/30 bg-white shadow-md hover:border-brand-indigo cursor-pointer"
+                    : "border-brand-mitti bg-white shadow-xs hover:border-brand-indigo/30 cursor-pointer"
                 }`}
               >
                 {/* Badges */}
-                {isCurrentActivePlan ? (
+                {isDowngrade ? (
+                  <span className="absolute -top-3.5 left-6 inline-flex items-center gap-1 rounded-full px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider bg-slate-400 text-white shadow-sm">
+                    <Lock className="w-3.5 h-3.5" /> Downgrade Unavailable
+                  </span>
+                ) : isCurrentActivePlan ? (
                   <span className="absolute -top-3.5 left-6 inline-flex items-center gap-1 rounded-full px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider bg-emerald-600 text-white shadow-md">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Current Plan
+                  </span>
+                ) : isUpgrade ? (
+                  <span className="absolute -top-3.5 left-6 inline-flex items-center gap-1 rounded-full px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider bg-indigo-600 text-white shadow-md">
+                    <ArrowUpRight className="w-3.5 h-3.5" /> Upgrade
                   </span>
                 ) : isFeatured ? (
                   <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 rounded-full px-4 py-1 text-xs font-extrabold uppercase tracking-wider bg-brand-terracotta text-white shadow-md">
@@ -756,7 +832,7 @@ export default function Subscribe() {
                   </span>
                 ) : null}
 
-                {key === "premium" && !isCurrentActivePlan && (
+                {key === "premium" && !isCurrentActivePlan && !isDowngrade && (
                   <span className="absolute -top-3.5 right-6 inline-flex items-center gap-1 rounded-full px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider bg-amber-500 text-white shadow-sm">
                     <Crown className="w-3.5 h-3.5" /> Multi-Shop
                   </span>
@@ -767,7 +843,7 @@ export default function Subscribe() {
                     <span className="text-xs uppercase tracking-widest font-extrabold text-brand-terracotta">
                       {value.name} Tier
                     </span>
-                    {isSelected && (
+                    {isSelected && !isDowngrade && (
                       <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
                         <Check className="w-3 h-3 text-emerald-600" /> Selected
                       </span>
@@ -867,22 +943,44 @@ export default function Subscribe() {
 
                 {/* Select Button */}
                 <div className="pt-4 border-t border-brand-mitti">
-                  <Button
-                    onClick={() => setSelected(key)}
-                    className={`w-full h-12 rounded-2xl font-bold text-xs shadow-xs active:scale-95 transition-all ${
-                      isSelected
-                        ? "bg-brand-terracotta hover:bg-brand-terracotta/90 text-white"
-                        : "bg-brand-sand hover:bg-brand-mitti text-brand-indigo border border-brand-mitti"
-                    }`}
-                  >
-                    {isCurrentActivePlan 
-                      ? `Current Plan (${value.name})` 
-                      : user?.subscription?.status === "active" 
-                        ? `Upgrade to ${value.name}` 
-                        : isSelected 
-                          ? `Selected (${value.name})` 
-                          : `Choose ${value.name}`}
-                  </Button>
+                  {isDowngrade ? (
+                    <Button
+                      disabled
+                      className="w-full h-12 rounded-2xl font-bold text-xs bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                    >
+                      Downgrade Not Available
+                    </Button>
+                  ) : isCurrentActivePlan ? (
+                    <Button
+                      onClick={handleCardClick}
+                      className={`w-full h-12 rounded-2xl font-bold text-xs shadow-xs active:scale-95 transition-all ${
+                        renew
+                          ? "bg-brand-terracotta hover:bg-brand-terracotta/90 text-white"
+                          : "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-2 border-emerald-300"
+                      }`}
+                    >
+                      {renew ? `Renew ${value.name} Plan` : `Current Plan (${value.name})`}
+                    </Button>
+                  ) : isUpgrade ? (
+                    <Button
+                      onClick={handleCardClick}
+                      className="w-full h-12 rounded-2xl font-bold text-xs bg-brand-terracotta hover:bg-brand-terracotta/90 text-white shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <span>Upgrade to {value.name}</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleCardClick}
+                      className={`w-full h-12 rounded-2xl font-bold text-xs shadow-xs active:scale-95 transition-all ${
+                        isSelected
+                          ? "bg-brand-terracotta hover:bg-brand-terracotta/90 text-white"
+                          : "bg-brand-sand hover:bg-brand-mitti text-brand-indigo border border-brand-mitti"
+                      }`}
+                    >
+                      {isSelected ? `Selected (${value.name})` : `Choose ${value.name}`}
+                    </Button>
+                  )}
                 </div>
               </motion.div>
             );
@@ -1167,15 +1265,22 @@ function PremiumLiveAnimation({ plan, done, onOpen }) {
   const particles = Array.from({ length: 28 }, (_, i) => i);
   const isTrial = done?.status === "trial";
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (onOpen) onOpen();
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [onOpen]);
+
   return (
-    <div className="min-h-screen bg-brand-indigo text-white flex flex-col items-center justify-center p-6 text-center select-none font-sans relative overflow-hidden">
-      {/* Glow rings */}
-      <div className="absolute w-[500px] h-[500px] rounded-full bg-brand-terracotta/20 blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-brand-sand text-brand-indigo flex flex-col items-center justify-center p-6 text-center select-none font-sans relative overflow-hidden">
+      {/* Ambient warm glow */}
+      <div className="absolute w-[500px] h-[500px] rounded-full bg-brand-terracotta/10 blur-3xl pointer-events-none" />
 
       {particles.map((i) => (
         <motion.i 
           key={i} 
-          className="absolute w-2 h-2 rounded-full bg-amber-400 pointer-events-none" 
+          className="absolute w-2.5 h-2.5 rounded-full bg-brand-terracotta pointer-events-none" 
           initial={{ opacity: 0, scale: 0, x: 0, y: 0 }} 
           animate={{ 
             opacity: [0, 1, 1, 0], 
@@ -1188,24 +1293,24 @@ function PremiumLiveAnimation({ plan, done, onOpen }) {
       ))}
 
       <motion.div 
-        className="relative z-10 max-w-lg bg-white/10 border-2 border-white/20 rounded-3xl p-8 md:p-12 backdrop-blur-xl shadow-2xl flex flex-col items-center" 
+        className="relative z-10 max-w-lg bg-white border-2 border-brand-mitti rounded-3xl p-8 md:p-12 shadow-2xl flex flex-col items-center" 
         initial={{ opacity: 0, y: 40, scale: 0.9 }} 
         animate={{ opacity: 1, y: 0, scale: 1 }} 
         transition={{ duration: 0.6 }}
       >
-        <div className="w-20 h-20 rounded-3xl bg-emerald-500 text-white grid place-items-center mb-6 shadow-glow">
+        <div className="w-20 h-20 rounded-3xl bg-emerald-600 text-white grid place-items-center mb-6 shadow-md">
           <Check className="w-10 h-10" strokeWidth={3} />
         </div>
 
-        <div className="text-xs uppercase tracking-widest font-extrabold text-amber-300 mb-2">
+        <div className="text-xs uppercase tracking-widest font-extrabold text-brand-terracotta mb-2">
           {isTrial ? `₹1 Autopay Verified · ${plan?.trial_days}-Day Trial Live` : "Subscription Active"}
         </div>
 
-        <h1 className="font-display text-4xl md:text-5xl font-bold text-white mb-3">
+        <h1 className="font-display text-4xl md:text-5xl font-bold text-brand-indigo mb-3">
           Congratulations!
         </h1>
 
-        <p className="text-sm text-white/80 max-w-sm mb-8 leading-relaxed">
+        <p className="text-sm text-brand-indigo/75 max-w-sm mb-8 leading-relaxed font-medium">
           {isTrial ? (
             <span>Your <b>₹1 Autopay Mandate</b> is verified. Your <b>{plan?.name || "Business"} Plan</b> {plan?.trial_days}-Day Free Trial is now active.</span>
           ) : (
@@ -1215,15 +1320,15 @@ function PremiumLiveAnimation({ plan, done, onOpen }) {
 
         <Button 
           onClick={onOpen} 
-          className="w-full h-14 rounded-2xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-sm shadow-glow active:scale-95 transition-all flex items-center justify-center gap-2"
+          className="w-full h-14 rounded-2xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
         >
           <Rocket className="w-4 h-4" />
           <span>Open My Dukaan Dashboard</span>
           <ArrowRight className="w-4 h-4" />
         </Button>
 
-        <p className="mt-4 text-[11px] text-white/40">
-          Redirecting automatically to your dashboard in a few seconds…
+        <p className="mt-4 text-[11px] text-brand-indigo/50 font-medium">
+          Redirecting automatically to your dashboard in a moment…
         </p>
       </motion.div>
     </div>

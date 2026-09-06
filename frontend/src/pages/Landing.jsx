@@ -21,7 +21,7 @@ import {
   CheckCircle2,
   Heart,
   Monitor,
-  Download,
+  Clock,
   Laptop,
   Briefcase,
   Menu,
@@ -141,6 +141,128 @@ export default function Landing() {
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Dynamic Announcement from Admin Panel
+  const [announcement, setAnnouncement] = useState(() => {
+    return localStorage.getItem("dukaan_platform_announcement") || "🚀 Dukaan Store Management: Seamlessly access your billing counter across PC, Laptop, and Mobile devices!";
+  });
+
+  // Landing Page Maintenance Mode & Countdown
+  const [landingMaintenance, setLandingMaintenance] = useState(() => {
+    try {
+      const raw = localStorage.getItem("dukaan_landing_maintenance");
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return { enabled: false, ends_at: null, message: "", title: "Under Scheduled Maintenance" };
+  });
+
+  const [maintenanceRemaining, setMaintenanceRemaining] = useState(() => {
+    if (!landingMaintenance?.enabled || !landingMaintenance?.ends_at) return 0;
+    return Math.max(0, Math.floor((new Date(landingMaintenance.ends_at).getTime() - Date.now()) / 1000));
+  });
+
+  useEffect(() => {
+    const syncSettings = () => {
+      const ann = localStorage.getItem("dukaan_platform_announcement");
+      if (ann !== null) setAnnouncement(ann);
+      try {
+        const maintRaw = localStorage.getItem("dukaan_landing_maintenance");
+        if (maintRaw) {
+          const parsed = JSON.parse(maintRaw);
+          setLandingMaintenance(parsed);
+        }
+      } catch {}
+    };
+    window.addEventListener("storage", syncSettings);
+    return () => window.removeEventListener("storage", syncSettings);
+  }, []);
+
+  useEffect(() => {
+    if (!landingMaintenance?.enabled || !landingMaintenance?.ends_at) return;
+    const timer = setInterval(() => {
+      const diff = Math.max(0, Math.floor((new Date(landingMaintenance.ends_at).getTime() - Date.now()) / 1000));
+      setMaintenanceRemaining(diff);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [landingMaintenance?.enabled, landingMaintenance?.ends_at]);
+
+  // If maintenance mode is active with future end time
+  if (landingMaintenance?.enabled && maintenanceRemaining > 0) {
+    const mDays = Math.floor(maintenanceRemaining / 86400);
+    const mHours = Math.floor((maintenanceRemaining % 86400) / 3600);
+    const mMins = Math.floor((maintenanceRemaining % 3600) / 60);
+    const mSecs = maintenanceRemaining % 60;
+
+    return (
+      <div className="min-h-screen bg-white text-slate-900 flex flex-col justify-between p-4 sm:p-8 relative selection:bg-brand-terracotta selection:text-white">
+        <header className="max-w-4xl mx-auto w-full flex items-center justify-between pb-6 border-b border-slate-200">
+          <Link to="/" className="flex items-center gap-2 group">
+            <img src="/logo.png" alt="Dukaan" className="h-9 sm:h-11 w-auto object-contain" />
+            <div className="flex flex-col border-l border-slate-300 pl-2.5">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 font-mono leading-none">by</span>
+              <span className="text-xs font-display font-extrabold tracking-tight text-slate-900 leading-tight">PEAN</span>
+            </div>
+          </Link>
+          <Link
+            to="/app"
+            className="text-xs font-bold text-slate-700 hover:text-slate-900 border border-slate-300 px-4 py-2 rounded-full bg-slate-50 hover:bg-slate-100 shadow-xs"
+          >
+            Merchant & Admin Login →
+          </Link>
+        </header>
+
+        <main className="max-w-2xl mx-auto w-full my-auto text-center py-10 space-y-6">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-50 border border-orange-200 text-orange-700 text-xs font-bold uppercase tracking-wider">
+            <Clock className="w-3.5 h-3.5 text-orange-600" />
+            <span>Scheduled Platform Maintenance</span>
+          </div>
+
+          <h1 className="font-display text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+            {landingMaintenance.title || "We'll Be Back In A Few Moments"}
+          </h1>
+
+          <p className="text-sm sm:text-base text-slate-600 max-w-lg mx-auto leading-relaxed">
+            {landingMaintenance.message || "We are upgrading Dukaan systems with lightning-fast cloud synchronization. Your billing counter will resume automatically."}
+          </p>
+
+          {/* Live Countdown Clock Cards */}
+          <div className="grid grid-cols-4 gap-2 sm:gap-4 max-w-md mx-auto pt-4">
+            {[
+              { label: "DAYS", val: String(mDays).padStart(2, "0") },
+              { label: "HOURS", val: String(mHours).padStart(2, "0") },
+              { label: "MINS", val: String(mMins).padStart(2, "0") },
+              { label: "SECS", val: String(mSecs).padStart(2, "0") }
+            ].map((c) => (
+              <div key={c.label} className="p-3 sm:p-4 rounded-2xl bg-slate-50 border border-slate-200 shadow-sm text-center">
+                <div className="font-mono text-2xl sm:text-4xl font-black text-slate-900">{c.val}</div>
+                <div className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{c.label}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              to="/app"
+              className="w-full sm:w-auto px-6 h-11 rounded-xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2"
+            >
+              <Store className="w-4 h-4" /> Go to Merchant Portal
+            </Link>
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full sm:w-auto px-5 h-11 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-sm"
+            >
+              Check Live Status
+            </button>
+          </div>
+        </main>
+
+        <footer className="max-w-4xl mx-auto w-full text-center pt-6 border-t border-slate-200 text-xs text-slate-400 flex items-center justify-between">
+          <span>officialdukaan.in</span>
+          <span>Safe Cloud Ledger · 100% Data Protection Guaranteed</span>
+        </footer>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-brand-sand text-brand-indigo noise relative overflow-x-hidden">
       
@@ -148,16 +270,18 @@ export default function Landing() {
       <ThreeDBackground />
 
       {/* =========================================================
-          TOP ANNOUNCEMENT BAR: CLOUD POS & STORE MANAGEMENT
+          TOP ANNOUNCEMENT BAR: CLOUD POS & STORE MANAGEMENT (ADMIN CONTROLLED - PURE WHITE THEME)
       ========================================================= */}
-      <div className="bg-[#1B1464] border-b border-indigo-900/60 text-white px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-medium flex items-center justify-center gap-2.5 text-center shadow-xs z-50 relative">
-        <span className="bg-brand-terracotta text-white text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full tracking-wider shrink-0 shadow-2xs">
-          Universal POS
-        </span>
-        <span className="text-white/95">
-          🚀 <strong>Dukaan Store Management:</strong> Seamlessly access your billing counter across PC, Laptop, and Mobile devices!
-        </span>
-      </div>
+      {announcement && (
+        <div className="bg-white border-b border-slate-200 text-slate-800 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium flex items-center justify-center gap-2.5 text-center shadow-xs z-50 relative">
+          <span className="bg-brand-terracotta text-white text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full tracking-wider shrink-0 shadow-2xs">
+            Notice
+          </span>
+          <span className="text-slate-700 font-semibold">
+            {announcement}
+          </span>
+        </div>
+      )}
 
       {/* =========================================================
           TOP NAVBAR
@@ -177,10 +301,6 @@ export default function Landing() {
           {/* Desktop Navigation Links (Clean spacing, zero overlap) */}
           <nav className="hidden lg:flex items-center gap-3.5 xl:gap-6 text-xs xl:text-sm font-semibold text-brand-indigo/80 shrink-0">
             <a href="#features" className="hover:text-brand-terracotta transition-colors whitespace-nowrap">Features</a>
-            <a href="#download" className="text-brand-terracotta font-bold hover:underline flex items-center gap-1 transition-colors whitespace-nowrap">
-              <Download className="w-3.5 h-3.5" />
-              <span>Download</span>
-            </a>
             <a href="#counter-mode" className="hover:text-brand-terracotta transition-colors flex items-center gap-1 whitespace-nowrap">
               <span>Counter Mode</span>
               <span className="bg-brand-terracotta/10 text-brand-terracotta text-[10px] font-bold px-1.5 py-0.5 rounded-full">3D</span>
@@ -305,17 +425,7 @@ export default function Landing() {
 
                 {/* 2. Navigation Quick Grid */}
                 <div className="grid grid-cols-2 gap-2.5">
-                  <a
-                    href="#download"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="p-3 rounded-xl bg-brand-sand/50 hover:bg-brand-sand border border-brand-mitti/40 flex items-center gap-2.5 transition-colors"
-                  >
-                    <Download className="w-4 h-4 text-brand-terracotta shrink-0" />
-                    <div className="text-left">
-                      <div className="text-xs font-bold text-brand-indigo">Download Apps</div>
-                      <div className="text-[10px] text-brand-indigo/60 font-medium">Android APK & PC</div>
-                    </div>
-                  </a>
+
 
                   <a
                     href="#counter-mode"
@@ -475,13 +585,13 @@ export default function Landing() {
               <ArrowRight className="w-5 h-5" />
             </Button>
 
-            <a 
-              href="#download"
-              className="h-14 px-7 text-base rounded-full border-2 border-brand-indigo/30 hover:border-brand-indigo bg-white text-brand-indigo font-bold active:scale-95 transition-all shadow-sm flex items-center gap-2"
+            <Link 
+              to="/app"
+              className="h-14 px-7 text-base rounded-full border-2 border-brand-mitti hover:border-brand-indigo bg-white text-brand-indigo font-bold active:scale-95 transition-all shadow-sm flex items-center gap-2"
             >
-              <Download className="w-4 h-4 text-brand-terracotta" />
-              <span>Get PC (.exe) & APK</span>
-            </a>
+              <Store className="w-4 h-4 text-brand-terracotta" />
+              <span>Open Billing Counter</span>
+            </Link>
           </div>
 
           {/* Trust points */}
@@ -625,114 +735,6 @@ export default function Landing() {
       </Reveal>
 
       {/* =========================================================
-          DOWNLOAD SECTION (WINDOWS PC .EXE & ANDROID .APK)
-      ========================================================= */}
-      <Reveal className="relative z-10 mx-auto max-w-6xl px-5 py-20 border-t border-brand-mitti" id="download">
-        <div className="text-center max-w-2xl mx-auto mb-14">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-brand-mitti bg-white text-xs font-bold uppercase tracking-widest text-brand-terracotta mb-4 shadow-2xs">
-            <Download className="w-3.5 h-3.5" />
-            Native Desktop & Mobile Apps
-          </div>
-          <h2 className="font-display text-4xl sm:text-5xl text-brand-indigo">
-            Download Dukaan for Your Counter & Mobile
-          </h2>
-          <p className="mt-4 text-base sm:text-lg text-brand-indigo/70">
-            No browser required. Launch straight into billing with 100% offline device storage.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-8 items-stretch max-w-4xl mx-auto">
-          {/* Windows PC Software Card */}
-          <div className="rounded-3xl p-8 border-2 border-brand-mitti bg-white shadow-lift flex flex-col justify-between hover:border-brand-indigo transition-all">
-            <div>
-              <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 grid place-items-center mb-5">
-                <Laptop className="w-8 h-8" />
-              </div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-blue-600 mb-1">Desktop Software</div>
-              <h3 className="font-display text-2xl font-bold text-brand-indigo">Windows PC (.exe)</h3>
-              <p className="mt-2 text-sm text-brand-indigo/70 leading-relaxed">
-                Counter billing software for Windows 10 & 11. Fullscreen kiosk mode (F11), barcode scanner support, and direct thermal receipt printing.
-              </p>
-
-              <div className="mt-6 space-y-2 text-xs font-semibold text-brand-indigo/80">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Direct launch into POS (No landing page)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Works 100% offline once registered</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Single-file executable + Portable zip</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8 pt-6 border-t border-brand-mitti">
-              <a
-                href="https://github.com/MrGraphicsManager/Dukaan/actions"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full h-12 rounded-2xl bg-brand-indigo hover:bg-brand-indigo/90 text-white font-bold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
-              >
-                <Download className="w-4 h-4" />
-                <span>Download Windows Software (.exe)</span>
-              </a>
-              <div className="mt-2 text-center text-[10px] text-brand-indigo/50">
-                Windows 10 / 11 64-bit · Installer & Portable
-              </div>
-            </div>
-          </div>
-
-          {/* Android Mobile App Card */}
-          <div className="rounded-3xl p-8 border-2 border-brand-mitti bg-white shadow-lift flex flex-col justify-between hover:border-brand-terracotta transition-all">
-            <div>
-              <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 grid place-items-center mb-5">
-                <Smartphone className="w-8 h-8" />
-              </div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 mb-1">Android Mobile App</div>
-              <h3 className="font-display text-2xl font-bold text-brand-indigo">Android App (.apk)</h3>
-              <p className="mt-2 text-sm text-brand-indigo/70 leading-relaxed">
-                Take your Dukaan billing and customer khata ledger in your pocket. Touch-friendly mobile interface with 1-tap WhatsApp digital bills.
-              </p>
-
-              <div className="mt-6 space-y-2 text-xs font-semibold text-brand-indigo/80">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Direct launch into Shop Dashboard</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>1-Tap WhatsApp customer bill sender</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Safe-area native bottom dock navigation</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8 pt-6 border-t border-brand-mitti">
-              <a
-                href="https://expo.dev/artifacts/eas/YBpEitoVMPh1OOaw30VAiPAEeurd-UWL8Q311eUJ20s.apk"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full h-12 rounded-2xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
-              >
-                <Download className="w-4 h-4" />
-                <span>Download Android APK (Direct Install)</span>
-              </a>
-              <div className="mt-2 text-center text-[10px] text-brand-indigo/50">
-                Android 8.0+ · Native SQLite Offline POS
-              </div>
-            </div>
-          </div>
-        </div>
-      </Reveal>
-
-      {/* =========================================================
           PRICING SECTION (3D ELEVATED CARDS)
       ========================================================= */}
       <Reveal className="relative z-10 mx-auto max-w-6xl px-5 py-24 border-t border-brand-mitti" id="pricing">
@@ -759,7 +761,7 @@ export default function Landing() {
               <div 
                 className={`rounded-3xl p-8 border-2 shadow-3d-card relative flex flex-col justify-between h-full preserve-3d ${
                   p.featured 
-                    ? "bg-brand-indigo text-white border-brand-indigo shadow-2xl" 
+                    ? "bg-white text-slate-900 border-2 border-brand-terracotta shadow-xl ring-2 ring-brand-terracotta/20" 
                     : "bg-white text-brand-indigo border-brand-mitti"
                 }`}
               >
@@ -776,21 +778,21 @@ export default function Landing() {
 
                   <div className="mt-4 flex items-baseline gap-2">
                     <span className="font-display text-5xl font-extrabold">₹{p.price}</span>
-                    <span className={`text-sm font-semibold ${p.featured ? "text-white/60" : "text-brand-indigo/50"}`}>/month</span>
+                    <span className={`text-sm font-semibold ${p.featured ? "text-slate-500" : "text-brand-indigo/50"}`}>/month</span>
                   </div>
-                  <div className={`mt-1 text-xs font-medium ${p.featured ? "text-white/60" : "text-brand-indigo/50"}`}>
+                  <div className={`mt-1 text-xs font-medium ${p.featured ? "text-slate-500" : "text-brand-indigo/50"}`}>
                     + ₹{p.setup} one-time setup fee
                   </div>
 
-                  <div className={`my-6 h-px w-full ${p.featured ? "bg-white/15" : "bg-brand-mitti"}`} />
+                  <div className={`my-6 h-px w-full ${p.featured ? "bg-slate-200" : "bg-brand-mitti"}`} />
 
                   <ul className="space-y-3.5 mb-8">
                     {p.perks.map((x) => (
                       <li key={x} className="flex items-start gap-3">
-                        <div className={`mt-0.5 rounded-full p-0.5 shrink-0 ${p.featured ? "bg-brand-terracotta text-white" : "bg-brand-leaf/10 text-brand-leaf"}`}>
+                        <div className={`mt-0.5 rounded-full p-0.5 shrink-0 ${p.featured ? "bg-brand-leaf/15 text-brand-leaf" : "bg-brand-leaf/10 text-brand-leaf"}`}>
                           <Check className="w-3.5 h-3.5" />
                         </div>
-                        <span className={`text-sm font-medium ${p.featured ? "text-white/90" : "text-brand-indigo/80"}`}>{x}</span>
+                        <span className={`text-sm font-medium ${p.featured ? "text-slate-700" : "text-brand-indigo/80"}`}>{x}</span>
                       </li>
                     ))}
                   </ul>
@@ -843,23 +845,23 @@ export default function Landing() {
       ========================================================= */}
       <section className="relative z-10 mx-auto max-w-6xl px-5 pb-24">
         <Card3D depth={14} glow={true} className="w-full">
-          <div className="bg-gradient-to-br from-brand-indigo to-[#2A2375] text-white rounded-[2.5rem] p-10 md:p-16 text-center relative overflow-hidden shadow-2xl border-2 border-brand-indigo/40 preserve-3d">
+          <div className="bg-white text-slate-900 rounded-[2.5rem] p-10 md:p-16 text-center relative overflow-hidden shadow-xl border-2 border-slate-200 preserve-3d">
             
-            {/* Ambient gold glow */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-brand-terracotta/20 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-96 h-96 bg-brand-gold/15 rounded-full blur-3xl pointer-events-none" />
+            {/* Ambient subtle glow */}
+            <div className="absolute top-0 right-0 w-96 h-96 bg-orange-100/40 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-100/30 rounded-full blur-3xl pointer-events-none" />
 
             <div className="relative z-10 max-w-2xl mx-auto">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 text-xs font-semibold uppercase tracking-widest text-brand-terracotta mb-6">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-50 border border-orange-200 text-xs font-semibold uppercase tracking-widest text-brand-terracotta mb-6">
                 <Sparkles className="w-3.5 h-3.5" /> Start in 30 Seconds
               </div>
 
-              <h2 className="font-display text-4xl md:text-6xl tracking-tight leading-tight">
+              <h2 className="font-display text-4xl md:text-6xl tracking-tight leading-tight text-slate-900">
                 Everything your Dukaan needs. <br />
                 <span className="text-brand-terracotta">In one place.</span>
               </h2>
 
-              <p className="mt-6 text-lg text-white/75 leading-relaxed">
+              <p className="mt-6 text-lg text-slate-600 leading-relaxed font-medium">
                 Join thousands of modern shops across India managing billing, inventory, and udhaar effortlessly.
               </p>
 
@@ -867,12 +869,12 @@ export default function Landing() {
                 <Button 
                   size="lg" 
                   onClick={() => nav("/app")} 
-                  className="h-14 px-10 text-lg rounded-full bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold active:scale-95 transition-all shadow-glow flex items-center gap-2"
+                  className="h-14 px-10 text-lg rounded-full bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold active:scale-95 transition-all shadow-md flex items-center gap-2"
                 >
                   <span>Open Your Dukaan</span>
                   <ArrowRight className="w-5 h-5" />
                 </Button>
-                <InstallAppButton variant="outline" className="h-14 px-8 text-base rounded-full border-white/20 bg-white/10 text-white hover:bg-white/20" />
+                <InstallAppButton variant="outline" className="h-14 px-8 text-base rounded-full border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100" />
               </div>
             </div>
 

@@ -1074,6 +1074,7 @@ exports.handler = async (event, context) => {
 
     // 7. SUBSCRIPTIONS - TRIAL MANDATE
     if (path === "/subscriptions/trial" && event.httpMethod === "POST") {
+      await getPersistentState();
       const plan = body.plan || "business";
       const trialDays = plan === "starter" ? 90 : plan === "business" ? 60 : 30;
       const expires_at = body.expires_at || new Date(Date.now() + trialDays * 86400000).toISOString();
@@ -1091,6 +1092,14 @@ exports.handler = async (event, context) => {
 
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       let user = parseToken(authHeader) || {};
+      const email = ((body.user_email || body.email || user.email) || "").toLowerCase().trim();
+      if (email) {
+        user.email = email;
+        if (!globalPlatformConfig.granted_subscriptions) globalPlatformConfig.granted_subscriptions = {};
+        globalPlatformConfig.granted_subscriptions[email] = subscription;
+        recordRegisteredUser({ email, subscription, is_verified: true });
+        savePersistentState().catch(() => {});
+      }
       user.subscription = subscription;
       if (plan === "premium") user.is_premium = true;
       const new_token = makeToken(user);
@@ -1109,6 +1118,7 @@ exports.handler = async (event, context) => {
 
     // 8. SUBSCRIPTIONS - RAZORPAY VERIFY (PAID)
     if (path === "/subscriptions/razorpay/verify" && event.httpMethod === "POST") {
+      await getPersistentState();
       const plan = body.plan || "business";
       const isAnnual = Boolean(body.annual);
       const durationDays = isAnnual ? 365 : 30;
@@ -1129,12 +1139,19 @@ exports.handler = async (event, context) => {
         const pIdx = promoCodes.findIndex(p => p.code === appliedPromoCode);
         if (pIdx >= 0) {
           promoCodes[pIdx].usage_count = (promoCodes[pIdx].usage_count || 0) + 1;
-          savePersistentState().catch(() => {});
         }
       }
 
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       let user = parseToken(authHeader) || {};
+      const email = ((body.user_email || body.email || user.email) || "").toLowerCase().trim();
+      if (email) {
+        user.email = email;
+        if (!globalPlatformConfig.granted_subscriptions) globalPlatformConfig.granted_subscriptions = {};
+        globalPlatformConfig.granted_subscriptions[email] = subscription;
+        recordRegisteredUser({ email, subscription, is_verified: true });
+      }
+      savePersistentState().catch(() => {});
       user.subscription = subscription;
       if (plan === "premium") user.is_premium = true;
       const new_token = makeToken(user);

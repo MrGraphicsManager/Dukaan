@@ -155,6 +155,12 @@ export default function GoogleAuthCallback() {
               sub = localUser.subscription;
             } catch {}
           }
+          if (!sub && userObj?.email) {
+            try {
+              const allSubs = JSON.parse(localStorage.getItem("dukaan_all_subscriptions") || "{}");
+              sub = allSubs[userObj.email.toLowerCase().trim()];
+            } catch {}
+          }
           const isSubActive = (s) => {
             if (!s) return false;
             const st = (s.status || "").toLowerCase();
