@@ -100,6 +100,11 @@ export default function Billing() {
                   if (r.data.active.plan === "premium") u.is_premium = true;
                   localStorage.setItem("dukaan_user", JSON.stringify(u));
                 }
+                if (u.email) {
+                  const allSubs = JSON.parse(localStorage.getItem("dukaan_all_subscriptions") || "{}");
+                  allSubs[u.email.toLowerCase().trim()] = r.data.active;
+                  localStorage.setItem("dukaan_all_subscriptions", JSON.stringify(allSubs));
+                }
               } catch {}
             }
           }
@@ -183,9 +188,31 @@ export default function Billing() {
           </div>
           <div>
             <div className="text-[10px] uppercase font-bold text-brand-indigo/50">Status</div>
-            <span className="inline-flex items-center gap-1 mt-0.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Verified
-            </span>
+            {(() => {
+              const isExpired = sub?.expires_at && new Date(sub.expires_at).getTime() < Date.now();
+              const daysLeft = sub?.expires_at ? Math.ceil((new Date(sub.expires_at).getTime() - Date.now()) / 86400000) : null;
+              const isExpiringSoon = daysLeft !== null && daysLeft <= 3 && daysLeft >= 0;
+
+              if (isExpired) {
+                return (
+                  <span className="inline-flex items-center gap-1 mt-0.5 px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 text-xs font-bold">
+                    <AlertCircle className="w-3.5 h-3.5 text-rose-600" /> Expired
+                  </span>
+                );
+              }
+              if (isExpiringSoon) {
+                return (
+                  <span className="inline-flex items-center gap-1 mt-0.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">
+                    <Clock className="w-3.5 h-3.5 text-amber-600" /> Expiring in {daysLeft} {daysLeft === 1 ? "day" : "days"}
+                  </span>
+                );
+              }
+              return (
+                <span className="inline-flex items-center gap-1 mt-0.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Verified Active
+                </span>
+              );
+            })()}
           </div>
         </div>
       </div>

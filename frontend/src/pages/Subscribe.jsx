@@ -264,8 +264,12 @@ export default function Subscribe() {
   }), []);
 
   const userSub = user?.subscription;
+  const isSubExpired = Boolean(
+    userSub?.expires_at && new Date(userSub.expires_at).getTime() <= Date.now()
+  );
   const isSubActiveNow = Boolean(
-    userSub && (userSub.status === "active" || userSub.status === "trial" || userSub.is_trial)
+    userSub && (userSub.status === "active" || userSub.status === "trial" || userSub.is_trial) &&
+    !isSubExpired
   );
   const userPlanKey = isSubActiveNow && userSub?.plan ? userSub.plan.toLowerCase() : null;
   const userRank = userPlanKey ? (PLAN_RANK[userPlanKey] || 0) : 0;

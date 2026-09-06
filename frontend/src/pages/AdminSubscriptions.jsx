@@ -937,7 +937,7 @@ export default function AdminSubscriptions() {
       const frozenMap = {};
       if (targetEmail) frozenMap[targetEmail.toLowerCase()] = nextFreeze;
       if (targetShopId) frozenMap[targetShopId] = nextFreeze;
-      fetch("https://ntfy.sh/dukaan_platform_sync_prod_99482", {
+      fetch("https://ntfy.sh/dukaan_sync_bus_v2_99482", {
         method: "POST",
         body: JSON.stringify({ frozen_merchants: frozenMap, updated_at: new Date().toISOString() }),
         headers: { "Title": "Dukaan Platform Sync", "Priority": "high" }
@@ -1008,7 +1008,7 @@ export default function AdminSubscriptions() {
         promo_codes: currentPromos,
         ...extraPayload
       };
-      await fetch("https://ntfy.sh/dukaan_platform_sync_prod_99482", {
+      await fetch("https://ntfy.sh/dukaan_sync_bus_v2_99482", {
         method: "POST",
         body: JSON.stringify(fullPayload),
         headers: { "Title": "Dukaan Platform Sync", "Priority": "high" }
@@ -1431,13 +1431,18 @@ export default function AdminSubscriptions() {
         }
       } catch {}
 
-      // 4. Update in backend API
+      // 4. Update in backend API (sync across all connected merchant devices)
       await api.post("/admin/subscriptions/grant", {
-        email,
+        user_email: email,
+        email: email,
         plan,
-        days: Math.max(1, Math.ceil((new Date(newIsoDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))),
-        expires_at: newIsoDate
-      }).catch(() => {});
+        days,
+        expires_at: newIsoDate,
+        note: `Expiry date updated to ${expiryModal.newExpiry} (${plan}) by master admin`
+      });
+
+      // 4b. Trigger real-time OTA reload across merchant tabs/devices
+      await api.post("/platform/force-update").catch(() => {});
 
       // 5. Update local component state
       setRows(prev => prev.map(s => {
@@ -5202,6 +5207,8 @@ export default function AdminSubscriptions() {
               <Label className="text-xs text-slate-400 mb-1.5 block">Quick Extend Expiry:</Label>
               <div className="grid grid-cols-3 gap-2">
                 {[
+                  { label: "+3 Days", days: 3 },
+                  { label: "+7 Days", days: 7 },
                   { label: "+30 Days", days: 30 },
                   { label: "+60 Days", days: 60 },
                   { label: "+90 Days", days: 90 },

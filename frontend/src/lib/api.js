@@ -22,6 +22,15 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  try {
+    const rawUser = localStorage.getItem("dukaan_user");
+    if (rawUser) {
+      const u = JSON.parse(rawUser);
+      if (u?.email) {
+        config.headers["X-User-Email"] = u.email;
+      }
+    }
+  } catch {}
   // Guarantee 100% fresh real-time responses by cache-busting all GET queries
   if (!config.method || config.method.toLowerCase() === "get") {
     config.params = {

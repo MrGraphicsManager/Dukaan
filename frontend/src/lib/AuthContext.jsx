@@ -655,6 +655,13 @@ export function AuthProvider({ children }) {
     setUser(socialUser);
     localStorage.setItem("dukaan_user", JSON.stringify(socialUser));
 
+    if (!localStorage.getItem("dukaan_access_token")) {
+      try {
+        const fallbackToken = "duk_" + btoa(unescape(encodeURIComponent(JSON.stringify(socialUser))));
+        localStorage.setItem("dukaan_access_token", fallbackToken);
+      } catch {}
+    }
+
     // 4. Setup merchant store for this specific Google user, reusing existing configuration if available
     const merchantShopId = `shop_${cleanEmail.replace(/[^a-zA-Z0-9]/g, "_")}`;
     let savedShops = [];

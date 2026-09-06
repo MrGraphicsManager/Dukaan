@@ -204,36 +204,6 @@ export default function AppLayout() {
 
   const checkPlatformConfig = useCallback(async () => {
     try {
-      // Direct high-speed cloud sync bus polling (0ms cache, guaranteed fresh across browsers)
-      try {
-        const busRes = await fetch("https://ntfy.sh/dukaan_platform_sync_prod_99482/raw?poll=1&limit=1", { signal: AbortSignal.timeout(3000) });
-        if (busRes.ok) {
-          const rawText = await busRes.text();
-          if (rawText && rawText.trim()) {
-            const lines = rawText.trim().split('\n').filter(Boolean);
-            for (const line of lines) {
-              try {
-                const busJson = JSON.parse(line);
-                if (busJson) {
-                  if (typeof busJson.maintenance_mode === "boolean") {
-                    setPlatformConfig(prev => ({ ...prev, maintenance_mode: busJson.maintenance_mode }));
-                    if (busJson.maintenance_mode) localStorage.setItem("dukaan_platform_maintenance", "true");
-                    else localStorage.removeItem("dukaan_platform_maintenance");
-                  }
-                  if (typeof busJson.announcement === "string") {
-                    setPlatformConfig(prev => ({ ...prev, announcement: busJson.announcement }));
-                    if (busJson.announcement) localStorage.setItem("dukaan_platform_announcement", busJson.announcement);
-                    else localStorage.removeItem("dukaan_platform_announcement");
-                  }
-                  if (busJson.frozen_merchants) {
-                    setPlatformConfig(prev => ({ ...prev, frozen_merchants: { ...prev.frozen_merchants, ...busJson.frozen_merchants } }));
-                  }
-                }
-              } catch (_) {}
-            }
-          }
-        }
-      } catch (_) {}
 
       const res = await api.get("/platform/config");
       if (res?.data) {
@@ -348,7 +318,7 @@ export default function AppLayout() {
     let eventSource;
     try {
       if (typeof window !== "undefined" && window.EventSource) {
-        eventSource = new EventSource("https://ntfy.sh/dukaan_platform_sync_prod_99482/sse");
+        eventSource = new EventSource("https://ntfy.sh/dukaan_sync_bus_v2_99482/sse");
         eventSource.onmessage = (e) => {
           try {
             const payload = JSON.parse(e.data);

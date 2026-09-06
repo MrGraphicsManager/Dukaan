@@ -115,8 +115,10 @@ let globalPlatformConfig = {
   promo_codes: []
 };
 
-const SYNC_BUS_TOPIC = process.env.DUKAAN_SYNC_BUS_TOPIC || "dukaan_platform_sync_prod_99482";
+const SYNC_BUS_TOPIC = process.env.DUKAAN_SYNC_BUS_TOPIC || "dukaan_sync_bus_v2_99482";
 const SYNC_BUS_URL = `https://ntfy.sh/${SYNC_BUS_TOPIC}`;
+const SYNC_BUS_BACKUP_TOPIC = "dukaan_sync_bus_v3_99482";
+const SYNC_BUS_BACKUP_URL = `https://ntfy.sh/${SYNC_BUS_BACKUP_TOPIC}`;
 const CAREERS_SYNC_TOPIC = process.env.DUKAAN_CAREERS_SYNC_TOPIC || "dukaan_careers_sync_prod_88291";
 const CAREERS_SYNC_URL = `https://ntfy.sh/${CAREERS_SYNC_TOPIC}`;
 
@@ -156,10 +158,18 @@ async function getPersistentState(force = false) {
     return globalPlatformConfig;
   }
   try {
+    let rawText = "";
     const res = await safeHttpGet(`${SYNC_BUS_URL}/raw?poll=1&limit=10`, 3500);
     if (res.ok) {
-      const rawText = await res.text();
-      if (rawText && rawText.trim()) {
+      rawText = await res.text();
+    }
+    if (!rawText || !rawText.trim()) {
+      const backupRes = await safeHttpGet(`${SYNC_BUS_BACKUP_URL}/raw?poll=1&limit=10`, 3500);
+      if (backupRes && backupRes.ok) {
+        rawText = await backupRes.text();
+      }
+    }
+    if (rawText && rawText.trim()) {
         const lines = rawText.trim().split('\n').filter(Boolean);
         let json = null;
         for (let i = lines.length - 1; i >= 0; i--) {
@@ -279,10 +289,9 @@ async function getPersistentState(force = false) {
             referralCodes = json.referral_codes;
           }
         }
+      } catch (e) {
+        console.warn("Persistent cloud state fetch error:", e.message);
       }
-    } catch (e) {
-    console.warn("Persistent cloud state fetch error:", e.message);
-  }
   return globalPlatformConfig;
 }
 
@@ -320,7 +329,10 @@ async function savePersistentState(extraConfig = {}) {
       })),
       updated_at: globalPlatformConfig.updated_at
     };
-    await safeHttpPost(SYNC_BUS_URL, payload, { "Title": "Dukaan Platform Sync", "Priority": "high" }, 3500);
+    const primaryRes = await safeHttpPost(SYNC_BUS_URL, payload, { "Title": "Dukaan Platform Sync", "Priority": "high" }, 3500);
+    if (!primaryRes.ok) {
+      await safeHttpPost(SYNC_BUS_BACKUP_URL, payload, { "Title": "Dukaan Platform Sync Backup", "Priority": "high" }, 3500);
+    }
   } catch (e) {
     console.warn("Persistent cloud state save error:", e.message);
   }
@@ -808,6 +820,62 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // 2A. SOCIAL LOGIN (Google / Apple)
+    if (path === "/auth/social-login" && event.httpMethod === "POST") {
+      await getPersistentState();
+      const email = (body.email || "").trim().toLowerCase();
+      const name = (body.name || email.split("@")[0] || "Merchant").trim();
+      const avatar = body.avatar || "";
+      const provider = body.provider || "google";
+
+      if (!email) {
+        return { statusCode: 400, headers, body: JSON.stringify({ detail: "Email is required for social login." }) };
+      }
+
+      const isAdmin = email === ADMIN_EMAIL.toLowerCase();
+      let granted = globalPlatformConfig.granted_subscriptions?.[email];
+      if (!granted && globalPlatformConfig.granted_subscriptions) {
+        const foundKey = Object.keys(globalPlatformConfig.granted_subscriptions).find(k => k.toLowerCase() === email);
+        if (foundKey) granted = globalPlatformConfig.granted_subscriptions[foundKey];
+      }
+
+      const isFrozen = !!globalPlatformConfig.frozen_merchants?.[email];
+      const isVerified = globalPlatformConfig.verified_merchants?.[email] !== undefined 
+        ? globalPlatformConfig.verified_merchants[email] 
+        : true;
+
+      let existing = registeredUsersList.find(u => u.email && u.email.toLowerCase() === email);
+      const sub = granted || existing?.subscription || { plan: "starter", status: "active" };
+
+      const user = {
+        id: existing?.id || `usr_${Date.now()}`,
+        name: existing?.name || name,
+        email,
+        avatar: avatar || existing?.avatar || "",
+        provider,
+        is_verified: isVerified,
+        is_frozen: isFrozen,
+        is_admin: isAdmin,
+        subscription: sub,
+        is_premium: sub.plan === "premium"
+      };
+
+      recordRegisteredUser(user);
+      savePersistentState().catch(() => {});
+
+      const token = makeToken(user);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          ok: true,
+          access_token: token,
+          token_type: "bearer",
+          user
+        })
+      };
+    }
+
     // 2B. RESET PASSWORD
     if (path === "/auth/reset-password" && event.httpMethod === "POST") {
       const { email, new_password } = body;
@@ -855,18 +923,28 @@ exports.handler = async (event, context) => {
       await getPersistentState();
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const userFromToken = parseToken(authHeader);
+      const headerEmail = (event.headers["x-user-email"] || event.headers["X-User-Email"] || "").trim().toLowerCase();
+      const email = ((userFromToken?.email || headerEmail) || "").toLowerCase().trim();
 
-      if (userFromToken && userFromToken.email) {
-        const email = userFromToken.email.toLowerCase();
-        const granted = globalPlatformConfig.granted_subscriptions?.[email];
+      if (email) {
+        let granted = globalPlatformConfig.granted_subscriptions?.[email];
+        if (!granted && globalPlatformConfig.granted_subscriptions) {
+          const foundKey = Object.keys(globalPlatformConfig.granted_subscriptions).find(k => k.toLowerCase() === email);
+          if (foundKey) granted = globalPlatformConfig.granted_subscriptions[foundKey];
+        }
+
         const isFrozen = !!globalPlatformConfig.frozen_merchants?.[email];
         const isVerified = globalPlatformConfig.verified_merchants?.[email] !== undefined 
           ? globalPlatformConfig.verified_merchants[email] 
-          : (userFromToken.is_verified ?? true);
+          : (userFromToken?.is_verified ?? true);
+
+        const existingReg = registeredUsersList.find(u => u.email && u.email.toLowerCase() === email);
 
         const mergedUser = {
-          ...userFromToken,
-          is_admin: email === ADMIN_EMAIL,
+          ...(existingReg || {}),
+          ...(userFromToken || {}),
+          email,
+          is_admin: email === ADMIN_EMAIL.toLowerCase(),
           is_frozen: isFrozen,
           is_verified: isVerified
         };
@@ -874,6 +952,9 @@ exports.handler = async (event, context) => {
         if (granted) {
           mergedUser.subscription = granted;
           if (granted.plan === "premium") mergedUser.is_premium = true;
+        } else if (existingReg?.subscription) {
+          mergedUser.subscription = existingReg.subscription;
+          if (existingReg.subscription.plan === "premium") mergedUser.is_premium = true;
         }
 
         recordRegisteredUser(mergedUser);
@@ -1188,9 +1269,25 @@ exports.handler = async (event, context) => {
       await getPersistentState();
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
-      const email = (user?.email || "").toLowerCase();
-      const granted = email ? globalPlatformConfig.granted_subscriptions?.[email] : null;
-      const activeSub = granted || user?.subscription || null;
+      const queryEmail = (event.queryStringParameters?.email || event.queryStringParameters?.user_email || "").trim().toLowerCase();
+      const headerEmail = (event.headers["x-user-email"] || event.headers["X-User-Email"] || "").trim().toLowerCase();
+      const email = ((user?.email || headerEmail || queryEmail) || "").toLowerCase().trim();
+
+      let granted = null;
+      if (email) {
+        granted = globalPlatformConfig.granted_subscriptions?.[email];
+        if (!granted && globalPlatformConfig.granted_subscriptions) {
+          const foundKey = Object.keys(globalPlatformConfig.granted_subscriptions).find(k => k.toLowerCase() === email);
+          if (foundKey) granted = globalPlatformConfig.granted_subscriptions[foundKey];
+        }
+      }
+
+      let activeSub = granted;
+      if (!activeSub && email) {
+        const reg = registeredUsersList.find(u => u.email && u.email.toLowerCase() === email);
+        if (reg?.subscription) activeSub = reg.subscription;
+      }
+      if (!activeSub) activeSub = user?.subscription || null;
 
       return {
         statusCode: 200,
@@ -1205,14 +1302,22 @@ exports.handler = async (event, context) => {
     // 9B. ADMIN GRANT SUBSCRIPTION
     if (path === "/admin/subscriptions/grant" && event.httpMethod === "POST") {
       await getPersistentState();
-      const targetEmail = (body.user_email || "").trim().toLowerCase();
+      const targetEmail = (body.user_email || body.email || body.merchant_email || "").trim().toLowerCase();
       if (!targetEmail) {
         return { statusCode: 400, headers, body: JSON.stringify({ detail: "User email is required." }) };
       }
       const plan = (body.plan || "premium").toLowerCase();
-      const days = Number(body.days) || 365;
-      const expDate = new Date(Date.now() + days * 86400000).toISOString();
-      const note = body.note || "Manual grant by master admin";
+      
+      let expDate;
+      let days;
+      if (body.expires_at) {
+        expDate = new Date(body.expires_at).toISOString();
+        days = Number(body.days) || Math.max(1, Math.ceil((new Date(expDate).getTime() - Date.now()) / 86400000));
+      } else {
+        days = Number(body.days) || 365;
+        expDate = new Date(Date.now() + days * 86400000).toISOString();
+      }
+      const note = body.note || "Manual grant/expiry update by master admin";
 
       if (!globalPlatformConfig.granted_subscriptions) {
         globalPlatformConfig.granted_subscriptions = {};
@@ -1243,6 +1348,7 @@ exports.handler = async (event, context) => {
 
       // Bump OTA version so connected clients immediately re-sync & unlock
       globalPlatformConfig.ota_version = (globalPlatformConfig.ota_version || 1) + 1;
+      globalPlatformConfig.updated_at = new Date().toISOString();
 
       await savePersistentState();
 
@@ -1251,7 +1357,7 @@ exports.handler = async (event, context) => {
         headers,
         body: JSON.stringify({
           ok: true,
-          message: `Successfully granted ${plan.toUpperCase()} plan to ${targetEmail} for ${days} days!`,
+          message: `Successfully granted ${plan.toUpperCase()} plan to ${targetEmail} until ${expDate.slice(0, 10)}!`,
           subscription: grantRecord
         })
       };
