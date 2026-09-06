@@ -586,7 +586,7 @@ export default function POS() {
   };
 
   return (
-    <div className="animate-fade-up max-w-[1500px] mx-auto pb-12 font-sans selection:bg-brand-terracotta/20">
+    <div className="animate-fade-up max-w-[1500px] mx-auto pb-36 lg:pb-12 font-sans selection:bg-brand-terracotta/20">
       
       {/* Top POS Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-brand-mitti">
@@ -768,12 +768,14 @@ export default function POS() {
                 return (
                   <div
                     key={p.id}
-                    onClick={() => !isOutOfStock && addToCart(p)}
+                    onClick={() => !isOutOfStock && !inCart && addToCart(p)}
                     data-testid={`pos-product-${p.id}`}
-                    className={`relative rounded-3xl border-2 p-4 transition-all flex flex-col justify-between select-none ${
+                    className={`relative rounded-3xl border-2 p-3.5 sm:p-4 transition-all flex flex-col justify-between select-none ${
                       isOutOfStock 
                         ? "bg-brand-mitti/30 border-brand-mitti/60 opacity-60 cursor-not-allowed" 
-                        : "bg-white border-brand-mitti hover:border-brand-indigo/40 hover:shadow-md active:scale-[0.98] cursor-pointer"
+                        : inCart
+                          ? "bg-white border-brand-terracotta shadow-sm ring-2 ring-brand-terracotta/20"
+                          : "bg-white border-brand-mitti hover:border-brand-indigo/40 hover:shadow-md active:scale-[0.98] cursor-pointer"
                     }`}
                   >
                     {/* Cart Quantity Badge on Product Card */}
@@ -814,26 +816,69 @@ export default function POS() {
                       )}
                     </div>
 
-                    <div className="mt-4 pt-3 border-t border-brand-mitti/60 flex items-center justify-between">
-                      <span className="font-display font-bold text-lg text-brand-indigo">
-                        {money(p.selling_price)}
-                      </span>
-
-                      <div className="flex items-center gap-1">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          p.unlimited_stock ? "bg-brand-indigo/10 text-brand-indigo" :
-                          p.stock <= 0 ? "bg-red-100 text-red-700" :
-                          p.stock <= (p.min_stock || 5) ? "bg-amber-100 text-amber-800" : "bg-emerald-50 text-emerald-700"
+                    <div className="mt-3.5 sm:mt-4 pt-3 border-t border-brand-mitti/60 flex items-center justify-between gap-1.5">
+                      <div>
+                        <div className="font-display font-bold text-base sm:text-lg text-brand-indigo">
+                          {money(p.selling_price)}
+                        </div>
+                        <div className={`text-[10px] font-bold ${
+                          p.unlimited_stock ? "text-brand-indigo/60" :
+                          p.stock <= 0 ? "text-red-700" :
+                          p.stock <= (p.min_stock || 5) ? "text-amber-800" : "text-emerald-700"
                         }`}>
-                          {p.unlimited_stock ? <span className="inline-flex items-center gap-0.5"><InfinityIcon className="w-3 h-3" /> Prepared</span> : p.stock <= 0 ? "Out" : `${p.stock} left`}
-                        </span>
-                        
-                        {!isOutOfStock && (
-                          <span className="w-7 h-7 rounded-xl bg-brand-sand hover:bg-brand-terracotta hover:text-white grid place-items-center transition-colors text-brand-indigo">
-                            <Plus className="w-4 h-4" />
-                          </span>
-                        )}
+                          {p.unlimited_stock ? "Unlimited" : p.stock <= 0 ? "Out" : `${p.stock} left`}
+                        </div>
                       </div>
+
+                      {/* Direct Card Quantity Stepper (Mobile & Desktop) */}
+                      {!isOutOfStock && (
+                        inCart ? (
+                          <div 
+                            onClick={(e) => e.stopPropagation()} 
+                            className="flex items-center bg-brand-terracotta text-white rounded-xl shadow-xs border border-brand-terracotta overflow-hidden h-9 shrink-0"
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const cartIdx = cart.findIndex(x => x.product_id === p.id);
+                                if (cartIdx >= 0) updateQty(cartIdx, -1);
+                              }}
+                              className="w-8 h-full flex items-center justify-center hover:bg-black/10 active:scale-90 font-bold transition-all"
+                              aria-label="Decrease quantity"
+                            >
+                              <Minus className="w-3.5 h-3.5 text-white" />
+                            </button>
+                            <span className="font-mono font-extrabold text-xs px-1.5 text-center text-white min-w-[20px]">
+                              {inCart.qty}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const cartIdx = cart.findIndex(x => x.product_id === p.id);
+                                if (cartIdx >= 0) updateQty(cartIdx, 1);
+                              }}
+                              className="w-8 h-full flex items-center justify-center hover:bg-black/10 active:scale-90 font-bold transition-all"
+                              aria-label="Increase quantity"
+                            >
+                              <Plus className="w-3.5 h-3.5 text-white" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              addToCart(p);
+                            }}
+                            className="h-9 px-3 rounded-xl bg-brand-sand hover:bg-brand-terracotta hover:text-white text-brand-indigo text-xs font-bold flex items-center gap-1 active:scale-95 transition-all border border-brand-mitti shadow-2xs shrink-0"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>ADD</span>
+                          </button>
+                        )
+                      )}
                     </div>
                   </div>
                 );
@@ -939,18 +984,18 @@ export default function POS() {
                     <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-xl border border-brand-mitti shadow-xs">
                       <button 
                         onClick={() => updateQty(idx, -1)}
-                        className="w-6 h-6 rounded-lg bg-brand-sand hover:bg-brand-mitti grid place-items-center text-brand-indigo font-bold transition-colors"
+                        className="w-7 h-7 rounded-lg bg-brand-sand hover:bg-brand-mitti grid place-items-center text-brand-indigo font-bold active:scale-90 transition-all"
                       >
-                        <Minus className="w-3 h-3" />
+                        <Minus className="w-3.5 h-3.5" />
                       </button>
                       <span className="font-mono font-bold text-xs w-5 text-center text-brand-indigo">
                         {item.qty}
                       </span>
                       <button 
                         onClick={() => updateQty(idx, 1)}
-                        className="w-6 h-6 rounded-lg bg-brand-sand hover:bg-brand-mitti grid place-items-center text-brand-indigo font-bold transition-colors"
+                        className="w-7 h-7 rounded-lg bg-brand-sand hover:bg-brand-mitti grid place-items-center text-brand-indigo font-bold active:scale-90 transition-all"
                       >
-                        <Plus className="w-3 h-3" />
+                        <Plus className="w-3.5 h-3.5" />
                       </button>
                     </div>
 
@@ -1040,7 +1085,7 @@ export default function POS() {
           PAYMENT MODAL (Cash / UPI / Card / Udhaar)
       ========================================================= */}
       <Dialog open={payOpen} onOpenChange={setPayOpen}>
-        <DialogContent className="max-w-md rounded-3xl p-6 border-2 border-brand-mitti">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto rounded-3xl p-5 sm:p-6 border-2 border-brand-mitti">
           <DialogHeader>
             <DialogTitle className="font-display text-2xl text-brand-indigo flex items-center justify-between">
               <span>Payment Mode</span>
@@ -1354,21 +1399,21 @@ export default function POS() {
           MOBILE FLOATING CART PILL (lg:hidden)
       ========================================================= */}
       {cart.length > 0 && !mobileCartOpen && (
-        <div className="lg:hidden fixed bottom-[72px] inset-x-3 z-40 bg-gradient-to-r from-brand-indigo to-[#261E7A] text-white p-3 rounded-2xl shadow-2xl border border-white/20 flex items-center justify-between animate-in slide-in-from-bottom duration-200">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-brand-terracotta text-white flex items-center justify-center font-bold text-xs shadow-xs">
+        <div className="lg:hidden fixed bottom-[76px] inset-x-3 z-40 bg-gradient-to-r from-brand-indigo via-[#261E7A] to-brand-indigo text-white p-3.5 rounded-2xl shadow-2xl border-2 border-white/20 flex items-center justify-between animate-in slide-in-from-bottom duration-200">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-brand-terracotta text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
               {cart.reduce((a, c) => a + c.qty, 0)}
             </div>
             <div>
-              <div className="text-xs font-bold leading-tight">{money(total)}</div>
-              <div className="text-[10px] text-white/70">{cart.length} item{cart.length > 1 ? "s" : ""} added</div>
+              <div className="text-sm font-extrabold leading-tight">{money(total)}</div>
+              <div className="text-[11px] text-white/80 font-medium">{cart.length} item{cart.length > 1 ? "s" : ""} in bill</div>
             </div>
           </div>
           <button
             onClick={() => setMobileCartOpen(true)}
-            className="bg-brand-terracotta hover:bg-brand-terracotta/90 text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-1 shadow-md active:scale-95 transition-all"
+            className="bg-brand-terracotta hover:bg-brand-terracotta/90 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
           >
-            <span>View Bill & Pay</span>
+            <span>Review & Pay</span>
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
@@ -1477,22 +1522,24 @@ export default function POS() {
                         </div>
                       </div>
 
-                      {/* Quantity Controls */}
-                      <div className="flex items-center gap-1 bg-white px-1.5 py-0.5 rounded-xl border border-brand-mitti">
+                      {/* Quantity Controls (Large 36px touch targets for mobile) */}
+                      <div className="flex items-center gap-1 bg-white px-1.5 py-1 rounded-xl border border-brand-mitti">
                         <button 
                           onClick={() => updateQty(idx, -1)}
-                          className="w-6 h-6 rounded-lg bg-brand-sand hover:bg-brand-mitti grid place-items-center text-brand-indigo font-bold"
+                          className="w-9 h-9 rounded-lg bg-brand-sand hover:bg-brand-mitti grid place-items-center text-brand-indigo font-bold active:scale-90 transition-all"
+                          aria-label="Decrease quantity"
                         >
-                          <Minus className="w-3 h-3" />
+                          <Minus className="w-4 h-4" />
                         </button>
-                        <span className="font-mono font-bold text-xs w-4 text-center text-brand-indigo">
+                        <span className="font-mono font-bold text-sm w-5 text-center text-brand-indigo">
                           {item.qty}
                         </span>
                         <button 
                           onClick={() => updateQty(idx, 1)}
-                          className="w-6 h-6 rounded-lg bg-brand-sand hover:bg-brand-mitti grid place-items-center text-brand-indigo font-bold"
+                          className="w-9 h-9 rounded-lg bg-brand-sand hover:bg-brand-mitti grid place-items-center text-brand-indigo font-bold active:scale-90 transition-all"
+                          aria-label="Increase quantity"
                         >
-                          <Plus className="w-3 h-3" />
+                          <Plus className="w-4 h-4" />
                         </button>
                       </div>
 

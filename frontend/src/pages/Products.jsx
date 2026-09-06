@@ -445,23 +445,23 @@ export default function Products() {
       {/* =========================================================
           CONTROLS BAR: SEARCH, FILTERS & VIEW TOGGLE
       ========================================================= */}
-      <div className="bg-white p-4 rounded-3xl border-2 border-brand-mitti shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white p-3.5 sm:p-4 rounded-3xl border-2 border-brand-mitti shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
         
         {/* Left: Search & Category */}
-        <div className="flex flex-1 items-center gap-3">
-          <div className="relative flex-1 max-w-md">
+        <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
+          <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-brand-indigo/40" />
             <Input 
               data-testid="product-search" 
               placeholder="Search by product name or category…" 
               value={q} 
               onChange={(e) => setQ(e.target.value)} 
-              className="pl-11 pr-4 h-11 rounded-2xl border-brand-mitti bg-brand-sand/50 text-sm font-medium text-brand-indigo" 
+              className="pl-11 pr-4 h-11 rounded-2xl border-brand-mitti bg-brand-sand/50 text-sm font-medium text-brand-indigo w-full" 
             />
           </div>
 
           <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="w-44 h-11 rounded-2xl border-brand-mitti bg-brand-sand/50 text-xs font-bold text-brand-indigo">
+            <SelectTrigger className="w-full sm:w-44 h-11 rounded-2xl border-brand-mitti bg-brand-sand/50 text-xs font-bold text-brand-indigo shrink-0">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
@@ -475,22 +475,22 @@ export default function Products() {
         </div>
 
         {/* Right: Stock Status Pills & View Mode */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center bg-brand-sand p-1 rounded-2xl border border-brand-mitti flex-wrap gap-1">
+        <div className="flex items-center justify-between sm:justify-start gap-2 max-w-full">
+          <div className="flex items-center bg-brand-sand p-1 rounded-2xl border border-brand-mitti overflow-x-auto whitespace-nowrap scrollbar-none gap-1 flex-1 sm:flex-initial">
             {[
               { id: "all", label: "All" },
               { id: "in_stock", label: "In Stock" },
-              { id: "low_stock", label: `Low Stock (${lowStockCount})` },
+              { id: "low_stock", label: `Low (${lowStockCount})` },
               { id: "out_of_stock", label: "Out of Stock" },
               ...(canUseExpiryGuard ? [
-                { id: "expiring_soon", label: `Expiring Soon (${expiringSoonCount})` },
+                { id: "expiring_soon", label: `Expiring (${expiringSoonCount})` },
                 { id: "expired", label: `Expired (${expiredCount})` }
               ] : [])
             ].map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setStatusFilter(tab.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
                   statusFilter === tab.id 
                     ? tab.id === "expired"
                       ? "bg-rose-600 text-white shadow-xs"
@@ -510,7 +510,7 @@ export default function Products() {
           </div>
 
           {/* View Toggle */}
-          <div className="flex items-center bg-brand-sand p-1 rounded-2xl border border-brand-mitti">
+          <div className="flex items-center bg-brand-sand p-1 rounded-2xl border border-brand-mitti shrink-0">
             <button
               onClick={() => setViewMode("grid")}
               className={`p-1.5 rounded-xl ${viewMode === "grid" ? "bg-white text-brand-indigo shadow-xs" : "text-brand-indigo/40"}`}

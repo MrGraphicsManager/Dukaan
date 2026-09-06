@@ -148,6 +148,18 @@ export default function Landing() {
       <ThreeDBackground />
 
       {/* =========================================================
+          TOP ANNOUNCEMENT BAR: MOBILE 2.0 UPDATE LIVE
+      ========================================================= */}
+      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold flex items-center justify-center gap-2.5 text-center shadow-xs z-50 relative">
+        <span className="bg-white/20 text-white text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full tracking-wider border border-white/30 shrink-0 animate-pulse">
+          ⚡ New Update
+        </span>
+        <span className="text-xs sm:text-sm font-medium">
+          📱 <strong>Mobile Device Update Live:</strong> Dukaan ab mobile phone par chalana hua aur bhi aasan! 1-Tap quick billing, large touch controls & fast khata book.
+        </span>
+      </div>
+
+      {/* =========================================================
           TOP NAVBAR
       ========================================================= */}
       <header className="sticky top-0 z-40 bg-brand-cream/95 backdrop-blur-xl border-b border-brand-mitti shadow-xs">
@@ -394,10 +406,16 @@ export default function Landing() {
           transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }} 
           className="lg:col-span-6"
         >
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-brand-mitti bg-white/80 backdrop-blur-md text-xs font-semibold uppercase tracking-widest text-brand-terracotta shadow-xs">
-            <Sparkles className="w-3.5 h-3.5" />
-            Made for Indian Local Shops & Kiranas
+          {/* Badges */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-brand-mitti bg-white/80 backdrop-blur-md text-xs font-semibold uppercase tracking-widest text-brand-terracotta shadow-xs">
+              <Sparkles className="w-3.5 h-3.5" />
+              Made for Indian Local Shops & Kiranas
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold shadow-2xs">
+              <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Mobile 2.0 Ready · 1-Hand Easy</span>
+            </div>
           </div>
 
           {/* Headline */}
@@ -436,16 +454,18 @@ export default function Landing() {
           </div>
 
           {/* Trust points */}
-          <div className="mt-8 flex items-center gap-6 text-xs text-brand-indigo/65 font-semibold">
+          <div className="mt-8 flex items-center gap-4 sm:gap-6 text-xs text-brand-indigo/65 font-semibold flex-wrap">
             <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" /> 100% Secure & Private
+              <Smartphone className="w-4 h-4 text-emerald-600" /> 100% Mobile & Phone Ready
             </span>
             <span>·</span>
             <span className="flex items-center gap-1.5">
               <Zap className="w-4 h-4 text-amber-600" /> Fast 1-Tap Billing
             </span>
             <span>·</span>
-            <span>Plans from ₹99/mo</span>
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" /> 100% Secure & Private
+            </span>
           </div>
         </motion.div>
 

@@ -400,6 +400,31 @@ export default function Dashboard() {
             <p className="text-white/70 text-sm md:text-base mt-2 max-w-xl">
               Here is your shop's performance today. Everything is synced and ready at the counter.
             </p>
+
+            {/* Mobile-Only Quick Action Shortcuts Bar */}
+            <div className="flex sm:hidden items-center gap-2 mt-4 overflow-x-auto pb-1 scrollbar-none">
+              <button
+                onClick={() => nav("/app/pos")}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-terracotta text-white font-extrabold text-xs shadow-md active:scale-95 transition-all shrink-0"
+              >
+                <Receipt className="w-3.5 h-3.5" />
+                <span>+ Naya Bill</span>
+              </button>
+              <button
+                onClick={() => nav("/app/udhaar")}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs backdrop-blur-md border border-white/20 active:scale-95 transition-all shrink-0"
+              >
+                <Wallet className="w-3.5 h-3.5 text-amber-300" />
+                <span>+ Udhaar Likho</span>
+              </button>
+              <button
+                onClick={() => nav("/app/products")}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs backdrop-blur-md border border-white/20 active:scale-95 transition-all shrink-0"
+              >
+                <Package className="w-3.5 h-3.5 text-emerald-300" />
+                <span>+ Naya Item</span>
+              </button>
+            </div>
           </div>
 
           {/* Right: Live Target Progress Ring & Actions */}
@@ -469,97 +494,97 @@ export default function Dashboard() {
       {/* =========================================================
           ELEMENT 2: 4 VIBRANT NEW KPI METRIC CARDS
       ========================================================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
         
         {/* Card 1: Today's Sales */}
-        <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-sm hover:shadow-md hover:-translate-y-1 transition-all relative overflow-hidden group">
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 border-2 border-brand-mitti shadow-sm hover:shadow-md hover:-translate-y-1 transition-all relative overflow-hidden group">
           <div className="flex items-center justify-between">
-            <div className="text-xs uppercase tracking-wider font-bold text-brand-indigo/60">Today's Sales</div>
-            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 grid place-items-center group-hover:scale-110 transition-transform">
-              <TrendingUp className="w-5 h-5" />
+            <div className="text-[10px] sm:text-xs uppercase tracking-wider font-bold text-brand-indigo/60 truncate">Today's Sales</div>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-emerald-50 text-emerald-600 grid place-items-center group-hover:scale-110 transition-transform shrink-0">
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
-          <div className="mt-3 font-display text-4xl font-extrabold text-brand-indigo tracking-tight">
+          <div className="mt-2 sm:mt-3 font-display text-xl sm:text-3xl lg:text-4xl font-extrabold text-brand-indigo tracking-tight">
             {money(todaySales)}
           </div>
-          <div className="mt-4 flex items-center justify-between text-xs pt-3 border-t border-brand-mitti/60">
-            <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" /> +18.4%
+          <div className="mt-3 sm:mt-4 flex items-center justify-between text-[10px] sm:text-xs pt-2.5 sm:pt-3 border-t border-brand-mitti/60">
+            <span className="text-emerald-700 font-bold bg-emerald-50 px-1.5 sm:px-2 py-0.5 rounded-md flex items-center gap-1">
+              <TrendingUp className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> +18.4%
             </span>
-            <span className="text-brand-indigo/60 font-medium">vs yesterday</span>
+            <span className="text-brand-indigo/60 font-medium hidden sm:inline">vs yesterday</span>
           </div>
         </div>
 
         {/* Card 2: Today's Orders */}
-        <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-sm hover:shadow-md hover:-translate-y-1 transition-all relative overflow-hidden group">
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 border-2 border-brand-mitti shadow-sm hover:shadow-md hover:-translate-y-1 transition-all relative overflow-hidden group">
           <div className="flex items-center justify-between">
-            <div className="text-xs uppercase tracking-wider font-bold text-brand-indigo/60">Bills Generated</div>
-            <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 grid place-items-center group-hover:scale-110 transition-transform">
-              <Receipt className="w-5 h-5" />
+            <div className="text-[10px] sm:text-xs uppercase tracking-wider font-bold text-brand-indigo/60 truncate">Bills Made</div>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-blue-50 text-blue-600 grid place-items-center group-hover:scale-110 transition-transform shrink-0">
+              <Receipt className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
-          <div className="mt-3 font-display text-4xl font-extrabold text-brand-indigo tracking-tight">
+          <div className="mt-2 sm:mt-3 font-display text-xl sm:text-3xl lg:text-4xl font-extrabold text-brand-indigo tracking-tight">
             {d?.today?.orders || 0}
           </div>
-          <div className="mt-4 flex items-center justify-between text-xs pt-3 border-t border-brand-mitti/60">
-            <span className="text-brand-indigo/70 font-semibold">Avg Basket</span>
+          <div className="mt-3 sm:mt-4 flex items-center justify-between text-[10px] sm:text-xs pt-2.5 sm:pt-3 border-t border-brand-mitti/60">
+            <span className="text-brand-indigo/70 font-semibold truncate">Avg Basket</span>
             <span className="font-bold text-brand-indigo">
-              {money(d?.today?.orders ? Math.round(todaySales / d.today.orders) : 0)} / bill
+              {money(d?.today?.orders ? Math.round(todaySales / d.today.orders) : 0)}
             </span>
           </div>
         </div>
 
         {/* Card 3: Pending Udhaar */}
-        <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-sm hover:shadow-md hover:-translate-y-1 transition-all relative overflow-hidden group">
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 border-2 border-brand-mitti shadow-sm hover:shadow-md hover:-translate-y-1 transition-all relative overflow-hidden group">
           <div className="flex items-center justify-between">
-            <div className="text-xs uppercase tracking-wider font-bold text-brand-terracotta">Pending Udhaar</div>
-            <div className="w-10 h-10 rounded-2xl bg-orange-50 text-brand-terracotta grid place-items-center group-hover:scale-110 transition-transform">
-              <Wallet className="w-5 h-5" />
+            <div className="text-[10px] sm:text-xs uppercase tracking-wider font-bold text-brand-terracotta truncate">Udhaar Khata</div>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-orange-50 text-brand-terracotta grid place-items-center group-hover:scale-110 transition-transform shrink-0">
+              <Wallet className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
-          <div className="mt-3 font-display text-4xl font-extrabold text-brand-terracotta tracking-tight">
+          <div className="mt-2 sm:mt-3 font-display text-xl sm:text-3xl lg:text-4xl font-extrabold text-brand-terracotta tracking-tight">
             {money(d?.total_pending || 0)}
           </div>
-          <div className="mt-4 flex items-center justify-between text-xs pt-3 border-t border-brand-mitti/60">
+          <div className="mt-3 sm:mt-4 flex items-center justify-between text-[10px] sm:text-xs pt-2.5 sm:pt-3 border-t border-brand-mitti/60">
             <button 
               onClick={() => nav("/app/udhaar")}
               className="text-brand-terracotta font-bold hover:underline flex items-center gap-1"
             >
-              Collect Udhaar <ArrowRight className="w-3 h-3" />
+              Collect <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
             </button>
-            <span className="text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md font-bold">
-              3 Overdue
+            <span className="text-[9px] sm:text-xs text-amber-700 bg-amber-50 px-1.5 sm:px-2 py-0.5 rounded-md font-bold">
+              3 Due
             </span>
           </div>
         </div>
 
         {/* Card 4: Inventory & Low Stock */}
-        <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-sm hover:shadow-md hover:-translate-y-1 transition-all relative overflow-hidden group">
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 border-2 border-brand-mitti shadow-sm hover:shadow-md hover:-translate-y-1 transition-all relative overflow-hidden group">
           <div className="flex items-center justify-between">
-            <div className="text-xs uppercase tracking-wider font-bold text-brand-indigo/60">Stock Health</div>
-            <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 grid place-items-center group-hover:scale-110 transition-transform">
-              <Warehouse className="w-5 h-5" />
+            <div className="text-[10px] sm:text-xs uppercase tracking-wider font-bold text-brand-indigo/60 truncate">Stock Alerts</div>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-purple-50 text-purple-600 grid place-items-center group-hover:scale-110 transition-transform shrink-0">
+              <Warehouse className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2 font-display text-4xl font-extrabold text-brand-indigo tracking-tight">
+          <div className="mt-2 sm:mt-3 flex items-baseline gap-1.5 font-display text-xl sm:text-3xl lg:text-4xl font-extrabold text-brand-indigo tracking-tight">
             {d?.low_stock?.length > 0 ? (
               <span className="text-brand-terracotta">{d.low_stock.length}</span>
             ) : (
               <span className="text-emerald-600">0</span>
             )}
-            <span className="text-sm font-sans font-medium text-brand-indigo/50">alerts</span>
+            <span className="text-xs font-sans font-medium text-brand-indigo/50">alerts</span>
           </div>
-          <div className="mt-4 flex items-center justify-between text-xs pt-3 border-t border-brand-mitti/60">
+          <div className="mt-3 sm:mt-4 flex items-center justify-between text-[10px] sm:text-xs pt-2.5 sm:pt-3 border-t border-brand-mitti/60">
             <button 
               onClick={() => nav("/app/stock")}
-              className="text-brand-indigo font-bold hover:underline"
+              className="text-brand-indigo font-bold hover:underline truncate"
             >
-              Total {d?.allProductsCount || 0} Products
+              Manage Stock
             </button>
-            <span className={`px-2 py-0.5 rounded-md font-bold text-[11px] ${
+            <span className={`px-1.5 sm:px-2 py-0.5 rounded-md font-bold text-[9px] sm:text-[11px] ${
               d?.low_stock?.length > 0 ? "bg-amber-100 text-amber-800" : "bg-emerald-50 text-emerald-700"
             }`}>
-              {d?.low_stock?.length > 0 ? "Action Required" : "All Stocked"}
+              {d?.low_stock?.length > 0 ? "Low" : "Safe"}
             </span>
           </div>
         </div>
@@ -750,11 +775,11 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* ELEMENT 4: Interactive Hourly Sales Chart */}
-        <div className="lg:col-span-8 bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+        <div className="lg:col-span-8 bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border-2 border-brand-mitti shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
             <div>
               <div className="text-xs uppercase tracking-wider font-bold text-brand-terracotta">Hourly Breakdown</div>
-              <h2 className="font-display text-2xl font-bold text-brand-indigo mt-0.5">Today's Sales Flow</h2>
+              <h2 className="font-display text-xl sm:text-2xl font-bold text-brand-indigo mt-0.5">Today's Sales Flow</h2>
             </div>
             <div className="flex items-center gap-3">
               <span className="flex items-center gap-1 text-xs font-semibold text-brand-indigo/70 bg-brand-sand px-3 py-1 rounded-full border border-brand-mitti">
@@ -764,7 +789,7 @@ export default function Dashboard() {
           </div>
 
           {/* Recharts Area Graph */}
-          <div className="w-full h-64">
+          <div className="w-full h-48 sm:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={salesHourlyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
