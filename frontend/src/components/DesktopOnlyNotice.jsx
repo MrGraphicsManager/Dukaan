@@ -154,23 +154,29 @@ export default function DesktopOnlyNotice({ target = 'dashboard' }) {
           </div>
         </div>
 
-        {/* Mobile App Coming Soon Notice */}
-        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-brand-terracotta/15 via-orange-500/10 to-transparent border border-brand-terracotta/30 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-brand-terracotta/20 text-orange-300 flex items-center justify-center shrink-0">
-            <Smartphone className="w-5 h-5" />
-          </div>
-          <div className="text-left">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-extrabold text-white">Mobile App In Design</span>
-              <span className="bg-brand-terracotta text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase">
-                Figma WIP
-              </span>
+        {/* Mobile App Notice & Direct Link */}
+        <Link 
+          to="/mobile"
+          className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-600/20 via-indigo-600/20 to-transparent border border-blue-500/30 flex items-center justify-between gap-3 hover:border-blue-400 transition-all cursor-pointer group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Smartphone className="w-5 h-5" />
             </div>
-            <p className="text-[11px] text-orange-200/80 leading-tight mt-0.5">
-              A dedicated smartphone companion app is currently being designed and will launch soon!
-            </p>
+            <div className="text-left">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-extrabold text-white">Dukaan Mobile Experience</span>
+                <span className="bg-[#0066FF] text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase">
+                  Live
+                </span>
+              </div>
+              <p className="text-[11px] text-blue-200/80 leading-tight mt-0.5">
+                Experience the mobile billing POS, udhaar ledger & reports.
+              </p>
+            </div>
           </div>
-        </div>
+          <Sparkles className="w-4 h-4 text-blue-300 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+        </Link>
 
         {/* Primary Action Buttons */}
         <div className="space-y-2.5 pt-2">

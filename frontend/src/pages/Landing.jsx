@@ -198,6 +198,11 @@ export default function Landing() {
               <span>We're Hiring</span>
               <span className="bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">2 Roles</span>
             </Link>
+            <Link to="/mobile" className="text-[#0066FF] font-bold hover:text-blue-700 flex items-center gap-1.5 transition-colors whitespace-nowrap">
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>Mobile App</span>
+              <span className="bg-[#0066FF] text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full">New</span>
+            </Link>
             <a href="#faq" className="hover:text-brand-terracotta transition-colors whitespace-nowrap">FAQ</a>
           </nav>
 
@@ -280,6 +285,29 @@ export default function Landing() {
                     </div>
                   </div>
                   <ArrowRight className="w-4 h-4 text-blue-600 group-hover:translate-x-1 transition-transform shrink-0" />
+                </Link>
+
+                {/* Mobile App Banner in Drawer */}
+                <Link
+                  to="/mobile"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-blue-600/10 via-indigo-600/10 to-blue-600/5 border border-blue-200 text-blue-900 group hover:border-blue-400 transition-all shadow-xs"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#0066FF] text-white flex items-center justify-center shadow-md shrink-0">
+                      <Smartphone className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-sm text-slate-900">Dukaan Mobile App</span>
+                        <span className="bg-[#0066FF] text-white text-[9px] font-bold px-2 py-0.5 rounded-full">New POS</span>
+                      </div>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">
+                        Billing, Stock, Khata & Reports on Mobile
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-[#0066FF] group-hover:translate-x-1 transition-transform shrink-0" />
                 </Link>
 
                 {/* 2. Navigation Quick Grid */}

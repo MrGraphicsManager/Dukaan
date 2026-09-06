@@ -7,6 +7,9 @@
 body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;background:#F8FAFC;color:#0A1B39}
 @layer base{ :root{--background:210 50% 98%;--foreground:222 47% 11%;--card:0 0% 100%;--card-foreground:222 47% 11%;--popover:0 0% 100%;--popover-foreground:222 47% 11%;--primary:217 100% 50%;--primary-foreground:0 0% 100%;--secondary:222 47% 11%;--secondary-foreground:0 0% 100%;--muted:214 32% 91%;--muted-foreground:215 16% 47%;--accent:217 91% 60%;--accent-foreground:0 0% 100%;--destructive:0 84% 60%;--destructive-foreground:0 0% 100%;--border:214 32% 91%;--input:214 32% 91%;--ring:217 100% 50%;--radius:.75rem;--chart-1:217 100% 50%;--chart-2:222 47% 11%;--chart-3:158 46% 33%;--chart-4:217 91% 60%;--chart-5:224 76% 48%} }
 @layer base{*{@apply border-border}body{@apply bg-background text-foreground}h1,h2,h3{font-family:'DM Serif Display',serif;letter-spacing:-.01em}.font-display{font-family:'DM Serif Display',serif}}
+.mobile-shell, .mobile-shell h1, .mobile-shell h2, .mobile-shell h3, .mobile-shell h4, .mobile-shell h5, .mobile-shell h6 {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
 @layer utilities{.noise{background-image:radial-gradient(rgba(10,27,57,.03) 1px,transparent 1px),radial-gradient(rgba(0,102,255,.03) 1px,transparent 1px);background-size:22px 22px,40px 40px;background-position:0 0,11px 11px}.ledger-lines{background-image:linear-gradient(to bottom,transparent 31px,rgba(10,27,57,.06) 32px);background-size:100% 32px}}
 input,select,textarea{font-size:16px}
 [data-debug-wrapper="true"]{display:contents!important}
