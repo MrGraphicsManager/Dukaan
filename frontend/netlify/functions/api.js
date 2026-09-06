@@ -47,6 +47,8 @@ let globalPlatformConfig = {
 
 const SYNC_BUS_TOPIC = process.env.DUKAAN_SYNC_BUS_TOPIC || "dukaan_platform_sync_prod_99482";
 const SYNC_BUS_URL = `https://ntfy.sh/${SYNC_BUS_TOPIC}`;
+const CAREERS_SYNC_TOPIC = process.env.DUKAAN_CAREERS_SYNC_TOPIC || "dukaan_careers_sync_prod_88291";
+const CAREERS_SYNC_URL = `https://ntfy.sh/${CAREERS_SYNC_TOPIC}`;
 
 let registeredUsersList = [
   {
@@ -323,6 +325,67 @@ function deduplicateJobApplications(apps) {
 }
 
 let jobApplications = [];
+let lastCareersCloudFetchTime = 0;
+
+async function getCareersPersistentState(force = false) {
+  const now = Date.now();
+  if (!force && jobApplications.length > 0 && (now - lastCareersCloudFetchTime < 3000)) {
+    return jobApplications;
+  }
+  try {
+    const res = await fetch(`${CAREERS_SYNC_URL}/raw?poll=1&limit=5`, { signal: AbortSignal.timeout(3000) });
+    if (res.ok) {
+      const rawText = await res.text();
+      if (rawText && rawText.trim()) {
+        const lines = rawText.trim().split('\n').filter(Boolean);
+        for (let i = lines.length - 1; i >= 0; i--) {
+          try {
+            const parsed = JSON.parse(lines[i]);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              lastCareersCloudFetchTime = now;
+              jobApplications = deduplicateJobApplications([...jobApplications, ...parsed]);
+              break;
+            }
+          } catch (_) {}
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Careers cloud state fetch error:", e.message);
+  }
+  return jobApplications;
+}
+
+async function saveCareersPersistentState() {
+  try {
+    const cleanList = deduplicateJobApplications(jobApplications).slice(0, 25).map(a => ({
+      id: a.id,
+      name: a.name,
+      email: a.email,
+      phone: a.phone,
+      whatsapp: a.whatsapp || a.phone,
+      role: a.role,
+      city: a.city,
+      address: a.address || "",
+      education: a.education,
+      aadhar_number: a.aadhar_number,
+      why_hire: a.why_hire || "",
+      status: a.status || "under_review",
+      admin_note: a.admin_note || "",
+      created_at: a.created_at || new Date().toISOString(),
+      reviewed_at: a.reviewed_at || null
+    }));
+
+    await fetch(CAREERS_SYNC_URL, {
+      method: "POST",
+      body: JSON.stringify(cleanList),
+      headers: { "Title": "Careers Sync", "Priority": "high" },
+      signal: AbortSignal.timeout(3500)
+    });
+  } catch (e) {
+    console.warn("Careers cloud state save error:", e.message);
+  }
+}
 
 let promoCodes = [
   {
@@ -1464,7 +1527,7 @@ exports.handler = async (event, context) => {
     
     // 16. CAREERS & HIRING PORTAL ENGINE
     if (path === "/careers/check" && event.httpMethod === "POST") {
-      await getPersistentState();
+      await getCareersPersistentState(true);
       jobApplications = deduplicateJobApplications(jobApplications);
       const email = (body.email || "").trim().toLowerCase();
       const phone = (body.phone || "").trim().replace(/\D/g, "");
@@ -1482,7 +1545,7 @@ exports.handler = async (event, context) => {
     }
 
     if (path === "/careers/apply" && event.httpMethod === "POST") {
-      await getPersistentState();
+      await getCareersPersistentState();
       const email = (body.email || "").trim().toLowerCase();
       const phone = (body.phone || "").trim().replace(/\D/g, "");
       const name = (body.name || "").trim();
@@ -1534,18 +1597,18 @@ exports.handler = async (event, context) => {
       }
 
       jobApplications = deduplicateJobApplications(jobApplications);
-      await savePersistentState();
+      await saveCareersPersistentState();
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true, application: newApp }) };
     }
 
     if (path === "/admin/careers/applications" && event.httpMethod === "GET") {
-      await getPersistentState();
+      await getCareersPersistentState(true);
       jobApplications = deduplicateJobApplications(jobApplications);
       return { statusCode: 200, headers, body: JSON.stringify(jobApplications) };
     }
 
     if (path === "/admin/careers/status" && event.httpMethod === "POST") {
-      await getPersistentState();
+      await getCareersPersistentState();
       const { id, email, phone, status, admin_note, aadhar_number, name } = body;
       const cleanEmail = (email || "").trim().toLowerCase();
       const cleanPhone = (phone || "").trim().replace(/\D/g, "");
@@ -1603,7 +1666,7 @@ exports.handler = async (event, context) => {
       });
 
       jobApplications = deduplicateJobApplications(jobApplications);
-      await savePersistentState();
+      await saveCareersPersistentState();
 
       const updated = jobApplications.find(a => 
         (id && a.id === id) || 
