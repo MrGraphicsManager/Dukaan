@@ -76,6 +76,12 @@ const ADMIN_EMAIL = "contact@officialdukaan.in";
 // Global Platform Configuration (Enterprise Suite Features)
 let globalPlatformConfig = {
   maintenance_mode: false,
+  landing_maintenance: {
+    enabled: false,
+    ends_at: null,
+    message: "We are currently deploying scheduled platform upgrades with 0 downtime. Dukaan will resume in a few moments.",
+    title: "Scheduled System Maintenance"
+  },
   announcement: "",
   updated_at: new Date().toISOString(),
   pricing: {
@@ -173,6 +179,12 @@ async function getPersistentState(force = false) {
           }
           if (typeof json.announcement === "string") {
             globalPlatformConfig.announcement = json.announcement;
+          }
+          if (json.landing_maintenance && typeof json.landing_maintenance === "object") {
+            globalPlatformConfig.landing_maintenance = {
+              ...globalPlatformConfig.landing_maintenance,
+              ...json.landing_maintenance
+            };
           }
           if (typeof json.ota_version === "number") {
             globalPlatformConfig.ota_version = json.ota_version;
@@ -283,6 +295,7 @@ async function savePersistentState(extraConfig = {}) {
   try {
     const payload = {
       maintenance_mode: globalPlatformConfig.maintenance_mode,
+      landing_maintenance: globalPlatformConfig.landing_maintenance,
       announcement: globalPlatformConfig.announcement,
       ota_version: globalPlatformConfig.ota_version,
       kill_switch_active: globalPlatformConfig.kill_switch_active,
@@ -322,6 +335,8 @@ function recordRegisteredUser(userObj) {
     if (userObj.subscription) existing.subscription = userObj.subscription;
     if (userObj.is_verified !== undefined) existing.is_verified = userObj.is_verified;
     if (userObj.is_frozen !== undefined) existing.is_frozen = userObj.is_frozen;
+    if (userObj.provider) existing.provider = userObj.provider;
+    if (userObj.avatar) existing.avatar = userObj.avatar;
   } else {
     registeredUsersList.push({
       id: userObj.id || `usr_${Date.now()}`,
@@ -1527,6 +1542,57 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // 11.9 LANDING PAGE MAINTENANCE (Public & Admin Synced)
+    if (path === "/platform/landing-maintenance" && event.httpMethod === "GET") {
+      await getPersistentState();
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          ok: true,
+          landing_maintenance: globalPlatformConfig.landing_maintenance || {
+            enabled: false,
+            ends_at: null,
+            message: "We are currently deploying scheduled platform upgrades with 0 downtime. Dukaan will resume in a few moments.",
+            title: "Scheduled System Maintenance"
+          },
+          announcement: globalPlatformConfig.announcement || ""
+        })
+      };
+    }
+
+    if (path === "/platform/landing-maintenance" && event.httpMethod === "POST") {
+      await getPersistentState();
+      if (body && typeof body === "object") {
+        if (body.landing_maintenance && typeof body.landing_maintenance === "object") {
+          globalPlatformConfig.landing_maintenance = {
+            ...(globalPlatformConfig.landing_maintenance || {}),
+            ...body.landing_maintenance
+          };
+        } else {
+          globalPlatformConfig.landing_maintenance = {
+            ...(globalPlatformConfig.landing_maintenance || {}),
+            ...body
+          };
+        }
+        if (typeof body.announcement === "string") {
+          globalPlatformConfig.announcement = body.announcement;
+        }
+      }
+      globalPlatformConfig.ota_version = (globalPlatformConfig.ota_version || 1) + 1;
+      globalPlatformConfig.updated_at = new Date().toISOString();
+      await savePersistentState();
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          ok: true,
+          landing_maintenance: globalPlatformConfig.landing_maintenance,
+          announcement: globalPlatformConfig.announcement
+        })
+      };
+    }
+
     // 12. PLATFORM CONFIG (Maintenance, Dynamic Pricing, Branding, OTA, Emergency Switch)
     if (path === "/platform/config" && event.httpMethod === "GET") {
       await getPersistentState();
@@ -1548,6 +1614,12 @@ exports.handler = async (event, context) => {
       }
       if (typeof body.announcement === "string") {
         globalPlatformConfig.announcement = body.announcement;
+      }
+      if (body.landing_maintenance && typeof body.landing_maintenance === "object") {
+        globalPlatformConfig.landing_maintenance = {
+          ...(globalPlatformConfig.landing_maintenance || {}),
+          ...body.landing_maintenance
+        };
       }
       if (body.pricing && typeof body.pricing === "object") {
         globalPlatformConfig.pricing = { ...globalPlatformConfig.pricing, ...body.pricing };

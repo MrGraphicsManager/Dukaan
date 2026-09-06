@@ -1,3 +1,4 @@
+import { api } from "@/lib/api";
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -146,7 +147,7 @@ export default function Landing() {
     return localStorage.getItem("dukaan_platform_announcement") || "🚀 Dukaan Store Management: Seamlessly access your billing counter across PC, Laptop, and Mobile devices!";
   });
 
-  // Landing Page Maintenance Mode & Countdown
+  // Landing Page Maintenance Mode & Countdown (Cloud Synchronized)
   const [landingMaintenance, setLandingMaintenance] = useState(() => {
     try {
       const raw = localStorage.getItem("dukaan_landing_maintenance");
@@ -159,6 +160,32 @@ export default function Landing() {
     if (!landingMaintenance?.enabled || !landingMaintenance?.ends_at) return 0;
     return Math.max(0, Math.floor((new Date(landingMaintenance.ends_at).getTime() - Date.now()) / 1000));
   });
+
+  // Fetch live maintenance and announcement from Cloud API on mount & poll every 8 seconds
+  useEffect(() => {
+    let isMounted = true;
+    const fetchLiveMaintenance = async () => {
+      try {
+        const res = await api.get("/platform/landing-maintenance").catch(() => null);
+        if (!isMounted) return;
+        if (res?.data?.landing_maintenance) {
+          setLandingMaintenance(res.data.landing_maintenance);
+          localStorage.setItem("dukaan_landing_maintenance", JSON.stringify(res.data.landing_maintenance));
+        }
+        if (res?.data?.announcement !== undefined && res.data.announcement !== null) {
+          setAnnouncement(res.data.announcement);
+          localStorage.setItem("dukaan_platform_announcement", res.data.announcement);
+        }
+      } catch (_) {}
+    };
+
+    fetchLiveMaintenance();
+    const interval = setInterval(fetchLiveMaintenance, 8000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   useEffect(() => {
     const syncSettings = () => {
@@ -185,8 +212,9 @@ export default function Landing() {
     return () => clearInterval(timer);
   }, [landingMaintenance?.enabled, landingMaintenance?.ends_at]);
 
-  // If maintenance mode is active with future end time
-  if (landingMaintenance?.enabled && maintenanceRemaining > 0) {
+  // If maintenance mode is active (whether countdown is ticking or static lockdown)
+  if (landingMaintenance?.enabled) {
+    const hasCountdown = Boolean(landingMaintenance.ends_at && maintenanceRemaining > 0);
     const mDays = Math.floor(maintenanceRemaining / 86400);
     const mHours = Math.floor((maintenanceRemaining % 86400) / 3600);
     const mMins = Math.floor((maintenanceRemaining % 3600) / 60);
@@ -212,7 +240,7 @@ export default function Landing() {
 
         <main className="max-w-2xl mx-auto w-full my-auto text-center py-10 space-y-6">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-50 border border-orange-200 text-orange-700 text-xs font-bold uppercase tracking-wider">
-            <Clock className="w-3.5 h-3.5 text-orange-600" />
+            <Clock className="w-3.5 h-3.5 text-orange-600 animate-spin" style={{ animationDuration: '6s' }} />
             <span>Scheduled Platform Maintenance</span>
           </div>
 
@@ -220,24 +248,31 @@ export default function Landing() {
             {landingMaintenance.title || "We'll Be Back In A Few Moments"}
           </h1>
 
-          <p className="text-sm sm:text-base text-slate-600 max-w-lg mx-auto leading-relaxed">
+          <p className="text-sm sm:text-base text-slate-600 max-w-lg mx-auto leading-relaxed font-medium">
             {landingMaintenance.message || "We are upgrading Dukaan systems with lightning-fast cloud synchronization. Your billing counter will resume automatically."}
           </p>
 
           {/* Live Countdown Clock Cards */}
-          <div className="grid grid-cols-4 gap-2 sm:gap-4 max-w-md mx-auto pt-4">
-            {[
-              { label: "DAYS", val: String(mDays).padStart(2, "0") },
-              { label: "HOURS", val: String(mHours).padStart(2, "0") },
-              { label: "MINS", val: String(mMins).padStart(2, "0") },
-              { label: "SECS", val: String(mSecs).padStart(2, "0") }
-            ].map((c) => (
-              <div key={c.label} className="p-3 sm:p-4 rounded-2xl bg-slate-50 border border-slate-200 shadow-sm text-center">
-                <div className="font-mono text-2xl sm:text-4xl font-black text-slate-900">{c.val}</div>
-                <div className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{c.label}</div>
-              </div>
-            ))}
-          </div>
+          {hasCountdown ? (
+            <div className="grid grid-cols-4 gap-2 sm:gap-4 max-w-md mx-auto pt-4">
+              {[
+                { label: "DAYS", val: String(mDays).padStart(2, "0") },
+                { label: "HOURS", val: String(mHours).padStart(2, "0") },
+                { label: "MINS", val: String(mMins).padStart(2, "0") },
+                { label: "SECS", val: String(mSecs).padStart(2, "0") }
+              ].map((c) => (
+                <div key={c.label} className="p-3 sm:p-4 rounded-2xl bg-slate-50 border border-slate-200 shadow-sm text-center">
+                  <div className="font-mono text-2xl sm:text-4xl font-black text-slate-900">{c.val}</div>
+                  <div className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{c.label}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-600">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              <span>Core Platform Upgrade in Progress · Resuming Soon</span>
+            </div>
+          )}
 
           <div className="pt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
@@ -247,7 +282,17 @@ export default function Landing() {
               <Store className="w-4 h-4" /> Go to Merchant Portal
             </Link>
             <button
-              onClick={() => window.location.reload()}
+              onClick={async () => {
+                try {
+                  const r = await api.get("/platform/landing-maintenance");
+                  if (r?.data?.landing_maintenance?.enabled === false) {
+                    setLandingMaintenance(r.data.landing_maintenance);
+                    window.location.reload();
+                    return;
+                  }
+                } catch (_) {}
+                window.location.reload();
+              }}
               className="w-full sm:w-auto px-5 h-11 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-sm"
             >
               Check Live Status
