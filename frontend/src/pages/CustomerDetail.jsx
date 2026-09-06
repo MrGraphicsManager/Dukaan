@@ -95,6 +95,7 @@ export default function CustomerDetail() {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   if (!c && loading) {

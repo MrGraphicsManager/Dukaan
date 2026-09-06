@@ -7,8 +7,8 @@ const OFFICIAL_GOOGLE_CLIENT_ID = "682420913410-dfarb0n3e5a44vsh32fh1hh5j4ig0n6r
 
 export default function MobileLogin({ onBack, onLoginSuccess, onForgotPassword, onCreateAccount }) {
   const { login, loginWithGoogle } = useAuth();
-  const [phone, setPhone] = useState("9876543210");
-  const [password, setPassword] = useState("Viral@1979");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);

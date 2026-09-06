@@ -283,7 +283,7 @@ export default function Dashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [currentShopId, getSafeOrders]);
+  }, [getSafeOrders]);
 
   useEffect(() => {
     let localSub = user?.subscription || null;

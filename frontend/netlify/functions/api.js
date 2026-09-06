@@ -122,6 +122,89 @@ const SYNC_BUS_BACKUP_URL = `https://ntfy.sh/${SYNC_BUS_BACKUP_TOPIC}`;
 const CAREERS_SYNC_TOPIC = process.env.DUKAAN_CAREERS_SYNC_TOPIC || "dukaan_careers_sync_prod_88291";
 const CAREERS_SYNC_URL = `https://ntfy.sh/${CAREERS_SYNC_TOPIC}`;
 
+
+// ==========================================
+// DUKAAN CLOUD STORE PERSISTENCE & MULTI-DEVICE SYNC
+// ==========================================
+const DEFAULT_PRODUCTS_LIST = [
+  { id: 'prod_1', name: 'Aashirvaad Shudh Chakki Atta 5kg', category: 'Kirana & Grains', selling_price: 245, purchase_price: 210, stock: 24, min_stock: 5, unlimited_stock: false },
+  { id: 'prod_2', name: 'Fortune Sunlite Sunflower Oil 1L', category: 'Edible Oil & Ghee', selling_price: 145, purchase_price: 128, stock: 18, min_stock: 6, unlimited_stock: false },
+  { id: 'prod_3', name: 'Amul Taaza Toned Fresh Milk 500ml', category: 'Dairy & Eggs', selling_price: 27, purchase_price: 24, stock: 35, min_stock: 10, unlimited_stock: false },
+  { id: 'prod_4', name: 'Tata Salt Vacuum Evaporated 1kg', category: 'Kirana & Grains', selling_price: 28, purchase_price: 22, stock: 40, min_stock: 8, unlimited_stock: false },
+  { id: 'prod_5', name: 'Parle-G Gold Glucose Biscuit 250g', category: 'Biscuits & Snacks', selling_price: 30, purchase_price: 25, stock: 50, min_stock: 10, unlimited_stock: false },
+  { id: 'prod_6', name: 'Maggi 2-Minute Masala Noodles 70g', category: 'Biscuits & Snacks', selling_price: 14, purchase_price: 11, stock: 60, min_stock: 15, unlimited_stock: false },
+  { id: 'prod_7', name: 'MDH Deggi Mirch Powder 100g', category: 'Spices & Masala', selling_price: 88, purchase_price: 72, stock: 15, min_stock: 4, unlimited_stock: false },
+  { id: 'prod_8', name: 'Wagh Bakri Premium CTC Tea 500g', category: 'Beverages & Tea', selling_price: 260, purchase_price: 225, stock: 12, min_stock: 5, unlimited_stock: false },
+  { id: 'prod_9', name: 'Dettol Original Bathing Soap 75g', category: 'Household & Soaps', selling_price: 40, purchase_price: 32, stock: 22, min_stock: 5, unlimited_stock: false },
+  { id: 'prod_10', name: 'Fresh Cutting Chai (Hot)', category: 'Beverages & Tea', selling_price: 10, purchase_price: 4, stock: 0, min_stock: 0, unlimited_stock: true }
+];
+
+const DEFAULT_CUSTOMERS_LIST = [
+  { id: 'c_1', name: 'Ramesh Patel', phone: '9825100000', notes: 'Regular buyer, Block B-204', total_purchases: 450, total_paid: 450, total_pending: 0, created_at: new Date().toISOString() },
+  { id: 'c_2', name: 'Suresh Sharma', phone: '9876543210', notes: 'Temple Road', total_purchases: 1450, total_paid: 0, total_pending: 1450, created_at: new Date().toISOString() }
+];
+
+const merchantStores = new Map();
+
+function getShopKey(event, user) {
+  const qShop = event.queryStringParameters?.shop_id || event.queryStringParameters?.shop;
+  const hShop = event.headers?.['x-shop-id'] || event.headers?.['X-Shop-Id'];
+  const raw = qShop || hShop || user?.shop_id || user?.email || 'default_store';
+  return String(raw).toLowerCase().trim().replace(/[^a-z0-9_]/g, '_');
+}
+
+async function getShopStore(shopKey) {
+  if (merchantStores.has(shopKey)) {
+    return merchantStores.get(shopKey);
+  }
+  const cleanKey = shopKey.replace(/[^a-z0-9_]/g, '_').slice(0, 32);
+  const storeTopic = 'dukaan_store_v2_' + cleanKey;
+  let storeData = null;
+  try {
+    const res = await safeHttpGet('https://ntfy.sh/' + storeTopic + '/raw?poll=1&limit=5', 2500);
+    if (res.ok) {
+      const raw = await res.text();
+      if (raw && raw.trim()) {
+        const lines = raw.trim().split('\n').filter(Boolean);
+        for (let i = lines.length - 1; i >= 0; i--) {
+          try {
+            const parsed = JSON.parse(lines[i]);
+            if (parsed && Array.isArray(parsed.products)) {
+              storeData = parsed;
+              break;
+            }
+          } catch (_) {}
+        }
+      }
+    }
+  } catch (_) {}
+
+  if (!storeData) {
+    storeData = {
+      products: JSON.parse(JSON.stringify(DEFAULT_PRODUCTS_LIST)),
+      orders: [],
+      customers: JSON.parse(JSON.stringify(DEFAULT_CUSTOMERS_LIST)),
+      updated_at: new Date().toISOString()
+    };
+  }
+
+  merchantStores.set(shopKey, storeData);
+  return storeData;
+}
+
+async function saveShopStore(shopKey, storeData) {
+  merchantStores.set(shopKey, storeData);
+  storeData.updated_at = new Date().toISOString();
+  const cleanKey = shopKey.replace(/[^a-z0-9_]/g, '_').slice(0, 32);
+  const storeTopic = 'dukaan_store_v2_' + cleanKey;
+  safeHttpPost('https://ntfy.sh/' + storeTopic, {
+    products: (storeData.products || []).slice(0, 200),
+    orders: (storeData.orders || []).slice(0, 150),
+    customers: (storeData.customers || []).slice(0, 100),
+    updated_at: storeData.updated_at
+  }, { 'Title': 'StoreSync-' + cleanKey }, 2500).catch(() => {});
+}
+
 let registeredUsersList = [
   {
     id: "usr_admin_master",
@@ -816,6 +899,30 @@ exports.handler = async (event, context) => {
           access_token: token,
           token_type: "bearer",
           user
+        })
+      };
+    }
+
+    // 2A-1. LOGOUT
+    if (path === "/auth/logout" && event.httpMethod === "POST") {
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, message: "Logged out successfully." }) };
+    }
+
+    // 2A-2. PREMIUM PROFILE
+    if (path === "/premium/profile" && event.httpMethod === "GET") {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          ok: true,
+          profile: {
+            business_name: user?.name || "Apni Dukaan",
+            gst_enabled: false,
+            soundbox_active: true,
+            whatsapp_reminders: true
+          }
         })
       };
     }
@@ -2284,6 +2391,419 @@ exports.handler = async (event, context) => {
       }
       return { statusCode: 404, headers, body: JSON.stringify({ detail: "Domain record not found" }) };
     }
+
+    
+    // ==========================================
+    // 23. PRODUCTS CRUD & MULTI-DEVICE SYNC
+    // ==========================================
+    if ((path === "/products" || path === "/products/") && event.httpMethod === "GET") {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const shopKey = getShopKey(event, user);
+      const store = await getShopStore(shopKey);
+
+      const q = (event.queryStringParameters?.q || "").toLowerCase().trim();
+      const category = (event.queryStringParameters?.category || "").toLowerCase().trim();
+
+      let list = store.products || [];
+      if (q) {
+        list = list.filter(p => (p.name || "").toLowerCase().includes(q) || (p.category || "").toLowerCase().includes(q) || (p.barcode && p.barcode.includes(q)));
+      }
+      if (category && category !== "all") {
+        list = list.filter(p => (p.category || "").toLowerCase() === category);
+      }
+      return { statusCode: 200, headers, body: JSON.stringify(list) };
+    }
+
+    if (path === "/products/bulk-sync" && event.httpMethod === "POST") {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const shopKey = getShopKey(event, user);
+      const store = await getShopStore(shopKey);
+
+      const incoming = Array.isArray(body.products) ? body.products : [];
+      if (incoming.length > 0) {
+        const existingIds = new Set((store.products || []).map(p => p.id));
+        const merged = [...(store.products || [])];
+        for (const p of incoming) {
+          if (p && p.name && !existingIds.has(p.id)) {
+            merged.push(p);
+            existingIds.add(p.id);
+          }
+        }
+        store.products = merged;
+        await saveShopStore(shopKey, store);
+      }
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, count: store.products.length, products: store.products }) };
+    }
+
+    if ((path === "/products" || path === "/products/") && event.httpMethod === "POST") {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const shopKey = getShopKey(event, user);
+      const store = await getShopStore(shopKey);
+
+      const newProd = {
+        id: body.id || ('prod_' + Date.now() + '_' + Math.floor(100 + Math.random() * 900)),
+        name: (body.name || "New Product").trim(),
+        category: body.category || "General",
+        selling_price: Number(body.selling_price || body.price || 0),
+        purchase_price: Number(body.purchase_price || body.costPrice || 0),
+        stock: body.unlimited_stock ? 0 : Number(body.stock || 0),
+        min_stock: Number(body.min_stock || 5),
+        unlimited_stock: Boolean(body.unlimited_stock),
+        barcode: body.barcode ? String(body.barcode).trim() : "",
+        batch_number: body.batch_number ? String(body.batch_number).trim() : "",
+        expiry_date: body.expiry_date ? String(body.expiry_date).trim() : "",
+        created_at: new Date().toISOString()
+      };
+
+      store.products = [newProd, ...(store.products || []).filter(p => p.id !== newProd.id)];
+      await saveShopStore(shopKey, store);
+      return { statusCode: 200, headers, body: JSON.stringify(newProd) };
+    }
+
+    if (path.startsWith("/products/") && path.endsWith("/stock") && event.httpMethod === "POST") {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const shopKey = getShopKey(event, user);
+      const store = await getShopStore(shopKey);
+
+      const parts = path.split("/");
+      const prodId = parts[2];
+      const delta = Number(body.qty || 0);
+      const idx = (store.products || []).findIndex(p => p.id === prodId);
+      if (idx >= 0) {
+        store.products[idx].stock = Math.max(0, Number(store.products[idx].stock || 0) + delta);
+        store.products[idx].updated_at = new Date().toISOString();
+        await saveShopStore(shopKey, store);
+        return { statusCode: 200, headers, body: JSON.stringify({ ok: true, product: store.products[idx] }) };
+      }
+      return { statusCode: 404, headers, body: JSON.stringify({ detail: "Product not found" }) };
+    }
+
+    if (path.startsWith("/products/") && !path.includes("/stock") && (event.httpMethod === "PUT" || event.httpMethod === "POST")) {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const shopKey = getShopKey(event, user);
+      const store = await getShopStore(shopKey);
+
+      const parts = path.split("/");
+      const prodId = parts[2];
+      const idx = (store.products || []).findIndex(p => p.id === prodId);
+      if (idx >= 0) {
+        store.products[idx] = { ...store.products[idx], ...body, id: prodId, updated_at: new Date().toISOString() };
+        await saveShopStore(shopKey, store);
+        return { statusCode: 200, headers, body: JSON.stringify(store.products[idx]) };
+      } else {
+        const newProd = { id: prodId, ...body, updated_at: new Date().toISOString() };
+        store.products = [newProd, ...(store.products || [])];
+        await saveShopStore(shopKey, store);
+        return { statusCode: 200, headers, body: JSON.stringify(newProd) };
+      }
+    }
+
+    if (path.startsWith("/products/") && event.httpMethod === "DELETE") {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const shopKey = getShopKey(event, user);
+      const store = await getShopStore(shopKey);
+
+      const parts = path.split("/");
+      const prodId = parts[2];
+      store.products = (store.products || []).filter(p => p.id !== prodId);
+      await saveShopStore(shopKey, store);
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, id: prodId }) };
+    }
+
+    // ==========================================
+    // 24. ORDERS & INVOICES
+    // ==========================================
+    if (path === "/orders" && event.httpMethod === "GET") {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const shopKey = getShopKey(event, user);
+      const store = await getShopStore(shopKey);
+
+      const status = event.queryStringParameters?.status;
+      const payment = event.queryStringParameters?.payment_method;
+      const q = (event.queryStringParameters?.q || "").toLowerCase().trim();
+      const limit = parseInt(event.queryStringParameters?.limit || "100", 10);
+
+      let orders = store.orders || [];
+      if (status && status !== "all") {
+        orders = orders.filter(o => o.status === status);
+      }
+      if (payment && payment !== "all") {
+        orders = orders.filter(o => o.payment_method === payment);
+      }
+      if (q) {
+        orders = orders.filter(o => (o.order_no && o.order_no.toLowerCase().includes(q)) || (o.customer_name && o.customer_name.toLowerCase().includes(q)) || (o.customer_phone && o.customer_phone.includes(q)));
+      }
+      return { statusCode: 200, headers, body: JSON.stringify(orders.slice(0, limit)) };
+    }
+
+    if (path === "/orders" && event.httpMethod === "POST") {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const shopKey = getShopKey(event, user);
+      const store = await getShopStore(shopKey);
+
+      const items = Array.isArray(body.items) ? body.items : [];
+      const discount = Number(body.discount || 0);
+      const subtotal = items.reduce((acc, it) => acc + (Number(it.price || it.selling_price || 0) * Number(it.qty || 1)), 0);
+      const total = Math.max(0, subtotal - discount);
+      const payment_method = body.payment_method || "cash";
+      const customer_id = body.customer_id || null;
+
+      const orderNo = 'OD-' + Math.floor(1000 + Math.random() * 9000);
+      const newOrder = {
+        id: 'ord_' + Date.now() + '_' + Math.floor(100 + Math.random() * 900),
+        order_no: orderNo,
+        total,
+        subtotal,
+        discount,
+        payment_method,
+        status: payment_method === "udhaar" ? "udhaar" : "paid",
+        customer_id,
+        customer_name: body.customer_name || "Walk-in Customer",
+        customer_phone: body.customer_phone || "",
+        items,
+        amount_received: body.amount_received !== undefined ? Number(body.amount_received) : total,
+        change: payment_method === "cash" && Number(body.amount_received) > total ? Number(body.amount_received) - total : 0,
+        created_at: new Date().toISOString()
+      };
+
+      for (const item of items) {
+        const pIdx = (store.products || []).findIndex(p => p.id === (item.product_id || item.id));
+        if (pIdx >= 0 && !store.products[pIdx].unlimited_stock) {
+          store.products[pIdx].stock = Math.max(0, Number(store.products[pIdx].stock || 0) - Number(item.qty || 1));
+        }
+      }
+
+      if (customer_id || (body.customer_phone && body.customer_name)) {
+        const cIdx = (store.customers || []).findIndex(c => c.id === customer_id || (body.customer_phone && c.phone === body.customer_phone));
+        const isUdhaar = payment_method === "udhaar";
+        if (cIdx >= 0) {
+          store.customers[cIdx].total_purchases = Number(store.customers[cIdx].total_purchases || 0) + total;
+          store.customers[cIdx].total_paid = Number(store.customers[cIdx].total_paid || 0) + (isUdhaar ? 0 : total);
+          store.customers[cIdx].total_pending = Number(store.customers[cIdx].total_pending || 0) + (isUdhaar ? total : 0);
+          store.customers[cIdx].updated_at = new Date().toISOString();
+          newOrder.customer_name = store.customers[cIdx].name;
+          newOrder.customer_phone = store.customers[cIdx].phone;
+        } else if (isUdhaar) {
+          const newCust = {
+            id: customer_id || ('c_' + Date.now()),
+            name: body.customer_name || "Customer",
+            phone: body.customer_phone || "",
+            notes: "Added via Udhaar checkout",
+            total_purchases: total,
+            total_paid: 0,
+            total_pending: total,
+            created_at: new Date().toISOString()
+          };
+          store.customers = [newCust, ...(store.customers || [])];
+        }
+      }
+
+      store.orders = [newOrder, ...(store.orders || [])];
+      await saveShopStore(shopKey, store);
+      return { statusCode: 200, headers, body: JSON.stringify(newOrder) };
+    }
+
+    if (path.startsWith("/orders/") && event.httpMethod === "GET") {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const shopKey = getShopKey(event, user);
+      const store = await getShopStore(shopKey);
+
+      const parts = path.split("/");
+      const orderId = parts[2];
+      const order = (store.orders || []).find(o => o.id === orderId || o.order_no === orderId);
+      if (order) {
+        return { statusCode: 200, headers, body: JSON.stringify(order) };
+      }
+      return { statusCode: 404, headers, body: JSON.stringify({ detail: "Order not found" }) };
+    }
+
+    // ==========================================
+    // 25. CUSTOMERS & KHATA LEDGER
+    // ==========================================
+    if (path === "/customers" && event.httpMethod === "GET") {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const shopKey = getShopKey(event, user);
+      const store = await getShopStore(shopKey);
+
+      const q = (event.queryStringParameters?.q || "").toLowerCase().trim();
+      let list = store.customers || [];
+      if (q) {
+        list = list.filter(c => (c.name && c.name.toLowerCase().includes(q)) || (c.phone && c.phone.includes(q)));
+      }
+      return { statusCode: 200, headers, body: JSON.stringify(list) };
+    }
+
+    if (path === "/customers" && event.httpMethod === "POST") {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const shopKey = getShopKey(event, user);
+      const store = await getShopStore(shopKey);
+
+      const newCust = {
+        id: body.id || ('c_' + Date.now()),
+        name: (body.name || "Customer").trim(),
+        phone: (body.phone || "").trim(),
+        notes: (body.notes || "").trim(),
+        total_purchases: Number(body.total_purchases || 0),
+        total_paid: Number(body.total_paid || 0),
+        total_pending: Number(body.total_pending || 0),
+        created_at: body.created_at || new Date().toISOString()
+      };
+
+      const existingIdx = (store.customers || []).findIndex(c => c.id === newCust.id || (newCust.phone && c.phone === newCust.phone));
+      if (existingIdx >= 0) {
+        store.customers[existingIdx] = { ...store.customers[existingIdx], ...newCust };
+      } else {
+        store.customers = [newCust, ...(store.customers || [])];
+      }
+      await saveShopStore(shopKey, store);
+      return { statusCode: 200, headers, body: JSON.stringify(newCust) };
+    }
+
+    if (path.startsWith("/customers/") && (event.httpMethod === "PUT" || event.httpMethod === "POST")) {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const shopKey = getShopKey(event, user);
+      const store = await getShopStore(shopKey);
+
+      const parts = path.split("/");
+      const cId = parts[2];
+      const idx = (store.customers || []).findIndex(c => c.id === cId);
+      if (idx >= 0) {
+        store.customers[idx] = { ...store.customers[idx], ...body, id: cId, updated_at: new Date().toISOString() };
+        await saveShopStore(shopKey, store);
+        return { statusCode: 200, headers, body: JSON.stringify(store.customers[idx]) };
+      }
+      const created = { id: cId, ...body };
+      store.customers = [created, ...(store.customers || [])];
+      await saveShopStore(shopKey, store);
+      return { statusCode: 200, headers, body: JSON.stringify(created) };
+    }
+
+    if (path.startsWith("/customers/") && event.httpMethod === "GET") {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const shopKey = getShopKey(event, user);
+      const store = await getShopStore(shopKey);
+
+      const parts = path.split("/");
+      const cId = parts[2];
+      const cust = (store.customers || []).find(c => c.id === cId);
+      if (cust) {
+        const matchingOrders = (store.orders || []).filter(o => o.customer_id === cId || (cust.phone && o.customer_phone === cust.phone));
+        return { statusCode: 200, headers, body: JSON.stringify({ ...cust, orders: matchingOrders }) };
+      }
+      return { statusCode: 404, headers, body: JSON.stringify({ detail: "Customer not found" }) };
+    }
+
+    // ==========================================
+    // 26. UDHAAR REPAYMENT
+    // ==========================================
+    if (path === "/udhaar" && event.httpMethod === "GET") {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const shopKey = getShopKey(event, user);
+      const store = await getShopStore(shopKey);
+
+      const debtors = (store.customers || []).filter(c => Number(c.total_pending || 0) > 0);
+      const udhaarOrders = (store.orders || []).filter(o => o.payment_method === "udhaar" || o.status === "udhaar");
+      return { statusCode: 200, headers, body: JSON.stringify({ customers: debtors, orders: udhaarOrders }) };
+    }
+
+    if (path === "/udhaar/pay" && event.httpMethod === "POST") {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const shopKey = getShopKey(event, user);
+      const store = await getShopStore(shopKey);
+
+      const cId = body.customer_id;
+      const amt = Number(body.amount || 0);
+
+      const cIdx = (store.customers || []).findIndex(c => c.id === cId);
+      if (cIdx >= 0) {
+        const currentPending = Number(store.customers[cIdx].total_pending || 0);
+        store.customers[cIdx].total_pending = Math.max(0, currentPending - amt);
+        store.customers[cIdx].total_paid = Number(store.customers[cIdx].total_paid || 0) + amt;
+        store.customers[cIdx].updated_at = new Date().toISOString();
+
+        let rem = amt;
+        for (const ord of (store.orders || [])) {
+          if (rem <= 0) break;
+          if (ord.customer_id === cId && (ord.status === "udhaar" || Number(ord.pending_amount || 0) > 0)) {
+            const curOrdPending = Number(ord.pending_amount || ord.total || 0);
+            const payTowards = Math.min(rem, curOrdPending);
+            ord.pending_amount = curOrdPending - payTowards;
+            ord.paid_amount = Number(ord.paid_amount || 0) + payTowards;
+            if (ord.pending_amount <= 0) ord.status = "paid";
+            rem -= payTowards;
+          }
+        }
+
+        await saveShopStore(shopKey, store);
+        return { statusCode: 200, headers, body: JSON.stringify({ ok: true, customer: store.customers[cIdx] }) };
+      }
+      return { statusCode: 404, headers, body: JSON.stringify({ detail: "Customer not found" }) };
+    }
+
+    // ==========================================
+    // 27. DASHBOARD LIVE METRICS
+    // ==========================================
+    if (path === "/dashboard" && event.httpMethod === "GET") {
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const shopKey = getShopKey(event, user);
+      const store = await getShopStore(shopKey);
+
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+      let todaySales = 0;
+      let todayOrders = 0;
+      let todayCash = 0;
+      let todayUpi = 0;
+      let todayUdhaar = 0;
+
+      for (const o of (store.orders || [])) {
+        const ordTime = new Date(o.created_at).getTime();
+        if (ordTime >= startOfDay) {
+          const tot = Number(o.total || 0);
+          todaySales += tot;
+          todayOrders += 1;
+          if (o.payment_method === "cash") todayCash += tot;
+          else if (o.payment_method === "upi") todayUpi += tot;
+          else if (o.payment_method === "udhaar") todayUdhaar += tot;
+        }
+      }
+
+      const lowStock = (store.products || []).filter(p => !p.unlimited_stock && Number(p.stock || 0) <= Number(p.min_stock || 5));
+      const totalUdhaarPending = (store.customers || []).reduce((acc, c) => acc + Number(c.total_pending || 0), 0);
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          today_sales: todaySales,
+          today_orders: todayOrders,
+          today: { sales: todaySales, orders: todayOrders, cash: todayCash, upi: todayUpi, udhaar: todayUdhaar },
+          total_products: (store.products || []).length,
+          low_stock: lowStock,
+          total_pending: totalUdhaarPending,
+          recent_orders: (store.orders || []).slice(0, 10),
+          allProductsCount: (store.products || []).length
+        })
+      };
+    }
+
 
     return {
       statusCode: 404,

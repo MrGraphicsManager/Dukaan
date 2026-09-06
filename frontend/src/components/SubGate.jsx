@@ -21,6 +21,7 @@ export const ROUTE_PLAN = {
   "/app/udhaar": "business",
   "/app/reports": "business",
   "/app/stock": "business",
+  "/app/counter": "business",
 };
 
 function Wall({ title, msg, cta, onCta, neededPlan }) {

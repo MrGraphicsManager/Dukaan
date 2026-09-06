@@ -419,7 +419,6 @@ export default function AppLayout() {
   const activePlan = subscription?.plan || user?.subscription?.plan || "starter";
   const currentTier = user?.is_admin ? 999 : (tierMap[activePlan] || 1);
   const isLocked = (to) => {
-    if (to === "/app/counter") return true; // Temporarily locked per user request
     const need = routeMap[to];
     if (!need) return false;
     return currentTier < (tierMap[need] || 1);

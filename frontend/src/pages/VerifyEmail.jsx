@@ -37,6 +37,7 @@ export default function VerifyEmail() {
     if (tokenParam && emailParam) {
       handleAutoVerify(emailParam, tokenParam);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tokenParam, emailParam]);
 
   // Countdown timer for resend

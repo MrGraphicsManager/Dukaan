@@ -1,11 +1,40 @@
 // Dukaan Virtual Soundbox (Browser Audio Synthesis & Chime)
-// Speaks: "दुकान: UPI / कैश से ₹X प्राप्त हुए!"
+// Speaks: "Dukaan: Received ₹X via UPI / Cash!"
+
+let sharedAudioCtx = null;
+
+export function unlockAudioContext() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    if (!sharedAudioCtx) {
+      sharedAudioCtx = new AudioCtx();
+    }
+    if (sharedAudioCtx.state === "suspended") {
+      sharedAudioCtx.resume();
+    }
+  } catch (_) {}
+}
+
+if (typeof window !== "undefined") {
+  const handleInteraction = () => {
+    unlockAudioContext();
+    window.removeEventListener("pointerdown", handleInteraction);
+    window.removeEventListener("keydown", handleInteraction);
+  };
+  window.addEventListener("pointerdown", handleInteraction, { passive: true, once: true });
+  window.addEventListener("keydown", handleInteraction, { passive: true, once: true });
+}
 
 function playChime() {
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return;
-    const ctx = new AudioCtx();
+    const ctx = sharedAudioCtx || new AudioCtx();
+    if (ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
+
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
@@ -21,13 +50,14 @@ function playChime() {
     gain.connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + 0.35);
-  } catch (e) {
-    // AudioContext might require user gesture in some browsers
+  } catch (_) {
+    // Graceful fallback if audio context fails
   }
 }
 
 export function playVoiceSoundbox(amount, method = "upi", lang = "hi") {
   try {
+    unlockAudioContext();
     // Play soundbox bell first
     playChime();
 
@@ -45,9 +75,11 @@ export function playVoiceSoundbox(amount, method = "upi", lang = "hi") {
 
     // Small delay after chime
     setTimeout(() => {
-      window.speechSynthesis.speak(utterance);
+      try {
+        window.speechSynthesis.speak(utterance);
+      } catch (_) {}
     }, 350);
   } catch (err) {
-    console.error("Soundbox voice synthesis error:", err);
+    console.warn("Soundbox voice synthesis error:", err);
   }
 }
