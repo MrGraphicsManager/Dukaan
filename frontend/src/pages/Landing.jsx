@@ -150,12 +150,12 @@ export default function Landing() {
       {/* =========================================================
           TOP ANNOUNCEMENT BAR: MOBILE 2.0 UPDATE LIVE
       ========================================================= */}
-      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold flex items-center justify-center gap-2.5 text-center shadow-xs z-50 relative">
-        <span className="bg-white/20 text-white text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full tracking-wider border border-white/30 shrink-0 animate-pulse">
-          ⚡ New Update
+      <div className="bg-[#1B1464] border-b border-indigo-900/60 text-white px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-medium flex items-center justify-center gap-2.5 text-center shadow-xs z-50 relative">
+        <span className="bg-brand-terracotta text-white text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full tracking-wider shrink-0 shadow-2xs">
+          New Update
         </span>
-        <span className="text-xs sm:text-sm font-medium">
-          📱 <strong>Mobile Device Update Live:</strong> Dukaan ab mobile phone par chalana hua aur bhi aasan! 1-Tap quick billing, large touch controls & fast khata book.
+        <span className="text-white/95">
+          📱 <strong>Mobile 2.0 Live:</strong> Dukaan is now fully optimized for smartphones — faster billing, large touch controls & smooth khata management.
         </span>
       </div>
 
@@ -412,9 +412,9 @@ export default function Landing() {
               <Sparkles className="w-3.5 h-3.5" />
               Made for Indian Local Shops & Kiranas
             </div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold shadow-2xs">
-              <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Mobile 2.0 Ready · 1-Hand Easy</span>
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/80 border border-brand-mitti text-brand-indigo text-xs font-bold shadow-2xs backdrop-blur-md">
+              <Smartphone className="w-3.5 h-3.5 text-brand-terracotta" />
+              <span>Mobile 2.0 Ready · Touch Optimized</span>
             </div>
           </div>
 
@@ -456,15 +456,15 @@ export default function Landing() {
           {/* Trust points */}
           <div className="mt-8 flex items-center gap-4 sm:gap-6 text-xs text-brand-indigo/65 font-semibold flex-wrap">
             <span className="flex items-center gap-1.5">
-              <Smartphone className="w-4 h-4 text-emerald-600" /> 100% Mobile & Phone Ready
+              <Smartphone className="w-4 h-4 text-brand-terracotta" /> Mobile & Tablet Optimized
             </span>
             <span>·</span>
             <span className="flex items-center gap-1.5">
-              <Zap className="w-4 h-4 text-amber-600" /> Fast 1-Tap Billing
+              <Zap className="w-4 h-4 text-brand-terracotta" /> Fast 1-Tap Counter Billing
             </span>
             <span>·</span>
             <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" /> 100% Secure & Private
+              <ShieldCheck className="w-4 h-4 text-brand-terracotta" /> 100% Private & Secure
             </span>
           </div>
         </motion.div>
