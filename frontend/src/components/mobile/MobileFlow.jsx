@@ -265,6 +265,7 @@ export default function MobileFlow() {
           ========================================================= */}
           {currentView === "new-bill" && (
             <MobileNewBill
+              merchantData={merchantData}
               onBack={() => goToView("dashboard", -1)}
               onTabChange={handleTabChange}
             />
