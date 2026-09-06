@@ -24,7 +24,8 @@ import {
   ExternalLink,
   Search,
   AlertCircle,
-  HelpCircle
+  HelpCircle,
+  RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,6 +107,32 @@ export default function Careers() {
   const [resumeDoc, setResumeDoc] = useState({ name: "", data: "", type: "" });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Auto-sync offline applications and prefill credentials on load
+  useEffect(() => {
+    try {
+      const userRaw = localStorage.getItem("dukaan_user");
+      if (userRaw) {
+        const u = JSON.parse(userRaw);
+        if (u.email) setGateEmail(u.email);
+        if (u.phone) setGatePhone(u.phone);
+      }
+    } catch (_) {}
+
+    try {
+      const raw = localStorage.getItem("dukaan_job_applications");
+      if (raw) {
+        const apps = JSON.parse(raw);
+        if (Array.isArray(apps) && apps.length > 0) {
+          apps.forEach(app => {
+            if (app && app.email && app.phone) {
+              api.post("/careers/apply", app).catch(() => {});
+            }
+          });
+        }
+      }
+    } catch (_) {}
+  }, []);
 
   // Handle file upload to Base64 with instant canvas compression
   const handleFileUpload = (e, setDocState, label) => {
@@ -207,6 +234,8 @@ export default function Careers() {
         setExistingApp(localFound);
         setStep("status");
         toast.info("Existing application found!");
+        // Auto-sync offline application to cloud server
+        api.post("/careers/apply", localFound).catch(() => {});
       } else {
         // Unlock application form
         setFormData(prev => ({
@@ -736,18 +765,44 @@ export default function Careers() {
               </div>
             </div>
 
-            {/* Back Button */}
-            <div className="flex items-center justify-between pt-2">
-              <Button
-                onClick={() => {
-                  setStep("gate");
-                  setExistingApp(null);
-                }}
-                variant="outline"
-                className="rounded-xl text-xs font-bold"
-              >
-                Check Another Number / Reset
-              </Button>
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => {
+                    setStep("gate");
+                    setExistingApp(null);
+                  }}
+                  variant="outline"
+                  className="rounded-xl text-xs font-bold"
+                >
+                  Check Another Number / Reset
+                </Button>
+
+                <Button
+                  onClick={async () => {
+                    if (!existingApp) return;
+                    setIsChecking(true);
+                    try {
+                      const res = await api.post("/careers/check", { email: existingApp.email, phone: existingApp.phone });
+                      if (res?.data?.application) {
+                        setExistingApp(res.data.application);
+                        toast.success("Application status refreshed!");
+                      }
+                    } catch (_) {
+                      toast.error("Could not refresh status.");
+                    } finally {
+                      setIsChecking(false);
+                    }
+                  }}
+                  disabled={isChecking}
+                  variant="outline"
+                  className="rounded-xl text-xs font-bold text-blue-600 border-blue-200 hover:bg-blue-50 flex items-center gap-1.5"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isChecking ? "animate-spin" : ""}`} />
+                  <span>Refresh Status</span>
+                </Button>
+              </div>
 
               <a
                 href={`tel:${SALARY_PHONE}`}

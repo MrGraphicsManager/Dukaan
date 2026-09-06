@@ -235,6 +235,7 @@ export default function AdminSubscriptions() {
   const [jobRoleFilter, setJobRoleFilter] = useState("all");
   const [jobSearchQuery, setJobSearchQuery] = useState("");
   const [selectedJobModal, setSelectedJobModal] = useState(null);
+  const [isRefreshingCareers, setIsRefreshingCareers] = useState(false);
 
   // Feature #3: Promo & Coupon Codes Studio
   const [promoList, setPromoList] = useState([]);
@@ -481,13 +482,23 @@ export default function AdminSubscriptions() {
       // Careers & Job Applications fetch
       try {
         const careersRes = await api.get("/admin/careers/applications").catch(() => null);
-        let cList = careersRes?.data || [];
-        if (!Array.isArray(cList) || cList.length === 0) {
+        let cList = Array.isArray(careersRes?.data) ? [...careersRes.data] : [];
+        try {
           const rawC = localStorage.getItem("dukaan_job_applications");
-          if (rawC) cList = JSON.parse(rawC);
-        }
+          if (rawC) {
+            const localList = JSON.parse(rawC);
+            if (Array.isArray(localList)) {
+              localList.forEach(la => {
+                if (!cList.some(ca => ca.id === la.id || (ca.email && ca.email.toLowerCase() === (la.email || "").toLowerCase()))) {
+                  cList.push(la);
+                }
+              });
+            }
+          }
+        } catch (_) {}
         if (Array.isArray(cList)) {
           setJobApplications(cList);
+          try { localStorage.setItem("dukaan_job_applications", JSON.stringify(cList)); } catch (_) {}
         }
       } catch (_) {}
 
@@ -553,6 +564,18 @@ export default function AdminSubscriptions() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticatedSession, statusFilter, gstStatus]);
+
+  // Auto-refresh Careers tab when active
+  useEffect(() => {
+    if (isAuthenticatedSession && activeTab === "careers") {
+      fetchJobApplications();
+      const poll = setInterval(() => {
+        fetchJobApplications();
+      }, 15000);
+      return () => clearInterval(poll);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticatedSession, activeTab]);
 
   // --- Feature #2: Live Telemetry Pulse ---
   useEffect(() => {
@@ -1086,6 +1109,82 @@ export default function AdminSubscriptions() {
     setCustomDomains(prev => prev.map(d => d.id === domainId ? { ...d, status: "active", ssl: "active" } : d));
     addAuditLog("APPROVE_CUSTOM_DOMAIN", domainName, "Approved SSL & DNS CNAME mapping");
     toast.success(`Custom domain ${domainName} is now active with SSL!`);
+  };
+
+  // --- FEATURE: Careers & Job Application Review (Approve / Deny) ---
+  const fetchJobApplications = async (showToast = false) => {
+    setIsRefreshingCareers(true);
+    try {
+      const careersRes = await api.get("/admin/careers/applications").catch(() => null);
+      let cList = Array.isArray(careersRes?.data) ? [...careersRes.data] : [];
+      try {
+        const rawC = localStorage.getItem("dukaan_job_applications");
+        if (rawC) {
+          const localList = JSON.parse(rawC);
+          if (Array.isArray(localList)) {
+            localList.forEach(la => {
+              if (!cList.some(ca => ca.id === la.id || (ca.email && ca.email.toLowerCase() === (la.email || "").toLowerCase()))) {
+                cList.push(la);
+              }
+            });
+          }
+        }
+      } catch (_) {}
+
+      if (Array.isArray(cList)) {
+        setJobApplications(cList);
+        try { localStorage.setItem("dukaan_job_applications", JSON.stringify(cList)); } catch (_) {}
+        if (showToast) {
+          toast.success(`Hiring portal updated! ${cList.length} applicant(s) loaded.`);
+        }
+      }
+    } catch (err) {
+      if (showToast) toast.error("Could not fetch job applications.");
+    } finally {
+      setIsRefreshingCareers(false);
+    }
+  };
+
+  const handleUpdateJobStatus = async (appId, nextStatus, note = "") => {
+    try {
+      // 1. Optimistic UI update
+      setJobApplications(prev => prev.map(a => a.id === appId ? {
+        ...a,
+        status: nextStatus,
+        reviewed_at: new Date().toISOString(),
+        admin_note: note || a.admin_note
+      } : a));
+
+      if (selectedJobModal && selectedJobModal.id === appId) {
+        setSelectedJobModal(prev => ({
+          ...prev,
+          status: nextStatus,
+          reviewed_at: new Date().toISOString(),
+          admin_note: note || prev.admin_note
+        }));
+      }
+
+      // 2. Call cloud API
+      await api.post("/admin/careers/status", { id: appId, status: nextStatus, admin_note: note }).catch(() => {});
+
+      // 3. LocalStorage persistence
+      try {
+        const raw = localStorage.getItem("dukaan_job_applications") || "[]";
+        const list = JSON.parse(raw);
+        const idx = list.findIndex(a => a.id === appId);
+        if (idx >= 0) {
+          list[idx].status = nextStatus;
+          list[idx].reviewed_at = new Date().toISOString();
+          if (note) list[idx].admin_note = note;
+          localStorage.setItem("dukaan_job_applications", JSON.stringify(list));
+        }
+      } catch (_) {}
+
+      addAuditLog("UPDATE_CANDIDATE_STATUS", appId, `Status set to ${nextStatus.toUpperCase()}`);
+      toast.success(`Candidate status updated to ${nextStatus === "approved" ? "APPROVED ✅" : "DENIED ❌"}!`);
+    } catch (e) {
+      toast.error("Failed to update candidate status.");
+    }
   };
 
   // --- FEATURE #7 & #28: CSV Financial Exporters ---
@@ -2394,6 +2493,17 @@ export default function AdminSubscriptions() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">
+                    <Button
+                      onClick={() => fetchJobApplications(true)}
+                      disabled={isRefreshingCareers}
+                      size="sm"
+                      variant="outline"
+                      className="px-3.5 py-1.5 bg-slate-900 border-slate-700 hover:bg-slate-800 text-slate-200 font-bold text-xs rounded-xl shadow-sm flex items-center gap-1.5 transition-all"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingCareers ? "animate-spin text-blue-400" : "text-slate-400"}`} />
+                      <span>{isRefreshingCareers ? "Refreshing..." : "Refresh Applications"}</span>
+                    </Button>
+
                     <div className="text-xs font-mono text-amber-400 bg-amber-950/60 border border-amber-800/60 px-3.5 py-1.5 rounded-xl flex items-center gap-1.5">
                       <Phone className="w-3.5 h-3.5 text-amber-400" />
                       <span>Salary Hotline: <strong>7016430577</strong></span>

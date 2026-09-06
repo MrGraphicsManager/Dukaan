@@ -141,6 +141,24 @@ async function getPersistentState(force = false) {
             }
           } catch (_) {}
         }
+
+        // Scan backwards through messages for latest job_applications
+        for (let i = lines.length - 1; i >= 0; i--) {
+          try {
+            const j = JSON.parse(lines[i]);
+            if (Array.isArray(j.job_applications) && j.job_applications.length > 0) {
+              for (const rApp of j.job_applications) {
+                const exIdx = jobApplications.findIndex(x => x.id === rApp.id || (x.email && x.email.toLowerCase() === (rApp.email || "").toLowerCase()));
+                if (exIdx === -1) {
+                  jobApplications.unshift(rApp);
+                } else {
+                  jobApplications[exIdx] = { ...rApp, ...jobApplications[exIdx] };
+                }
+              }
+              break;
+            }
+          } catch (_) {}
+        }
           if (Array.isArray(json.registered_users)) {
             for (const u of json.registered_users) {
               if (!u || !u.email) continue;
