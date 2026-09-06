@@ -169,7 +169,14 @@ async function getPersistentState(force = false) {
             gstRequests = json.gst_requests;
           }
           if (Array.isArray(json.job_applications)) {
-            jobApplications = json.job_applications;
+            for (const rApp of json.job_applications) {
+              const exIdx = jobApplications.findIndex(x => x.id === rApp.id || (x.email && x.email === rApp.email));
+              if (exIdx === -1) {
+                jobApplications.unshift(rApp);
+              } else {
+                jobApplications[exIdx] = { ...rApp, ...jobApplications[exIdx] };
+              }
+            }
           }
           if (Array.isArray(json.referral_codes)) {
             referralCodes = json.referral_codes;
@@ -207,7 +214,12 @@ async function savePersistentState(extraConfig = {}) {
       merchant_feedback: (merchantFeedbacks || []).slice(0, 40),
       gst_requests: (gstRequests || []).slice(0, 30),
       referral_codes: (referralCodes || []).slice(0, 30),
-      job_applications: (jobApplications || []).slice(0, 100),
+      job_applications: (jobApplications || []).slice(0, 50).map(a => ({
+        ...a,
+        aadhar_doc: (a.aadhar_doc && a.aadhar_doc.length > 300) ? a.aadhar_doc.slice(0, 300) : a.aadhar_doc,
+        marksheet_doc: (a.marksheet_doc && a.marksheet_doc.length > 300) ? a.marksheet_doc.slice(0, 300) : a.marksheet_doc,
+        resume_doc: (a.resume_doc && a.resume_doc.length > 300) ? a.resume_doc.slice(0, 300) : a.resume_doc
+      })),
       updated_at: globalPlatformConfig.updated_at
     };
     await fetch(SYNC_BUS_URL, {
@@ -243,6 +255,8 @@ function recordRegisteredUser(userObj) {
     });
   }
 }
+
+let jobApplications = [];
 
 let promoCodes = [
   {
