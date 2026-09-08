@@ -48,7 +48,9 @@ function safeHttpPost(urlStr, data, extraHeaders = {}, timeoutMs = 4000) {
         let d = "";
         res.on("data", chunk => { d += chunk; });
         res.on("end", () => {
-          resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, statusCode: res.statusCode });
+          let parsed = null;
+          try { parsed = JSON.parse(d); } catch (_) {}
+          resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, statusCode: res.statusCode, raw: d, data: parsed });
         });
       });
       req.on("error", () => resolve({ ok: false, statusCode: 500 }));
@@ -72,6 +74,7 @@ const SMTP_PASSWORD = process.env.SMTP_PASSWORD || "Viral@1979";
 const EMAIL_FROM = "Dukaan <contact@officialdukaan.in>";
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://officialdukaan.in";
 const ADMIN_EMAIL = "contact@officialdukaan.in";
+const FAST2SMS_API_KEY = process.env.FAST2SMS_API_KEY || "GIOQb04y6APlfFpwiX7HUaNuoS8z3hm5JM1ZTKE9LktRdW2rxngw0zPfhmLytUAjMR7pVk4QJWosuC6b";
 
 // Global Platform Configuration (Enterprise Suite Features)
 let globalPlatformConfig = {
@@ -1447,7 +1450,7 @@ exports.handler = async (event, context) => {
 
       // 1. Attempt real SMS via Fast2SMS if API key is configured
       let smsDispatched = false;
-      const fast2smsKey = process.env.FAST2SMS_API_KEY || globalPlatformConfig.fast2sms_api_key;
+      const fast2smsKey = process.env.FAST2SMS_API_KEY || globalPlatformConfig.fast2sms_api_key || FAST2SMS_API_KEY;
       if (fast2smsKey) {
         try {
           const smsPayload = {
@@ -1462,9 +1465,13 @@ exports.handler = async (event, context) => {
               "authorization": fast2smsKey,
               "Content-Type": "application/json"
             },
-            5000
+            6000
           );
-          if (smsRes.ok) smsDispatched = true;
+          if (smsRes.ok && (smsRes.data?.return === true || smsRes.statusCode === 200)) {
+            smsDispatched = true;
+          } else {
+            console.log("Fast2SMS response:", smsRes.statusCode, smsRes.raw);
+          }
         } catch (e) {
           console.warn("Fast2SMS API dispatch failed:", e);
         }
