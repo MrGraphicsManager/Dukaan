@@ -55,6 +55,7 @@ import { useAuth } from "@/lib/AuthContext";
 import InstallAppButton from "@/components/InstallAppButton";
 import Card3D from "@/components/Card3D";
 import ThreeDBackground from "@/components/ThreeDBackground";
+import StoreDemoPreview from "@/components/landing/StoreDemoPreview";
 import { playVoiceSoundbox } from "@/lib/soundbox";
 import useButterSmoothScroll from "@/lib/useButterSmoothScroll";
 
@@ -757,6 +758,13 @@ export default function Landing() {
             >
               <span>Explore All 4 Plans ↓</span>
             </a>
+          </div>
+
+          {/* =========================================================
+              LIVE COUNTER STORE DEMO PREVIEW (Codex #store-demo Inspired)
+          ========================================================= */}
+          <div className="mt-8 sm:mt-12">
+            <StoreDemoPreview />
           </div>
         </div>
 
