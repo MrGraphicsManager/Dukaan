@@ -434,7 +434,7 @@ export default function Landing() {
             <Button 
               onClick={() => nav("/app")} 
               data-testid="cta-open-app" 
-              className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 sm:px-6 h-10 sm:h-11 text-xs sm:text-sm font-extrabold active:scale-95 transition-all shadow-md shadow-blue-500/20 flex items-center gap-1.5 shrink-0"
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-5 sm:px-7 h-11 sm:h-12 text-xs sm:text-sm font-black active:scale-95 transition-all shadow-md shadow-blue-500/20 flex items-center gap-2 shrink-0"
             >
               <span>Open Dukaan</span>
               <ArrowRight className="w-4 h-4" />
@@ -595,18 +595,18 @@ export default function Landing() {
             From single-counter Kiranas to multi-branch supermarkets. Fast POS billing, customer Khata WhatsApp collection, multi-shop HQ, cashier PIN security, and custom thermal receipts.
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3.5">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <Button
               onClick={() => nav("/app")}
-              className="h-13 px-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-black text-sm active:scale-95 transition-all shadow-xl shadow-blue-500/25 flex items-center gap-2"
+              className="h-14 sm:h-16 px-8 sm:px-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-black text-base sm:text-lg active:scale-95 transition-all shadow-xl shadow-blue-500/25 flex items-center gap-2.5"
             >
               <span>Launch Free Counter App</span>
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="w-5 h-5" />
             </Button>
 
             <a
               href="#pricing"
-              className="h-13 px-7 rounded-full bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-slate-400 text-slate-800 font-bold text-sm active:scale-95 transition-all shadow-xs flex items-center gap-2"
+              className="h-14 sm:h-16 px-8 sm:px-10 rounded-full bg-white hover:bg-slate-50 border-2 border-slate-300 hover:border-slate-500 text-slate-900 font-black text-base sm:text-lg active:scale-95 transition-all shadow-xs flex items-center gap-2.5"
             >
               <span>Explore All 4 Plans ↓</span>
             </a>
@@ -634,17 +634,17 @@ export default function Landing() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveHeroTab(tab.id)}
-                    className={`px-3.5 py-2 rounded-2xl text-xs font-black transition-all flex items-center gap-1.5 shrink-0 ${
+                    className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 shrink-0 ${
                       isActive
-                        ? "bg-white text-slate-900 shadow-md border border-slate-200/80 scale-[1.02]"
+                        ? "bg-white text-slate-950 shadow-md border border-slate-200 scale-[1.02]"
                         : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
                     }`}
                   >
-                    <Icon className={`w-3.5 h-3.5 ${isActive ? "text-blue-600" : "text-slate-500"}`} />
+                    <Icon className={`w-4 h-4 ${isActive ? "text-blue-600" : "text-slate-500"}`} />
                     <span>{tab.name}</span>
-                    <span className="text-[10px] font-mono opacity-80">{tab.price}</span>
+                    <span className="text-xs font-mono opacity-80">{tab.price}</span>
                     {tab.badge && (
-                      <span className="text-[8px] font-black bg-amber-400 text-slate-950 px-1 rounded uppercase">
+                      <span className="text-[9px] font-black bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded uppercase">
                         {tab.badge}
                       </span>
                     )}
@@ -703,16 +703,16 @@ export default function Landing() {
                     <div className="pt-4 flex flex-wrap items-center gap-3">
                       <Link
                         to="/starter-plan"
-                        className="h-12 px-6 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm shadow-md flex items-center gap-2"
+                        className="h-14 px-8 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm sm:text-base shadow-md flex items-center gap-2 active:scale-95 transition-all"
                       >
                         <span>Explore Starter Plan Page</span>
                         <ArrowRight className="w-4 h-4" />
                       </Link>
                       <Link
                         to="/subscribe?plan=starter"
-                        className="h-12 px-5 rounded-full bg-white hover:bg-slate-50 border-2 border-slate-200 text-slate-800 font-bold text-xs sm:text-sm"
+                        className="h-14 px-7 rounded-full bg-white hover:bg-slate-50 border-2 border-slate-300 hover:border-emerald-600 text-slate-900 font-extrabold text-sm sm:text-base active:scale-95 transition-all shadow-xs flex items-center gap-2"
                       >
-                        Get Starter (₹79/mo)
+                        <span>Get Starter (₹79/mo)</span>
                       </Link>
                     </div>
                   </div>
@@ -788,16 +788,16 @@ export default function Landing() {
                     <div className="pt-4 flex flex-wrap items-center gap-3">
                       <Link
                         to="/business-plan"
-                        className="h-12 px-6 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm shadow-md flex items-center gap-2"
+                        className="h-14 px-8 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm sm:text-base shadow-md flex items-center gap-2 active:scale-95 transition-all"
                       >
                         <span>Explore Business Plan Page</span>
                         <ArrowRight className="w-4 h-4" />
                       </Link>
                       <Link
                         to="/subscribe?plan=business"
-                        className="h-12 px-5 rounded-full bg-white hover:bg-slate-50 border-2 border-slate-200 text-slate-800 font-bold text-xs sm:text-sm"
+                        className="h-14 px-7 rounded-full bg-white hover:bg-slate-50 border-2 border-slate-300 hover:border-amber-400 text-slate-900 font-extrabold text-sm sm:text-base active:scale-95 transition-all shadow-xs flex items-center gap-2"
                       >
-                        Get Business (₹119/mo)
+                        <span>Get Business (₹119/mo)</span>
                       </Link>
                     </div>
                   </div>
@@ -860,16 +860,16 @@ export default function Landing() {
                     <div className="pt-4 flex flex-wrap items-center gap-3">
                       <Link
                         to="/premium-plan"
-                        className="h-12 px-6 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs sm:text-sm shadow-md flex items-center gap-2"
+                        className="h-14 px-8 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm sm:text-base shadow-md flex items-center gap-2 active:scale-95 transition-all"
                       >
                         <span>Explore Premium Plan Page</span>
                         <ArrowRight className="w-4 h-4" />
                       </Link>
                       <Link
                         to="/subscribe?plan=premium"
-                        className="h-12 px-5 rounded-full bg-white hover:bg-slate-50 border-2 border-slate-200 text-slate-800 font-bold text-xs sm:text-sm"
+                        className="h-14 px-7 rounded-full bg-white hover:bg-slate-50 border-2 border-slate-300 hover:border-indigo-600 text-slate-900 font-extrabold text-sm sm:text-base active:scale-95 transition-all shadow-xs flex items-center gap-2"
                       >
-                        Get Premium (₹239/mo)
+                        <span>Get Premium (₹239/mo)</span>
                       </Link>
                     </div>
                   </div>
@@ -942,16 +942,16 @@ export default function Landing() {
                     <div className="pt-4 flex flex-wrap items-center gap-3">
                       <Link
                         to="/pro-plan"
-                        className="h-12 px-6 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-black text-xs sm:text-sm shadow-md flex items-center gap-2"
+                        className="h-14 px-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-black text-sm sm:text-base shadow-md flex items-center gap-2 active:scale-95 transition-all"
                       >
                         <span>Explore Pro Plan Page</span>
                         <ArrowRight className="w-4 h-4" />
                       </Link>
                       <Link
                         to="/subscribe?plan=pro"
-                        className="h-12 px-5 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs sm:text-sm shadow-md"
+                        className="h-14 px-7 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm sm:text-base shadow-md active:scale-95 transition-all flex items-center gap-2"
                       >
-                        Get Pro (1+1 Month Free)
+                        <span>Get Pro (1+1 Month Free)</span>
                       </Link>
                     </div>
                   </div>
@@ -1027,16 +1027,16 @@ export default function Landing() {
                     <div className="pt-4 flex flex-wrap items-center gap-3">
                       <Link
                         to="/pro-studio"
-                        className="h-12 px-6 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs sm:text-sm shadow-md flex items-center gap-2"
+                        className="h-14 px-8 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm sm:text-base shadow-md flex items-center gap-2 active:scale-95 transition-all"
                       >
                         <span>Explore Pro Studio Deep-Dive</span>
                         <ArrowRight className="w-4 h-4" />
                       </Link>
                       <Link
                         to="/subscribe?plan=pro"
-                        className="h-12 px-5 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs sm:text-sm shadow-md"
+                        className="h-14 px-7 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm sm:text-base shadow-md active:scale-95 transition-all flex items-center gap-2"
                       >
-                        Unlock Studio with Pro
+                        <span>Unlock Studio with Pro</span>
                       </Link>
                     </div>
                   </div>
@@ -1161,32 +1161,33 @@ export default function Landing() {
                     </ul>
                   </div>
 
-                  <div className="mt-auto pt-4 space-y-2.5">
+                  <div className="mt-auto pt-5 space-y-3">
                     <Link
                       to={p.route}
-                      className={`w-full h-11 rounded-full text-xs font-black border-2 transition-all flex items-center justify-center gap-1.5 active:scale-95 ${
+                      className={`w-full h-13 sm:h-14 rounded-full text-sm sm:text-base font-black border-2 transition-all flex items-center justify-center gap-2 active:scale-95 shadow-xs ${
                         p.is_pro
                           ? "border-blue-600 bg-blue-50 text-blue-900 hover:bg-blue-100"
                           : p.featured
                           ? "border-amber-400 bg-amber-50 text-amber-950 hover:bg-amber-100"
-                          : "border-slate-200 bg-slate-50 text-slate-800 hover:bg-slate-100"
+                          : "border-slate-300 bg-slate-50 text-slate-800 hover:bg-slate-100"
                       }`}
                     >
                       <span>Explore {p.name} Details</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <ArrowRight className="w-4 h-4" />
                     </Link>
 
                     <Button
                       onClick={() => nav(`/subscribe?plan=${p.id}`)}
-                      className={`w-full h-11 rounded-full text-xs font-black active:scale-95 transition-all shadow-md ${
+                      className={`w-full h-13 sm:h-14 rounded-full text-sm sm:text-base font-black active:scale-95 transition-all shadow-md flex items-center justify-center gap-2 ${
                         p.is_pro
-                          ? "bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-amber-400/20"
+                          ? "bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-amber-400/25"
                           : p.featured
-                          ? "bg-blue-600 hover:bg-blue-700 text-white"
+                          ? "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25"
                           : "bg-slate-900 hover:bg-slate-800 text-white"
                       }`}
                     >
-                      Choose {p.name}
+                      <span>Choose {p.name}</span>
+                      <ArrowRight className="w-4 h-4" />
                     </Button>
                   </div>
 
@@ -1221,21 +1222,22 @@ export default function Landing() {
                 </div>
               </div>
 
-              <div className="lg:col-span-4 flex flex-col sm:flex-row lg:flex-col gap-3 justify-center">
+              <div className="lg:col-span-4 flex flex-col sm:flex-row lg:flex-col gap-3.5 justify-center">
                 <Link
                   to="/pro-studio"
-                  className="h-13 px-8 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95"
+                  className="h-14 sm:h-15 px-8 sm:px-10 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm sm:text-base shadow-xl shadow-amber-400/25 flex items-center justify-center gap-2.5 transition-all active:scale-95"
                 >
-                  <Sliders className="w-4 h-4 text-slate-950" />
+                  <Sliders className="w-5 h-5 text-slate-950" />
                   <span>Explore Pro Studio Suite</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-5 h-5 text-slate-950" />
                 </Link>
 
                 <Link
                   to="/subscribe?plan=pro"
-                  className="h-13 px-8 rounded-full bg-white/15 hover:bg-white/25 border border-white/30 text-white font-bold text-sm flex items-center justify-center gap-2 transition-all"
+                  className="h-14 sm:h-15 px-8 sm:px-10 rounded-full bg-white hover:bg-slate-100 text-blue-950 font-black text-sm sm:text-base shadow-md flex items-center justify-center gap-2 transition-all active:scale-95"
                 >
                   <span>Unlock Studio (1+1 Free)</span>
+                  <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
             </div>
@@ -1510,7 +1512,7 @@ export default function Landing() {
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button
               onClick={() => nav("/app")}
-              className="w-full sm:w-auto h-14 px-10 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-base shadow-xl shadow-amber-400/25 active:scale-95 transition-all flex items-center justify-center gap-2"
+              className="w-full sm:w-auto h-15 sm:h-16 px-10 sm:px-12 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-base sm:text-lg shadow-xl shadow-amber-400/25 active:scale-95 transition-all flex items-center justify-center gap-2.5"
             >
               <span>Launch Dukaan Now</span>
               <ArrowRight className="w-5 h-5 text-slate-950" />
@@ -1518,7 +1520,7 @@ export default function Landing() {
 
             <Link
               to="/pro-plan"
-              className="w-full sm:w-auto h-14 px-8 rounded-full bg-white hover:bg-slate-100 text-blue-900 font-extrabold text-base shadow-md transition-all flex items-center justify-center gap-2"
+              className="w-full sm:w-auto h-15 sm:h-16 px-9 sm:px-11 rounded-full bg-white hover:bg-slate-100 text-blue-950 font-black text-base sm:text-lg shadow-md transition-all flex items-center justify-center gap-2.5"
             >
               <span>Explore Dukaan Pro (1+1 Free)</span>
               <ArrowRight className="w-4 h-4" />
