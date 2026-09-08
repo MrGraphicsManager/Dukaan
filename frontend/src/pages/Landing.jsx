@@ -46,6 +46,7 @@ import RoiCalculator from "@/components/landing/RoiCalculator";
 import ShopCategoryMatcher from "@/components/landing/ShopCategoryMatcher";
 import HardwareCompatibility from "@/components/landing/HardwareCompatibility";
 import AtherStyle3DScrollShowcase from "@/components/landing/AtherStyle3DScrollShowcase";
+import useButterSmoothScroll from "@/lib/useButterSmoothScroll";
 
 const FEATURES = [
   { 
@@ -159,9 +160,9 @@ const FAQS = [
   { q: "Which languages are supported?", a: "English, हिन्दी (Hindi) and ગુજરાતી (Gujarati). You can toggle the language instantly from the top menu bar." },
 ];
 
-const reveal = { hidden: { opacity: 0, y: 34 }, show: { opacity: 1, y: 0, transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] } } };
+const reveal = { hidden: { opacity: 0, y: 32, scale: 0.98 }, show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.75, ease: [0.16, 1, 0.3, 1] } } };
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
-const item = { hidden: { opacity: 0, y: 24, scale: 0.97 }, show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.48, ease: [0.22, 1, 0.36, 1] } } };
+const item = { hidden: { opacity: 0, y: 20, scale: 0.97 }, show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] } } };
 
 function Reveal({ children, className = "", id }) {
   return (
@@ -172,6 +173,9 @@ function Reveal({ children, className = "", id }) {
 }
 
 export default function Landing() {
+  // Activate Apple / Ather style butter-smooth momentum scroll
+  useButterSmoothScroll(true);
+
   const nav = useNavigate();
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
