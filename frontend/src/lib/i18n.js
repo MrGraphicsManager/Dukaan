@@ -22,6 +22,7 @@ const dict = {
     reports: "Reports",
     settings: "Settings",
     billing: "Billing",
+    pro_studio: "Pro Studio",
     counter_mode: "Counter Mode",
     today_sales: "Today's Sales",
     today_orders: "Today's Orders",

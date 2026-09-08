@@ -65,8 +65,10 @@ import {
   Zap,
   Bell,
   Play,
+  Crown,
   X
 } from "lucide-react";
+import { playVoiceSoundbox } from "@/lib/soundbox";
 
 /* =========================================================
    AUDIO & SYNTHESIS HELPERS (Features #2 & #6)
@@ -230,6 +232,13 @@ export default function AdminSubscriptions() {
   const [announcementInput, setAnnouncementInput] = useState(() => {
     return localStorage.getItem("dukaan_platform_announcement") || "";
   });
+
+  // Dukaan Pro Flagship Studio Sandbox States
+  const [proSandboxTemplate, setProSandboxTemplate] = useState("thermal_compact");
+  const [proSandboxTheme, setProSandboxTheme] = useState("indigo");
+  const [proVoiceTesting, setProVoiceTesting] = useState(false);
+  const [proVoiceLang, setProVoiceLang] = useState("hi");
+  const [proPinDemo, setProPinDemo] = useState(["5", "2", "9", "1"]);
 
   // Feature #6: Hardware Soundbox & Standees
   const [soundboxDevices, setSoundboxDevices] = useState([]);
@@ -877,7 +886,7 @@ export default function AdminSubscriptions() {
   };
 
   // --- FEATURE #1: Store Inspector (Login as Merchant) ---
-  const handleInspectStore = (targetUser) => {
+  const handleInspectStore = (targetUser, redirectPath = "/app") => {
     const originalToken = localStorage.getItem("dukaan_token") || "";
     let originalUser = null;
     try {
@@ -904,15 +913,19 @@ export default function AdminSubscriptions() {
       targetUser.is_frozen
     );
 
+    const isPro = Boolean(effectiveSub?.plan === "pro" || targetUser.is_pro);
+    const isPrem = Boolean(effectiveSub?.plan === "premium" || isPro || targetUser.is_premium);
+
     const impersonatedUser = {
       id: targetUser.id || `usr_${targetUser.email}`,
       email: targetUser.email,
       name: targetUser.name || "Merchant",
       phone: targetUser.phone || "",
       role: "owner",
-      subscription: effectiveSub || { plan: "starter", status: "active" },
-      plan: effectiveSub?.plan || "starter",
-      is_premium: effectiveSub?.plan === "premium",
+      subscription: effectiveSub || { plan: isPro ? "pro" : "starter", status: "active" },
+      plan: effectiveSub?.plan || (isPro ? "pro" : "starter"),
+      is_premium: isPrem,
+      is_pro: isPro,
       is_frozen: isFrozen,
       is_verified: targetUser.is_verified ?? true,
       is_verified_store: targetUser.is_verified_store ?? true,
@@ -921,7 +934,7 @@ export default function AdminSubscriptions() {
     localStorage.setItem("dukaan_user", JSON.stringify(impersonatedUser));
     sessionStorage.setItem("dukaan_admin_authenticated", "true");
     toast.success(`Entering Store Inspector mode as ${targetUser.name || targetUser.email}...`);
-    window.location.href = "/app";
+    window.location.href = redirectPath;
   };
 
   // --- FEATURE #9: Store Freeze & Fraud Shield ---
@@ -2088,8 +2101,18 @@ export default function AdminSubscriptions() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              to="/pro-studio"
+              target="_blank"
+              className="rounded-xl bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-800 hover:brightness-110 text-white font-bold text-xs h-9 px-3.5 shadow-md flex items-center gap-1.5 active:scale-95 transition-all border border-purple-500/30"
+              title="Launch Dukaan Pro Studio Public Showcase"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+              <span className="hidden sm:inline">Pro Studio</span>
+            </Link>
+
             <Button
-              onClick={() => setGrantModal({ open: true, email: "", plan: "premium", days: 365, note: "" })}
+              onClick={() => setGrantModal({ open: true, email: "", plan: "pro", days: 365, note: "Admin Pro Grant" })}
               className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs h-9 px-3.5 shadow-md flex items-center gap-1.5 active:scale-95 transition-all"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -2374,6 +2397,7 @@ export default function AdminSubscriptions() {
           <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-slate-950 border border-slate-800 overflow-x-auto">
             {[
               { id: "overview", label: "Executive Overview & Pulse", icon: Activity },
+              { id: "pro", label: `Dukaan Pro Studio (${rows.filter(r => (r.plan || "").toLowerCase() === "pro" || (r.status === "active" && r.plan === "pro")).length})`, icon: Sparkles },
               { id: "users", label: `Merchants & Leaderboard (${usersList.length})`, icon: Users },
               { id: "monetization", label: `Monetization, Plans & Coupons (${rows.length})`, icon: CreditCard },
               { id: "careers", label: `Hiring & Job Applications (${jobApplications.length})`, icon: Briefcase },
@@ -2692,6 +2716,445 @@ export default function AdminSubscriptions() {
             </div>
           )}
 
+          {/* TAB 1.5: DUKAAN PRO STUDIO & FLAGSHIP SUITE */}
+          {activeTab === "pro" && (
+            <div className="space-y-6 animate-fade-up">
+              
+              {/* Pro Executive Hero Card */}
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-purple-950/90 via-indigo-950/80 to-slate-950 p-6 md:p-8 border-2 border-purple-800/40 shadow-2xl">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
+
+                <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                  <div className="space-y-2 max-w-2xl">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/30 to-indigo-500/30 border border-purple-400/40 text-purple-300 text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Dukaan Pro Tier · Rank 4 Flagship
+                      </span>
+                      <span className="px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-bold">
+                        ₹4,999 / yr · 1+1 Year Offer Active
+                      </span>
+                    </div>
+                    <h1 className="text-2xl md:text-3xl font-extrabold font-display tracking-tight text-white">
+                      Dukaan Pro Studio & Enterprise Command
+                    </h1>
+                    <p className="text-xs md:text-sm text-slate-300 leading-relaxed">
+                      Central control for all Dukaan Pro merchants. Manage bespoke thermal templates, white-label custom domains, multi-staff cashier security PINs, and real-time multi-lingual voice soundboxes.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <a
+                      href="/pro-plan"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-200 hover:text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Pro Plan Page ↗</span>
+                    </a>
+                    <a
+                      href="/pro-studio"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-purple-700/60 text-purple-300 hover:text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5"
+                    >
+                      <Sliders className="w-3.5 h-3.5 text-purple-400" />
+                      <span>Pro Studio Showcase ↗</span>
+                    </a>
+                    <Button
+                      onClick={() => setGrantModal({ open: true, email: "", plan: "pro", days: 365, note: "Admin Direct Pro Promotion" })}
+                      className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs shadow-lg flex items-center gap-2"
+                    >
+                      <Crown className="w-4 h-4 text-amber-300" />
+                      <span>+ Grant Pro Access</span>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4 Pro Telemetry Metric Cards */}
+              {(() => {
+                const proMerchants = usersList.filter(u => 
+                  (u.subscription?.plan || "").toLowerCase() === "pro" || 
+                  u.is_pro || 
+                  rows.some(r => r.user_email?.toLowerCase() === u.email?.toLowerCase() && (r.plan || "").toLowerCase() === "pro" && r.status === "active")
+                );
+                const proArr = proMerchants.length * 4999;
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-sm">
+                      <div className="flex items-center justify-between text-slate-400 text-xs font-mono font-bold uppercase">
+                        <span>Active Pro Stores</span>
+                        <Crown className="w-4 h-4 text-amber-400" />
+                      </div>
+                      <div className="text-2xl font-bold text-white mt-1.5 font-display">{proMerchants.length} Stores</div>
+                      <span className="text-[11px] text-emerald-400 font-semibold mt-0.5 block">100% Flagship Access</span>
+                    </div>
+
+                    <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-sm">
+                      <div className="flex items-center justify-between text-slate-400 text-xs font-mono font-bold uppercase">
+                        <span>Pro ARR Run Rate</span>
+                        <DollarSign className="w-4 h-4 text-purple-400" />
+                      </div>
+                      <div className="text-2xl font-bold text-white mt-1.5 font-display">₹{proArr.toLocaleString("en-IN")}</div>
+                      <span className="text-[11px] text-purple-300 font-semibold mt-0.5 block">₹4,999 / Store / Year</span>
+                    </div>
+
+                    <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-sm">
+                      <div className="flex items-center justify-between text-slate-400 text-xs font-mono font-bold uppercase">
+                        <span>Invoice Customizer</span>
+                        <Printer className="w-4 h-4 text-indigo-400" />
+                      </div>
+                      <div className="text-2xl font-bold text-indigo-400 mt-1.5 font-display">4 Formats</div>
+                      <span className="text-[11px] text-slate-400 font-semibold mt-0.5 block">Thermal 58/80 + GST + Minimal</span>
+                    </div>
+
+                    <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-sm">
+                      <div className="flex items-center justify-between text-slate-400 text-xs font-mono font-bold uppercase">
+                        <span>Cashier Lock Guard</span>
+                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      </div>
+                      <div className="text-2xl font-bold text-emerald-400 mt-1.5 font-display">Active</div>
+                      <span className="text-[11px] text-slate-400 font-semibold mt-0.5 block">Shift Logs + Owner 4-Digit PIN</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Pro Subscribers Directory Table */}
+              <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
+                  <div>
+                    <h2 className="text-base font-bold font-display text-white flex items-center gap-2">
+                      <Crown className="w-5 h-5 text-amber-400" />
+                      <span>Active Dukaan Pro Merchants Directory</span>
+                    </h2>
+                    <p className="text-xs text-slate-400 mt-0.5">Manage existing Pro plan holders, grant 1+1 bonus extensions, or login as merchant directly into Pro Studio</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => setGrantModal({ open: true, email: "", plan: "pro", days: 365, note: "Admin Pro Grant" })}
+                    className="rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs h-8 px-3"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Upgrade Store to Pro
+                  </Button>
+                </div>
+
+                {(() => {
+                  const proList = usersList.filter(u => 
+                    (u.subscription?.plan || "").toLowerCase() === "pro" || 
+                    u.is_pro || 
+                    rows.some(r => r.user_email?.toLowerCase() === u.email?.toLowerCase() && (r.plan || "").toLowerCase() === "pro" && r.status === "active")
+                  );
+
+                  if (proList.length === 0) {
+                    return (
+                      <div className="p-8 text-center rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+                        <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center mx-auto">
+                          <Crown className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-sm font-bold text-white">No Merchants on Dukaan Pro Yet</h3>
+                        <p className="text-xs text-slate-400 max-w-md mx-auto">
+                          Merchants can subscribe via <code className="text-purple-300">/subscribe?plan=pro</code> or you can instantly promote any merchant below.
+                        </p>
+                        {usersList.length > 0 && (
+                          <div className="pt-2">
+                            <Button
+                              onClick={() => {
+                                const target = usersList[0];
+                                setGrantModal({ open: true, email: target.email, plan: "pro", days: 365, note: "Admin First Pro Grant" });
+                              }}
+                              className="rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs h-9 px-4 shadow-sm"
+                            >
+                              <Crown className="w-3.5 h-3.5 mr-1.5 text-amber-300" />
+                              Promote {usersList[0]?.name || usersList[0]?.email} to Pro
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="overflow-x-auto rounded-2xl border border-slate-800">
+                      <table className="w-full text-xs">
+                        <thead className="bg-slate-900 text-left font-mono uppercase text-slate-400 font-bold border-b border-slate-800">
+                          <tr>
+                            <th className="px-4 py-3">Store & Merchant</th>
+                            <th className="px-4 py-3">Pro Plan Status</th>
+                            <th className="px-4 py-3">Expiry Date</th>
+                            <th className="px-4 py-3">Active Modules</th>
+                            <th className="px-4 py-3 text-right">Pro Master Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800">
+                          {proList.map(u => {
+                            const expDate = u.subscription?.expires_at ? u.subscription.expires_at.slice(0, 10) : "1 Year Active";
+                            return (
+                              <tr key={u.id || u.email} className="hover:bg-slate-900/60 transition-colors">
+                                <td className="px-4 py-3">
+                                  <div className="font-bold text-white text-sm">{u.shop_name || u.name || "Dukaan Store"}</div>
+                                  <div className="text-slate-400 font-mono text-[11px]">{u.email} · {u.phone || "No phone"}</div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold font-mono bg-gradient-to-r from-purple-500/20 to-indigo-500/20 text-purple-300 border border-purple-500/40 uppercase tracking-wider flex items-center gap-1 w-fit">
+                                    <Sparkles className="w-3 h-3 text-amber-300" /> Pro Flagship
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 font-mono text-slate-300">
+                                  {expDate}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800 text-[10px]">
+                                      Custom Invoices
+                                    </span>
+                                    <span className="px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800 text-[10px]">
+                                      Multi-Cashier Lock
+                                    </span>
+                                    <span className="px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800 text-[10px]">
+                                      Soundbox IoT
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-right space-x-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleInspectStore(u, "/app/settings?tab=pro")}
+                                    className="rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs h-7 px-3 shadow-xs"
+                                    title="Open Pro Studio inside Merchant Account"
+                                  >
+                                    <Eye className="w-3 h-3 mr-1" /> Inspect Pro Studio
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleOpenExpiryModal(u)}
+                                    className="rounded-xl border-purple-700/60 bg-purple-950/30 text-purple-300 hover:text-white text-xs h-7 px-2.5"
+                                  >
+                                    <Clock className="w-3 h-3 mr-1" /> Extend Expiry
+                                  </Button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Interactive Dukaan Pro Studio Sandbox Preview */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* Sandbox Column 1: Live Invoice Template Designer */}
+                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-base font-bold font-display text-white flex items-center gap-2">
+                        <Printer className="w-5 h-5 text-purple-400" />
+                        <span>Pro Invoice Template Engine Sandbox</span>
+                      </h2>
+                      <p className="text-xs text-slate-400 mt-0.5">Test how custom receipts print across thermal & GST formats</p>
+                    </div>
+                    <span className="text-[10px] font-mono uppercase font-bold text-purple-400 bg-purple-950/60 px-2.5 py-0.5 rounded-full border border-purple-800">
+                      Live Preview
+                    </span>
+                  </div>
+
+                  {/* Template selector tabs */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { id: "thermal_compact", label: "58mm Compact" },
+                      { id: "gst_detailed", label: "80mm Detailed GST" },
+                      { id: "modern_a4", label: "Modern Executive" },
+                      { id: "minimal", label: "Clean Minimal" }
+                    ].map(t => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setProSandboxTemplate(t.id)}
+                        className={`p-2 rounded-xl text-xs font-bold transition-all border text-center ${
+                          proSandboxTemplate === t.id
+                            ? "bg-purple-600 border-purple-400 text-white shadow-sm"
+                            : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Simulated Receipt Preview Card */}
+                  <div className="p-4 bg-white text-slate-950 rounded-2xl shadow-inner font-mono text-xs border border-slate-200 max-w-sm mx-auto space-y-3">
+                    <div className="text-center border-b border-dashed border-slate-300 pb-2">
+                      <div className="text-base font-black uppercase tracking-tight">SHREE BALAJI KIRANA</div>
+                      <div className="text-[10px] text-slate-600">Main Market, Station Road · Ph: +91 98765 43210</div>
+                      <div className="text-[9px] text-slate-500 font-bold mt-0.5">GSTIN: 24AAACS1429B1Z8</div>
+                      <div className="text-[9px] text-purple-700 font-extrabold uppercase mt-0.5">
+                        Template: {proSandboxTemplate.replace("_", " ")}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 text-[11px]">
+                      <div className="flex justify-between font-bold border-b border-slate-200 pb-1">
+                        <span>Item</span>
+                        <span>Qty x Rate</span>
+                        <span>Total</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Amul Butter 100g</span>
+                        <span>1 x ₹65</span>
+                        <span className="font-bold">₹65.00</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Aashirvaad Atta 5kg</span>
+                        <span>1 x ₹320</span>
+                        <span className="font-bold">₹320.00</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Tata Salt 1kg</span>
+                        <span>1 x ₹28</span>
+                        <span className="font-bold">₹28.00</span>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-dashed border-slate-300 pt-2 space-y-1 text-[11px]">
+                      <div className="flex justify-between text-slate-600">
+                        <span>Subtotal</span>
+                        <span>₹413.00</span>
+                      </div>
+                      <div className="flex justify-between text-slate-600">
+                        <span>GST (5%)</span>
+                        <span>₹20.65</span>
+                      </div>
+                      <div className="flex justify-between text-base font-black border-t border-slate-800 pt-1 text-slate-950">
+                        <span>NET TOTAL</span>
+                        <span>₹433.65</span>
+                      </div>
+                    </div>
+
+                    <div className="text-center text-[10px] text-slate-500 border-t border-dashed border-slate-300 pt-2">
+                      <div>Paid via Instant UPI QR</div>
+                      <div className="font-bold text-slate-700 mt-0.5">Thank you for shopping! Visit Again.</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sandbox Column 2: Multi-Language Soundbox & Cashier PIN Simulator */}
+                <div className="space-y-6">
+                  
+                  {/* Multi-Language Voice Soundbox Simulator */}
+                  <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-base font-bold font-display text-white flex items-center gap-2">
+                          <Volume2 className="w-5 h-5 text-amber-400" />
+                          <span>Multi-Lingual Voice Soundbox (#6)</span>
+                        </h2>
+                        <p className="text-xs text-slate-400 mt-0.5">Test real voice synthesizer speech in 8 regional Indian languages</p>
+                      </div>
+                      <span className="text-xs font-mono font-bold text-amber-400">₹499 Demo</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { code: "hi", label: "Hindi (हिंदी)" },
+                        { code: "en", label: "English" },
+                        { code: "gu", label: "Gujarati (ગુજરાતી)" },
+                        { code: "mr", label: "Marathi (मराठी)" },
+                        { code: "ta", label: "Tamil (தமிழ்)" },
+                        { code: "te", label: "Telugu (తెలుగు)" },
+                        { code: "kn", label: "Kannada (ಕನ್ನಡ)" },
+                        { code: "bn", label: "Bengali (বাংলা)" }
+                      ].map(lang => (
+                        <button
+                          key={lang.code}
+                          type="button"
+                          disabled={proVoiceTesting}
+                          onClick={() => {
+                            setProVoiceLang(lang.code);
+                            setProVoiceTesting(true);
+                            playVoiceSoundbox(499, "upi", lang.code);
+                            toast.success(`Playing Soundbox Voice in ${lang.label}`);
+                            setTimeout(() => setProVoiceTesting(false), 2400);
+                          }}
+                          className={`p-2.5 rounded-xl text-xs font-bold transition-all border text-center flex items-center justify-center gap-1 ${
+                            proVoiceLang === lang.code
+                              ? "bg-amber-500 border-amber-400 text-slate-950 shadow-md font-extrabold"
+                              : "bg-slate-900 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700"
+                          }`}
+                        >
+                          <Volume2 className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">{lang.label.split(" ")[0]}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="p-3 bg-slate-900/80 rounded-2xl border border-slate-800 flex items-center justify-between text-xs">
+                      <span className="text-slate-400">Current Test Sentence:</span>
+                      <span className="font-bold text-amber-300 font-mono">
+                        {proVoiceLang === "hi" ? "Dukaan par ₹499 prapt hue" :
+                         proVoiceLang === "gu" ? "Dukaan par ₹499 malya" :
+                         proVoiceLang === "mr" ? "Dukaan var ₹499 prapt jhale" :
+                         "Received ₹499 on Dukaan Soundbox"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Cashier Multi-Staff Security PIN Sandbox */}
+                  <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-base font-bold font-display text-white flex items-center gap-2">
+                          <Lock className="w-5 h-5 text-indigo-400" />
+                          <span>Owner 4-Digit Security PIN & Shift Guard</span>
+                        </h2>
+                        <p className="text-xs text-slate-400 mt-0.5">Locks cash drawer, ledger, and settings when cashiers operate the POS</p>
+                      </div>
+                      <span className="text-xs font-mono font-bold text-emerald-400">Active Mode</span>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                      <div>
+                        <div className="text-xs font-bold text-slate-300">Simulated Store PIN</div>
+                        <div className="text-[10px] text-slate-500">Only store owner can view sensitive financial reports</div>
+                      </div>
+                      <div className="flex items-center gap-1.5 font-mono text-base font-bold">
+                        {proPinDemo.map((digit, i) => (
+                          <span key={i} className="w-8 h-9 rounded-lg bg-slate-950 border border-indigo-500/40 text-indigo-300 flex items-center justify-center">
+                            {digit}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 text-xs text-slate-400">
+                      <span>Shift Ledger Status: <strong className="text-emerald-400 font-mono">Synced</strong></span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newPin = Array.from({ length: 4 }, () => Math.floor(Math.random() * 9 + 1).toString());
+                          setProPinDemo(newPin);
+                          toast.success(`Generated new Store Owner PIN: ${newPin.join("")}`);
+                        }}
+                        className="text-indigo-400 hover:underline font-bold"
+                      >
+                        Generate Random PIN
+                      </button>
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+          )}
+
           {/* TAB 2: MERCHANTS DIRECTORY & LEADERBOARD */}
           {activeTab === "users" && (
             <div className="space-y-6 animate-fade-up">
@@ -2910,6 +3373,34 @@ export default function AdminSubscriptions() {
                             >
                               <Eye className="w-3.5 h-3.5 mr-1" /> Inspect Store (#1)
                             </Button>
+
+                            {/* Dukaan Pro Action */}
+                            {planName === "pro" ? (
+                              <Button
+                                size="sm"
+                                onClick={() => handleInspectStore(u, "/app/settings?tab=pro")}
+                                className="rounded-xl bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 text-white font-bold text-xs h-8 px-2.5 shadow-xs"
+                                title="Open Pro Studio inside Merchant Account"
+                              >
+                                <Sparkles className="w-3.5 h-3.5 mr-1 text-amber-300" /> Pro Studio
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setGrantModal({
+                                  open: true,
+                                  email: u.email,
+                                  plan: "pro",
+                                  days: 365,
+                                  note: "Promoted to Dukaan Pro (Admin)"
+                                })}
+                                className="rounded-xl border-purple-800/60 bg-purple-950/30 hover:bg-purple-900/50 text-purple-300 text-xs font-bold h-8 px-2"
+                                title="1-Click Grant Dukaan Pro Plan"
+                              >
+                                <Crown className="w-3.5 h-3.5 mr-1 text-amber-400" /> +Pro
+                              </Button>
+                            )}
 
                             {/* Feature #9: Freeze Store Toggle */}
                             <Button

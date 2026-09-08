@@ -433,11 +433,24 @@ function LaunchController() {
 
 
         {/* Settings */}
-
         <Route
           path="/app/settings"
           element={
             <Settings />
+          }
+        />
+
+        {/* Dukaan Pro Studio Shortcut Routes */}
+        <Route
+          path="/app/studio"
+          element={
+            <Settings initialTab="pro" />
+          }
+        />
+        <Route
+          path="/app/pro"
+          element={
+            <Settings initialTab="pro" />
           }
         />
 

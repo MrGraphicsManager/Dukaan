@@ -22,6 +22,7 @@ const NAV = [
   { to: "/app/orders", key: "orders", Icon: ClipboardList },
   { to: "/app/reports", key: "reports", Icon: BarChart3 },
   { to: "/app/billing", key: "billing", Icon: CreditCard },
+  { to: "/app/studio", key: "pro_studio", Icon: Sparkles, isProStudio: true },
   { to: "/app/settings", key: "settings", Icon: Cog },
   { to: "/app/counter", key: "counter_mode", Icon: Monitor },
 ];
@@ -816,7 +817,7 @@ export default function AppLayout() {
         {/* Desktop sidebar */}
         <aside className="hidden md:flex flex-col w-56 shrink-0 border-r border-brand-mitti min-h-[calc(100vh-4rem)] pt-6 px-3 bg-white">
           <nav className="space-y-1 flex-1">
-            {NAV.map(({ to, key, Icon, end }) => {
+            {NAV.map(({ to, key, Icon, end, isProStudio }) => {
               const locked = isLocked(to);
               return (
                 <NavLink
@@ -825,11 +826,24 @@ export default function AppLayout() {
                   end={end}
                   data-testid={`nav-${key}`}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive ? "bg-brand-indigo text-white" : "text-brand-indigo/80 hover:bg-brand-mitti/50"}`
+                    `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                      isActive
+                        ? isProStudio
+                          ? "bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-800 text-white shadow-sm"
+                          : "bg-brand-indigo text-white"
+                        : isProStudio
+                          ? "text-purple-800 hover:bg-purple-50 font-semibold"
+                          : "text-brand-indigo/80 hover:bg-brand-mitti/50"
+                    }`
                   }
                 >
-                  <Icon className="w-4 h-4"/>
+                  <Icon className={`w-4 h-4 ${isProStudio ? "text-amber-500" : ""}`}/>
                   <span className="flex-1">{t(lang, key)}</span>
+                  {isProStudio && (
+                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-mono tracking-wider shadow-2xs">
+                      PRO
+                    </span>
+                  )}
                   {locked && <Lock className="w-3 h-3 text-brand-terracotta" data-testid={`lock-${key}`}/>}
                 </NavLink>
               );
@@ -921,7 +935,7 @@ export default function AppLayout() {
               <div className="text-[10px] font-mono uppercase tracking-wider text-brand-indigo/40 px-3 py-1 font-bold">
                 Menu & Management
               </div>
-              {NAV.map(({ to, key, Icon, end }) => {
+              {NAV.map(({ to, key, Icon, end, isProStudio }) => {
                 const locked = isLocked(to);
                 return (
                   <NavLink
@@ -932,13 +946,22 @@ export default function AppLayout() {
                     className={({ isActive }) =>
                       `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                         isActive 
-                          ? "bg-brand-indigo text-white shadow-xs" 
-                          : "text-brand-indigo/80 hover:bg-brand-mitti/50 active:bg-brand-mitti"
+                          ? isProStudio
+                            ? "bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-800 text-white shadow-xs"
+                            : "bg-brand-indigo text-white shadow-xs" 
+                          : isProStudio
+                            ? "text-purple-800 hover:bg-purple-50 font-bold"
+                            : "text-brand-indigo/80 hover:bg-brand-mitti/50 active:bg-brand-mitti"
                       }`
                     }
                   >
-                    <Icon className="w-4 h-4 shrink-0" />
+                    <Icon className={`w-4 h-4 shrink-0 ${isProStudio ? "text-amber-500" : ""}`} />
                     <span className="flex-1 text-xs">{t(lang, key)}</span>
+                    {isProStudio && (
+                      <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-mono tracking-wider">
+                        PRO
+                      </span>
+                    )}
                     {locked && <Lock className="w-3.5 h-3.5 text-brand-terracotta shrink-0" />}
                   </NavLink>
                 );

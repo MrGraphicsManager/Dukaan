@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -64,11 +64,19 @@ const EMPTY_SHOP = {
   min_stock_default: 5
 };
 
-export default function Settings() {
+export default function Settings({ initialTab }) {
   const [params, setParams] = useSearchParams();
   const nav = useNavigate();
-  const activeTab = params.get("tab") || "account";
-  const setTab = (t) => setParams({ tab: t });
+  const loc = useLocation();
+  const isStudioPath = Boolean(loc?.pathname?.includes("/studio") || loc?.pathname?.includes("/pro"));
+  const activeTab = params.get("tab") || initialTab || (isStudioPath ? "pro" : "account");
+  const setTab = (t) => {
+    if (isStudioPath) {
+      nav(`/app/settings?tab=${t}`);
+    } else {
+      setParams({ tab: t });
+    }
+  };
 
   const { 
     user, 
