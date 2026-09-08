@@ -47,7 +47,9 @@ import {
   ChevronRight,
   ShoppingBag,
   Plus,
-  Minus
+  Minus,
+  LayoutGrid,
+  LayoutList
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import InstallAppButton from "@/components/InstallAppButton";
@@ -225,6 +227,9 @@ export default function Landing() {
 
   // Desktop Plans Dropdown State
   const [plansDropdownOpen, setPlansDropdownOpen] = useState(false);
+
+  // Desktop Pricing Layout: "horizontal" by default per user request, toggleable to "grid"
+  const [desktopPricingLayout, setDesktopPricingLayout] = useState("horizontal");
 
   // Hero Interactive Plan Switcher State
   const [activeHeroTab, setActiveHeroTab] = useState("pro"); // 'starter' | 'business' | 'premium' | 'pro' | 'studio'
@@ -839,17 +844,17 @@ export default function Landing() {
                       </li>
                     </ul>
 
-                    <div className="pt-4 flex flex-wrap items-center gap-3">
+                    <div className="pt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                       <Link
                         to="/starter-plan"
-                        className="h-14 px-8 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm sm:text-base shadow-md flex items-center gap-2 active:scale-95 transition-all"
+                        className="w-full sm:w-auto h-13 sm:h-14 px-6 sm:px-8 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm sm:text-base shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all"
                       >
                         <span>Explore Starter Plan Page</span>
                         <ArrowRight className="w-4 h-4" />
                       </Link>
                       <Link
                         to="/subscribe?plan=starter"
-                        className="h-14 px-7 rounded-full bg-white hover:bg-slate-50 border-2 border-slate-300 hover:border-emerald-600 text-slate-900 font-extrabold text-sm sm:text-base active:scale-95 transition-all shadow-xs flex items-center gap-2"
+                        className="w-full sm:w-auto h-13 sm:h-14 px-5 sm:px-7 rounded-full bg-white hover:bg-slate-50 border-2 border-slate-300 hover:border-emerald-600 text-slate-900 font-extrabold text-sm sm:text-base active:scale-95 transition-all shadow-xs flex items-center justify-center gap-2"
                       >
                         <span>Get Starter (₹79/mo)</span>
                       </Link>
@@ -924,17 +929,17 @@ export default function Landing() {
                       </li>
                     </ul>
 
-                    <div className="pt-4 flex flex-wrap items-center gap-3">
+                    <div className="pt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                       <Link
                         to="/business-plan"
-                        className="h-14 px-8 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm sm:text-base shadow-md flex items-center gap-2 active:scale-95 transition-all"
+                        className="w-full sm:w-auto h-13 sm:h-14 px-6 sm:px-8 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm sm:text-base shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all"
                       >
                         <span>Explore Business Plan Page</span>
                         <ArrowRight className="w-4 h-4" />
                       </Link>
                       <Link
                         to="/subscribe?plan=business"
-                        className="h-14 px-7 rounded-full bg-white hover:bg-slate-50 border-2 border-slate-300 hover:border-amber-400 text-slate-900 font-extrabold text-sm sm:text-base active:scale-95 transition-all shadow-xs flex items-center gap-2"
+                        className="w-full sm:w-auto h-13 sm:h-14 px-5 sm:px-7 rounded-full bg-white hover:bg-slate-50 border-2 border-slate-300 hover:border-amber-400 text-slate-900 font-extrabold text-sm sm:text-base active:scale-95 transition-all shadow-xs flex items-center justify-center gap-2"
                       >
                         <span>Get Business (₹119/mo)</span>
                       </Link>
@@ -996,17 +1001,17 @@ export default function Landing() {
                       </li>
                     </ul>
 
-                    <div className="pt-4 flex flex-wrap items-center gap-3">
+                    <div className="pt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                       <Link
                         to="/premium-plan"
-                        className="h-14 px-8 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm sm:text-base shadow-md flex items-center gap-2 active:scale-95 transition-all"
+                        className="w-full sm:w-auto h-13 sm:h-14 px-6 sm:px-8 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm sm:text-base shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all"
                       >
                         <span>Explore Premium Plan Page</span>
                         <ArrowRight className="w-4 h-4" />
                       </Link>
                       <Link
                         to="/subscribe?plan=premium"
-                        className="h-14 px-7 rounded-full bg-white hover:bg-slate-50 border-2 border-slate-300 hover:border-indigo-600 text-slate-900 font-extrabold text-sm sm:text-base active:scale-95 transition-all shadow-xs flex items-center gap-2"
+                        className="w-full sm:w-auto h-13 sm:h-14 px-5 sm:px-7 rounded-full bg-white hover:bg-slate-50 border-2 border-slate-300 hover:border-indigo-600 text-slate-900 font-extrabold text-sm sm:text-base active:scale-95 transition-all shadow-xs flex items-center justify-center gap-2"
                       >
                         <span>Get Premium (₹239/mo)</span>
                       </Link>
@@ -1078,17 +1083,17 @@ export default function Landing() {
                       </li>
                     </ul>
 
-                    <div className="pt-4 flex flex-wrap items-center gap-3">
+                    <div className="pt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                       <Link
                         to="/pro-plan"
-                        className="h-14 px-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-black text-sm sm:text-base shadow-md flex items-center gap-2 active:scale-95 transition-all"
+                        className="w-full sm:w-auto h-13 sm:h-14 px-6 sm:px-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-black text-sm sm:text-base shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all"
                       >
                         <span>Explore Pro Plan Page</span>
                         <ArrowRight className="w-4 h-4" />
                       </Link>
                       <Link
                         to="/subscribe?plan=pro"
-                        className="h-14 px-7 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm sm:text-base shadow-md active:scale-95 transition-all flex items-center gap-2"
+                        className="w-full sm:w-auto h-13 sm:h-14 px-5 sm:px-7 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm sm:text-base shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
                       >
                         <span>Get Pro (1+1 Month Free)</span>
                       </Link>
@@ -1163,17 +1168,17 @@ export default function Landing() {
                       </li>
                     </ul>
 
-                    <div className="pt-4 flex flex-wrap items-center gap-3">
+                    <div className="pt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                       <Link
                         to="/pro-studio"
-                        className="h-14 px-8 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm sm:text-base shadow-md flex items-center gap-2 active:scale-95 transition-all"
+                        className="w-full sm:w-auto h-13 sm:h-14 px-6 sm:px-8 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm sm:text-base shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all"
                       >
                         <span>Explore Pro Studio Deep-Dive</span>
                         <ArrowRight className="w-4 h-4" />
                       </Link>
                       <Link
                         to="/subscribe?plan=pro"
-                        className="h-14 px-7 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm sm:text-base shadow-md active:scale-95 transition-all flex items-center gap-2"
+                        className="w-full sm:w-auto h-13 sm:h-14 px-5 sm:px-7 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm sm:text-base shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
                       >
                         <span>Unlock Studio with Pro</span>
                       </Link>
@@ -1213,125 +1218,378 @@ export default function Landing() {
       <section className="py-20 bg-slate-100/70 border-t border-slate-200" id="pricing">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           
-          <div className="text-center max-w-3xl mx-auto mb-16">
+          <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-slate-200 text-slate-800 text-xs font-black uppercase tracking-widest mb-4 shadow-2xs">
               <Sparkles className="w-3.5 h-3.5 text-blue-600" /> Transparent Indian Retail Pricing by PEAN
             </div>
             <h2 className="font-sans font-black text-3xl sm:text-5xl text-slate-950 tracking-tight">
               Choose the Right Plan for Your Counter
             </h2>
-            <p className="mt-3 text-slate-600 text-base sm:text-lg">
+            <p className="mt-3 text-slate-600 text-sm sm:text-lg">
               Every plan includes unlimited product catalog, secure cloud storage, and zero hardware lock-in.
             </p>
+
+            {/* Desktop View Switcher (Horizontal vs Grid) */}
+            <div className="hidden lg:inline-flex items-center gap-1.5 p-1 bg-white border border-slate-200 rounded-2xl shadow-xs mt-6">
+              <button
+                type="button"
+                onClick={() => setDesktopPricingLayout("horizontal")}
+                className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                  desktopPricingLayout === "horizontal"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+              >
+                <LayoutList className="w-3.5 h-3.5" />
+                <span>Horizontal Suite (Wide)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDesktopPricingLayout("grid")}
+                className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                  desktopPricingLayout === "grid"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>4-Column Grid</span>
+              </button>
+            </div>
           </div>
 
-          {/* 4 Plan Elevated Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
+          {/* =========================================================
+              DESKTOP SUBSCRIPTION: HORIZONTAL VIEW (DEFAULT)
+          ========================================================= */}
+          {desktopPricingLayout === "horizontal" ? (
+            <div className="hidden lg:flex flex-col gap-5">
+              {ALL_PLANS.map((p) => (
+                <Card3D 
+                  key={p.id}
+                  depth={p.is_pro ? 14 : p.featured ? 10 : 6}
+                  glow={true}
+                  className="w-full"
+                >
+                  <div className={`rounded-3xl p-6 lg:p-7 border-2 relative bg-white transition-all shadow-md hover:shadow-xl ${
+                    p.is_pro
+                      ? "border-blue-600 ring-4 ring-blue-500/10 bg-gradient-to-r from-blue-50/50 via-white to-indigo-50/40"
+                      : p.featured
+                      ? "border-amber-400 ring-4 ring-amber-400/10 bg-gradient-to-r from-amber-50/40 via-white to-white"
+                      : "border-slate-200 hover:border-slate-300"
+                  }`}>
+                    
+                    {/* Top Badges */}
+                    {p.featured && (
+                      <div className="absolute -top-3.5 left-8 bg-amber-500 text-slate-950 text-[10px] font-black uppercase tracking-widest py-1 px-4 rounded-full shadow-md">
+                        ★ MOST POPULAR
+                      </div>
+                    )}
+                    {p.is_pro && (
+                      <div className="absolute -top-3.5 left-8 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest py-1 px-4 rounded-full shadow-md flex items-center gap-1.5">
+                        <Crown className="w-3.5 h-3.5 text-amber-300" /> FLAGSHIP ENTERPRISE TIER
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-12 gap-6 items-center">
+                      
+                      {/* Column 1 (4 cols): Plan Identity, Price & Setup */}
+                      <div className="col-span-4 border-r border-slate-200 pr-6 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs uppercase tracking-widest font-black text-slate-400">
+                            {p.name} PLAN
+                          </span>
+                          {p.badge && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                              {p.badge}
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="font-sans text-xl font-black text-slate-950 leading-snug">
+                          {p.tagline}
+                        </h3>
+
+                        <div className="pt-2 flex items-baseline gap-2">
+                          <span className="font-sans text-4xl lg:text-5xl font-black text-slate-950">₹{p.price}</span>
+                          {p.originalPrice && (
+                            <span className="text-sm line-through text-slate-400 font-bold">₹{p.originalPrice}</span>
+                          )}
+                          <span className="text-xs font-bold text-slate-500">/month</span>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-wrap text-xs pt-0.5">
+                          {p.discount && (
+                            <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+                              {p.discount}
+                            </span>
+                          )}
+                          {p.offerBadge && (
+                            <span className="text-[10px] font-black text-amber-950 bg-amber-200 px-2 py-0.5 rounded-md">
+                              {p.offerBadge}
+                            </span>
+                          )}
+                          <span className="text-[11px] font-medium text-slate-500">
+                            {p.setup > 0 ? `+ ₹${p.setup} setup fee` : "Zero setup fee"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Column 2 (5 cols): Grid of perks (2 columns) */}
+                      <div className="col-span-5 border-r border-slate-200 pr-6">
+                        <div className="text-[11px] font-black uppercase tracking-wider text-slate-400 mb-3">
+                          Key Capabilities & Inclusions
+                        </div>
+                        <ul className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs text-slate-700 font-medium">
+                          {p.perks.map((perk, i) => (
+                            <li key={i} className="flex items-start gap-2">
+                              <div className="mt-0.5 rounded-full p-0.5 bg-emerald-100 text-emerald-700 shrink-0">
+                                <Check className="w-3.5 h-3.5" />
+                              </div>
+                              <span className="leading-snug">{perk}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Column 3 (3 cols): Action Buttons */}
+                      <div className="col-span-3 flex flex-col gap-3 justify-center pl-2">
+                        <Button
+                          onClick={() => nav(`/subscribe?plan=${p.id}`)}
+                          className={`w-full h-12 rounded-full text-sm font-black active:scale-95 transition-all shadow-md flex items-center justify-center gap-2 whitespace-nowrap ${
+                            p.is_pro
+                              ? "bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-amber-400/25"
+                              : p.featured
+                              ? "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25"
+                              : "bg-slate-900 hover:bg-slate-800 text-white"
+                          }`}
+                        >
+                          <span>Choose {p.name}</span>
+                          <ArrowRight className="w-4 h-4 shrink-0" />
+                        </Button>
+
+                        <Link
+                          to={p.route}
+                          className={`w-full h-12 rounded-full text-xs font-black border-2 transition-all flex items-center justify-center gap-2 whitespace-nowrap active:scale-95 shadow-2xs ${
+                            p.is_pro
+                              ? "border-blue-600 bg-blue-50 text-blue-900 hover:bg-blue-100"
+                              : p.featured
+                              ? "border-amber-400 bg-amber-50 text-amber-950 hover:bg-amber-100"
+                              : "border-slate-300 bg-slate-50 text-slate-800 hover:bg-slate-100"
+                          }`}
+                        >
+                          <span>Explore {p.name === "Dukaan Pro" ? "Pro Plan" : `${p.name} Plan`}</span>
+                          <ArrowRight className="w-4 h-4 shrink-0" />
+                        </Link>
+                      </div>
+
+                    </div>
+
+                  </div>
+                </Card3D>
+              ))}
+            </div>
+          ) : (
+            /* DESKTOP SUBSCRIPTION: 4-COLUMN GRID VIEW (OPTIONAL TOGGLE) */
+            <div className="hidden lg:grid grid-cols-4 gap-6 items-stretch">
+              {ALL_PLANS.map((p) => (
+                <Card3D 
+                  key={p.id}
+                  depth={p.is_pro ? 20 : p.featured ? 18 : 12}
+                  glow={true}
+                  className="w-full"
+                >
+                  <div className={`rounded-3xl p-6 sm:p-7 border-2 shadow-md relative flex flex-col justify-between h-full bg-white ${
+                    p.is_pro
+                      ? "border-blue-600 ring-2 ring-blue-500/20 shadow-xl"
+                      : p.featured
+                      ? "border-amber-400 ring-2 ring-amber-400/20 shadow-lg"
+                      : "border-slate-200"
+                  }`}>
+                    {/* Top Badges */}
+                    {p.featured && (
+                      <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-500 text-slate-950 text-[10px] font-black uppercase tracking-widest py-1 px-3.5 rounded-full shadow-md whitespace-nowrap">
+                        ★ MOST POPULAR
+                      </div>
+                    )}
+                    {p.is_pro && (
+                      <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest py-1 px-3.5 rounded-full shadow-md whitespace-nowrap flex items-center gap-1">
+                        <Crown className="w-3 h-3 text-amber-300" /> FLAGSHIP TIER
+                      </div>
+                    )}
+
+                    <div>
+                      <div className="text-xs uppercase tracking-widest font-black text-slate-400">
+                        {p.name} PLAN
+                      </div>
+                      <div className="text-xs text-slate-600 font-medium mt-0.5">
+                        {p.tagline}
+                      </div>
+
+                      <div className="mt-4 flex items-baseline gap-2 flex-wrap">
+                        <span className="font-sans text-4xl sm:text-5xl font-black text-slate-950">₹{p.price}</span>
+                        {p.originalPrice && (
+                          <span className="text-sm line-through text-slate-400 font-bold">₹{p.originalPrice}</span>
+                        )}
+                        <span className="text-xs font-bold text-slate-500">/month</span>
+                      </div>
+
+                      <div className="mt-1 flex items-center gap-2 flex-wrap">
+                        {p.discount && (
+                          <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+                            {p.discount}
+                          </span>
+                        )}
+                        {p.offerBadge && (
+                          <span className="text-[10px] font-black text-amber-950 bg-amber-200 px-2 py-0.5 rounded-md">
+                            {p.offerBadge}
+                          </span>
+                        )}
+                        <span className="text-[11px] font-medium text-slate-500">
+                          {p.setup > 0 ? `+ ₹${p.setup} setup` : "Zero setup fee"}
+                        </span>
+                      </div>
+
+                      <div className="my-5 h-px w-full bg-slate-200" />
+
+                      <ul className="space-y-2.5 mb-8 text-xs sm:text-sm">
+                        {p.perks.map((perk, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <div className="mt-0.5 rounded-full p-0.5 bg-emerald-100 text-emerald-700 shrink-0">
+                              <Check className="w-3.5 h-3.5" />
+                            </div>
+                            <span className="text-slate-700 font-medium">{perk}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="mt-auto pt-5 space-y-2.5">
+                      <Button
+                        onClick={() => nav(`/subscribe?plan=${p.id}`)}
+                        className={`w-full h-12 px-3 rounded-full text-xs font-black active:scale-95 transition-all shadow-md flex items-center justify-center gap-1.5 whitespace-nowrap ${
+                          p.is_pro
+                            ? "bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-amber-400/25"
+                            : p.featured
+                            ? "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25"
+                            : "bg-slate-900 hover:bg-slate-800 text-white"
+                        }`}
+                      >
+                        <span>Choose {p.name}</span>
+                        <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+                      </Button>
+
+                      <Link
+                        to={p.route}
+                        className={`w-full h-12 px-3 rounded-full text-xs font-black border-2 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 shadow-2xs ${
+                          p.is_pro
+                            ? "border-blue-600 bg-blue-50 text-blue-900 hover:bg-blue-100"
+                            : p.featured
+                            ? "border-amber-400 bg-amber-50 text-amber-950 hover:bg-amber-100"
+                            : "border-slate-300 bg-slate-50 text-slate-800 hover:bg-slate-100"
+                        }`}
+                      >
+                        <span>Explore {p.name === "Dukaan Pro" ? "Pro Plan" : `${p.name} Plan`}</span>
+                        <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+                      </Link>
+                    </div>
+
+                  </div>
+                </Card3D>
+              ))}
+            </div>
+          )}
+
+          {/* =========================================================
+              DEDICATED MOBILE PRICING CARDS (lg:hidden)
+              PROPER MOBILE-FIRST DESIGN WITH LARGE TOUCH BUTTONS
+          ========================================================= */}
+          <div className="lg:hidden space-y-4">
             {ALL_PLANS.map((p) => (
-              <Card3D 
+              <div 
                 key={p.id}
-                depth={p.is_pro ? 20 : p.featured ? 18 : 12}
-                glow={true}
-                className="w-full"
-              >
-                <div className={`rounded-3xl p-6 sm:p-7 border-2 shadow-md relative flex flex-col justify-between h-full bg-white ${
+                className={`rounded-2xl p-5 border-2 relative bg-white shadow-md ${
                   p.is_pro
-                    ? "border-blue-600 ring-2 ring-blue-500/20 shadow-xl"
+                    ? "border-blue-600 ring-2 ring-blue-500/20"
                     : p.featured
-                    ? "border-amber-400 ring-2 ring-amber-400/20 shadow-lg"
+                    ? "border-amber-400 ring-2 ring-amber-400/20"
                     : "border-slate-200"
-                }`}>
-                  
-                  {/* Top Badges */}
-                  {p.featured && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-500 text-slate-950 text-[10px] font-black uppercase tracking-widest py-1 px-3.5 rounded-full shadow-md whitespace-nowrap">
-                      ★ MOST POPULAR
-                    </div>
-                  )}
-                  {p.is_pro && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest py-1 px-3.5 rounded-full shadow-md whitespace-nowrap flex items-center gap-1">
-                      <Crown className="w-3 h-3 text-amber-300" /> FLAGSHIP TIER
-                    </div>
-                  )}
-
+                }`}
+              >
+                {/* Mobile Plan Header */}
+                <div className="flex items-start justify-between gap-3 mb-3">
                   <div>
-                    <div className="text-xs uppercase tracking-widest font-black text-slate-400">
-                      {p.name} PLAN
-                    </div>
-                    <div className="text-xs text-slate-600 font-medium mt-0.5">
-                      {p.tagline}
-                    </div>
-
-                    <div className="mt-4 flex items-baseline gap-2 flex-wrap">
-                      <span className="font-sans text-4xl sm:text-5xl font-black text-slate-950">₹{p.price}</span>
-                      {p.originalPrice && (
-                        <span className="text-sm line-through text-slate-400 font-bold">₹{p.originalPrice}</span>
-                      )}
-                      <span className="text-xs font-bold text-slate-500">/month</span>
-                    </div>
-
-                    <div className="mt-1 flex items-center gap-2 flex-wrap">
-                      {p.discount && (
-                        <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
-                          {p.discount}
-                        </span>
-                      )}
-                      {p.offerBadge && (
-                        <span className="text-[10px] font-black text-amber-950 bg-amber-200 px-2 py-0.5 rounded-md">
-                          {p.offerBadge}
-                        </span>
-                      )}
-                      <span className="text-[11px] font-medium text-slate-500">
-                        {p.setup > 0 ? `+ ₹${p.setup} setup` : "Zero setup fee"}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] uppercase tracking-wider font-black text-slate-400">
+                        {p.name} PLAN
                       </span>
+                      {p.featured && (
+                        <span className="bg-amber-400 text-slate-950 text-[9px] font-black uppercase px-2 py-0.5 rounded-full">
+                          ★ Popular
+                        </span>
+                      )}
+                      {p.is_pro && (
+                        <span className="bg-blue-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Crown className="w-2.5 h-2.5 text-amber-300" /> Flagship
+                        </span>
+                      )}
                     </div>
-
-                    <div className="my-5 h-px w-full bg-slate-200" />
-
-                    <ul className="space-y-2.5 mb-8 text-xs sm:text-sm">
-                      {p.perks.map((perk, i) => (
-                        <li key={i} className="flex items-start gap-2">
-                          <div className="mt-0.5 rounded-full p-0.5 bg-emerald-100 text-emerald-700 shrink-0">
-                            <Check className="w-3.5 h-3.5" />
-                          </div>
-                          <span className="text-slate-700 font-medium">{perk}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <h3 className="font-sans text-base font-black text-slate-900 mt-0.5">
+                      {p.tagline}
+                    </h3>
                   </div>
 
-                  <div className="mt-auto pt-5 space-y-2.5">
-                    <Link
-                      to={p.route}
-                      className={`w-full h-12 sm:h-13 px-3 rounded-full text-xs sm:text-sm font-black border-2 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 shadow-2xs ${
-                        p.is_pro
-                          ? "border-blue-600 bg-blue-50 text-blue-900 hover:bg-blue-100"
-                          : p.featured
-                          ? "border-amber-400 bg-amber-50 text-amber-950 hover:bg-amber-100"
-                          : "border-slate-300 bg-slate-50 text-slate-800 hover:bg-slate-100"
-                      }`}
-                    >
-                      <span>Explore {p.name === "Dukaan Pro" ? "Pro Plan" : `${p.name} Plan`}</span>
-                      <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                    </Link>
-
-                    <Button
-                      onClick={() => nav(`/subscribe?plan=${p.id}`)}
-                      className={`w-full h-12 sm:h-13 px-3 rounded-full text-xs sm:text-sm font-black active:scale-95 transition-all shadow-md flex items-center justify-center gap-1.5 whitespace-nowrap ${
-                        p.is_pro
-                          ? "bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-amber-400/25"
-                          : p.featured
-                          ? "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25"
-                          : "bg-slate-900 hover:bg-slate-800 text-white"
-                      }`}
-                    >
-                      <span>Choose {p.name}</span>
-                      <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                    </Button>
+                  <div className="text-right shrink-0">
+                    <div className="flex items-baseline gap-1 justify-end">
+                      <span className="font-sans text-2xl font-black text-slate-950">₹{p.price}</span>
+                      <span className="text-[10px] font-bold text-slate-500">/mo</span>
+                    </div>
+                    {p.discount && (
+                      <span className="text-[9px] font-extrabold text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded inline-block">
+                        {p.discount}
+                      </span>
+                    )}
                   </div>
-
                 </div>
-              </Card3D>
+
+                <div className="my-3 h-px w-full bg-slate-100" />
+
+                {/* Mobile Perks list */}
+                <ul className="space-y-2 mb-4 text-xs text-slate-700 font-medium">
+                  {p.perks.slice(0, 4).map((perk, i) => (
+                    <li key={i} className="flex items-center gap-2">
+                      <div className="rounded-full p-0.5 bg-emerald-100 text-emerald-700 shrink-0">
+                        <Check className="w-3 h-3" />
+                      </div>
+                      <span className="truncate">{perk}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* Mobile Proper Touch Buttons */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  <Button
+                    onClick={() => nav(`/subscribe?plan=${p.id}`)}
+                    className={`w-full h-12 rounded-xl text-xs font-black shadow-sm flex items-center justify-center gap-2 active:scale-95 ${
+                      p.is_pro
+                        ? "bg-amber-400 hover:bg-amber-300 text-slate-950"
+                        : p.featured
+                        ? "bg-blue-600 hover:bg-blue-700 text-white"
+                        : "bg-slate-900 hover:bg-slate-800 text-white"
+                    }`}
+                  >
+                    <span>Choose {p.name}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Button>
+
+                  <Link
+                    to={p.route}
+                    className="w-full h-12 rounded-xl text-xs font-bold border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-800 flex items-center justify-center gap-1.5 active:scale-95 text-center"
+                  >
+                    <span>Explore Full Details</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
+                  </Link>
+                </div>
+
+              </div>
             ))}
           </div>
 
