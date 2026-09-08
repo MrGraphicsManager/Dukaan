@@ -45,7 +45,6 @@ import EngineeringJourneyRoadmap from "@/components/landing/EngineeringJourneyRo
 import RoiCalculator from "@/components/landing/RoiCalculator";
 import ShopCategoryMatcher from "@/components/landing/ShopCategoryMatcher";
 import HardwareCompatibility from "@/components/landing/HardwareCompatibility";
-import AtherStyle3DScrollShowcase from "@/components/landing/AtherStyle3DScrollShowcase";
 import useButterSmoothScroll from "@/lib/useButterSmoothScroll";
 
 const FEATURES = [
@@ -383,11 +382,6 @@ export default function Landing() {
 
           {/* Desktop Navigation Links (Clean spacing, zero overlap) */}
           <nav className="hidden lg:flex items-center gap-3.5 xl:gap-5 text-xs xl:text-sm font-semibold text-brand-indigo/80 shrink-0">
-            <a href="#3d-tour" className="hover:text-brand-terracotta transition-colors flex items-center gap-1 whitespace-nowrap font-bold text-brand-terracotta">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>3D Tour</span>
-              <span className="bg-brand-terracotta/10 text-brand-terracotta text-[10px] font-bold px-1.5 py-0.5 rounded-full">New</span>
-            </a>
             <a href="#live-demo" className="hover:text-brand-terracotta transition-colors flex items-center gap-1 whitespace-nowrap">
               <span>Try Demo</span>
               <span className="bg-amber-400/20 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full">Live</span>
@@ -531,21 +525,6 @@ export default function Landing() {
                         <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1 rounded-sm">Free</span>
                       </div>
                       <div className="text-[10px] text-amber-800/70 font-medium">Interactive POS</div>
-                    </div>
-                  </a>
-
-                  <a
-                    href="#3d-tour"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="p-3 rounded-xl bg-orange-50 hover:bg-orange-100 border border-orange-200 flex items-center gap-2.5 transition-colors"
-                  >
-                    <Sparkles className="w-4 h-4 text-brand-terracotta shrink-0" />
-                    <div className="text-left">
-                      <div className="text-xs font-bold text-brand-indigo flex items-center gap-1">
-                        <span>3D Product Tour</span>
-                        <span className="text-[9px] bg-brand-terracotta text-white font-bold px-1 rounded-sm">3D</span>
-                      </div>
-                      <div className="text-[10px] text-brand-indigo/60 font-medium">Scroll-Driven Kiosk</div>
                     </div>
                   </a>
 
@@ -743,11 +722,11 @@ export default function Landing() {
             </Link>
 
             <a 
-              href="#3d-tour"
+              href="#live-demo"
               className="h-14 px-6 text-sm rounded-full border-2 border-brand-mitti hover:border-amber-500 bg-amber-50/80 hover:bg-amber-100 text-amber-900 font-extrabold active:scale-95 transition-all shadow-xs flex items-center gap-2"
             >
-              <Sparkles className="w-4 h-4 text-amber-600" />
-              <span>Explore 3D Tour ↓</span>
+              <Zap className="w-4 h-4 text-amber-600" />
+              <span>Try Live Demo ↓</span>
             </a>
           </div>
 
@@ -778,11 +757,6 @@ export default function Landing() {
         </motion.div>
 
       </section>
-
-      {/* =========================================================
-          ATHER-STYLE 3D SCROLL-DRIVEN PRODUCT SHOWCASE (v3)
-      ========================================================= */}
-      <AtherStyle3DScrollShowcase />
 
       {/* =========================================================
           INTERACTIVE LIVE POS DEMO SIMULATOR (v3)
