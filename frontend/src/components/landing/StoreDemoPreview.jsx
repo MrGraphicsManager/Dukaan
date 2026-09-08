@@ -221,36 +221,36 @@ export default function StoreDemoPreview() {
       </div>
 
       {/* FLOATING CARD 1: Instant UPI / Soundbox Toast (Top Left) */}
-      <div className="absolute -top-1 -left-2 sm:-left-6 p-2.5 sm:p-3 rounded-2xl bg-white border border-slate-200 shadow-xl flex items-center gap-2.5 text-slate-900 rotate-3 transition-transform hover:rotate-0">
-        <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-          <Volume2 className="w-4 h-4 text-emerald-600" />
+      <div className="absolute -top-2 left-1 sm:-left-6 p-2 sm:p-3 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl flex items-center gap-2 sm:gap-2.5 text-slate-900 rotate-2 sm:rotate-3 transition-transform hover:rotate-0 z-10 max-w-[82%] sm:max-w-none">
+        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 shadow-2xs">
+          <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600" />
         </div>
         <div>
           <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-slate-400 block">
             SOUNDBOX VOICE ALERT
           </span>
-          <span className="text-xs font-black text-slate-900 block leading-tight">
+          <span className="text-[11px] sm:text-xs font-black text-slate-900 block leading-tight">
             ₹499 received via UPI
           </span>
-          <span className="text-[9px] text-emerald-700 font-bold block">
+          <span className="text-[8.5px] sm:text-[9px] text-emerald-700 font-bold block">
             "दुकान: ₹499 प्राप्त हुए!"
           </span>
         </div>
       </div>
 
       {/* FLOATING CARD 2: Custom Thermal Receipt Pill (Bottom Right) */}
-      <div className="absolute -bottom-2 -right-2 sm:-right-4 p-2.5 sm:p-3 rounded-2xl bg-white border border-slate-200 shadow-xl flex items-center gap-2.5 text-slate-900 -rotate-2 transition-transform hover:rotate-0">
-        <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-          <Printer className="w-4 h-4 text-blue-600" />
+      <div className="absolute -bottom-2 right-1 sm:-right-4 p-2 sm:p-3 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-xl flex items-center gap-2 sm:gap-2.5 text-slate-900 -rotate-1 sm:-rotate-2 transition-transform hover:rotate-0 z-10 max-w-[82%] sm:max-w-none">
+        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 shadow-2xs">
+          <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600" />
         </div>
         <div>
           <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-slate-400 block">
             THERMAL ARCHITECT
           </span>
-          <span className="text-xs font-black text-slate-900 block leading-tight">
+          <span className="text-[11px] sm:text-xs font-black text-slate-900 block leading-tight">
             58mm & 80mm Custom Slip
           </span>
-          <span className="text-[9px] text-blue-700 font-bold block">
+          <span className="text-[8.5px] sm:text-[9px] text-blue-700 font-bold block">
             Logo + Dynamic QR Printed
           </span>
         </div>

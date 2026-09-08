@@ -908,7 +908,7 @@ export default function POS() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
+        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
           {/* Quick Mobile Bill Trigger Button */}
           <Button
             onClick={() => setMobileCartOpen(true)}

@@ -122,7 +122,7 @@ export default function Orders() {
         {/* Filter Groups */}
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Status Filter */}
-          <div className="flex items-center bg-brand-sand p-1 rounded-2xl border border-brand-mitti">
+          <div className="flex items-center bg-brand-sand p-1 rounded-2xl border border-brand-mitti overflow-x-auto max-w-full">
             {[
               { id: "all", label: "All Status" },
               { id: "paid", label: "Paid" },
@@ -132,7 +132,7 @@ export default function Orders() {
                 key={tab.id}
                 onClick={() => setStatus(tab.id)}
                 data-testid={`filter-status-${tab.id}`}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                   status === tab.id 
                     ? "bg-white text-brand-indigo shadow-xs" 
                     : "text-brand-indigo/60 hover:text-brand-indigo"
@@ -144,7 +144,7 @@ export default function Orders() {
           </div>
 
           {/* Payment Method Filter */}
-          <div className="flex items-center bg-brand-sand p-1 rounded-2xl border border-brand-mitti">
+          <div className="flex items-center bg-brand-sand p-1 rounded-2xl border border-brand-mitti overflow-x-auto max-w-full">
             {[
               { id: "all", label: "All Pay" },
               { id: "cash", label: "Cash" },
@@ -155,7 +155,7 @@ export default function Orders() {
                 key={tab.id}
                 onClick={() => setPayment(tab.id)}
                 data-testid={`filter-payment-${tab.id}`}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                   payment === tab.id 
                     ? "bg-white text-brand-indigo shadow-xs" 
                     : "text-brand-indigo/60 hover:text-brand-indigo"

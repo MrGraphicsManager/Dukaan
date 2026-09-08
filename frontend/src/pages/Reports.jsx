@@ -213,12 +213,12 @@ export default function Reports() {
 
         {/* Export and Year Selector */}
         <div className="relative z-10 flex flex-wrap items-center gap-3">
-          <div className="flex items-center bg-white/10 p-1 rounded-2xl border border-white/20 backdrop-blur-md">
+          <div className="flex items-center bg-white/10 p-1 rounded-2xl border border-white/20 backdrop-blur-md overflow-x-auto max-w-full">
             {years.map(y => (
               <button
                 key={y}
                 onClick={() => setYear(y)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                   year === y ? "bg-white text-brand-indigo shadow-sm" : "text-white/70 hover:text-white"
                 }`}
               >

@@ -185,7 +185,7 @@ export default function CustomerDetail() {
           <ArrowLeft className="w-3.5 h-3.5" /> Back to Customers
         </Button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button 
             variant="outline"
             onClick={() => setEditOpen(true)}

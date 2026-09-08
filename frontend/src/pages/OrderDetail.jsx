@@ -84,16 +84,16 @@ export default function OrderDetail() {
     <div className="space-y-6 animate-fade-up max-w-2xl mx-auto pb-16 font-sans selection:bg-brand-terracotta/20">
       
       {/* Top Action Bar (Hidden on print) */}
-      <div className="flex items-center justify-between print:hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
         <Button 
           variant="outline" 
           onClick={() => nav("/app/orders")}
-          className="rounded-full border-2 border-brand-mitti text-brand-indigo font-bold text-xs hover:border-brand-indigo flex items-center gap-1.5 h-10 px-4"
+          className="rounded-full border-2 border-brand-mitti text-brand-indigo font-bold text-xs hover:border-brand-indigo flex items-center gap-1.5 h-10 px-4 w-fit"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Back to Orders
         </Button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button 
             onClick={shareWhatsApp}
             className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-10 px-4 shadow-xs active:scale-95 transition-all flex items-center gap-1.5"

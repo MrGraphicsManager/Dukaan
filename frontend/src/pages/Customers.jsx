@@ -203,7 +203,7 @@ export default function Customers() {
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center bg-brand-sand p-1 rounded-2xl border border-brand-mitti">
+        <div className="flex items-center bg-brand-sand p-1 rounded-2xl border border-brand-mitti overflow-x-auto max-w-full">
           {[
             { id: "all", label: `All (${items.length})` },
             { id: "udhaar", label: `Has Udhaar (${customersWithUdhaar.length})` },
@@ -212,7 +212,7 @@ export default function Customers() {
             <button
               key={tab.id}
               onClick={() => setFilter(tab.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                 filter === tab.id 
                   ? "bg-white text-brand-indigo shadow-xs" 
                   : "text-brand-indigo/60 hover:text-brand-indigo"
