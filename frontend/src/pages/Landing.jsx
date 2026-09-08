@@ -626,63 +626,50 @@ export default function Landing() {
           transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }} 
           className="lg:col-span-6"
         >
-          {/* Badges from Instagram Poster */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-600 text-white text-xs font-black uppercase tracking-widest shadow-sm">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Now Available</span>
-            </div>
-            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-blue-200 text-blue-900 text-xs font-extrabold uppercase tracking-wider shadow-2xs backdrop-blur-md">
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-              <span>Trusted by Small Businesses Across India</span>
-            </div>
+          {/* Sleek Campaign Eyebrow Badge */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold shadow-2xs">
+            <span className="bg-blue-600 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-full tracking-wider">
+              Now Available
+            </span>
+            <span className="text-slate-700">Dukaan Pro Plan & Dukaan Pro Studio</span>
           </div>
 
-          {/* Big Headline */}
-          <h1 className="mt-5 font-display text-4xl sm:text-5xl lg:text-[4.25rem] leading-[1.06] tracking-tight text-slate-900">
+          {/* Big Modern Sans Headline (No Serif) */}
+          <h1 className="mt-5 font-sans font-black text-4xl sm:text-5xl lg:text-[4rem] xl:text-[4.25rem] leading-[1.06] tracking-[-0.03em] text-slate-950">
             Take Your Business <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 relative inline-block">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700">
               Further.
-              <span className="absolute left-0 bottom-1 w-full h-3 bg-blue-200/50 rounded-full -z-10" />
             </span>
           </h1>
 
           {/* Supporting Text */}
-          <div className="mt-4 max-w-lg leading-relaxed">
-            <div className="text-blue-700 font-extrabold text-lg sm:text-xl tracking-tight mb-1.5">
+          <div className="mt-4 space-y-1.5 max-w-lg">
+            <div className="text-blue-600 font-extrabold text-lg sm:text-xl tracking-tight">
               More Power. More Possibilities.
             </div>
-            <p className="text-base text-slate-600 font-normal">
-              Effortless billing, stock, and khata ledger — now turbocharged with the all-new <strong>Dukaan Pro Plan</strong> and <strong>Dukaan Pro Studio</strong> for custom branded receipts, cashier Master PIN protection, and live voice soundbox.
+            <p className="text-base sm:text-lg text-slate-600 font-normal leading-relaxed">
+              Everything you need to grow your retail store — custom 58mm/80mm thermal receipts, cashier PIN security, browser voice soundbox, and AI restock predictions.
             </p>
           </div>
 
-          {/* Action CTAs */}
-          <div className="mt-7 flex flex-wrap gap-3.5 items-center">
+          {/* Clean 2-Button CTA Row */}
+          <div className="mt-7 flex flex-wrap gap-4 items-center">
             <Link 
               to="/subscribe?plan=pro" 
-              className="h-13 sm:h-14 px-7 sm:px-8 text-sm sm:text-base rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold active:scale-95 transition-all shadow-glow flex items-center gap-2"
+              className="h-14 px-8 text-base rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold active:scale-95 transition-all shadow-lg shadow-blue-500/25 flex items-center gap-2"
             >
               <Crown className="w-4 h-4 text-amber-300" />
-              <span>Get Dukaan Pro (₹499)</span>
+              <span>Get Dukaan Pro (₹499/mo)</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
 
             <a 
               href="#dukaan-pro"
-              className="h-13 sm:h-14 px-6 sm:px-7 text-sm sm:text-base rounded-full border-2 border-blue-200 hover:border-blue-600 bg-white hover:bg-blue-50/50 text-blue-700 font-bold active:scale-95 transition-all shadow-sm flex items-center gap-2"
+              className="h-14 px-7 text-base rounded-full border-2 border-slate-200 hover:border-blue-600 bg-white hover:bg-blue-50/50 text-slate-800 hover:text-blue-700 font-bold active:scale-95 transition-all shadow-xs flex items-center gap-2"
             >
               <Sliders className="w-4 h-4 text-blue-600" />
-              <span>Dukaan Pro Studio ↓</span>
+              <span>Explore Pro Studio ↓</span>
             </a>
-
-            <Link 
-              to="/app"
-              className="h-13 sm:h-14 px-5 text-xs sm:text-sm rounded-full border border-slate-200 hover:border-slate-300 bg-slate-50 text-slate-700 font-bold active:scale-95 transition-all flex items-center gap-1.5"
-            >
-              <Store className="w-3.5 h-3.5 text-slate-500" />
-              <span>Launch Store</span>
-            </Link>
           </div>
 
           {/* Trust Points */}

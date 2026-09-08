@@ -45,24 +45,19 @@ export default function DukaanProShowcase() {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
         
-        {/* Section Header (Inspired by Instagram Promo) */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-xs font-black uppercase tracking-widest mb-4 shadow-xs">
-            <Crown className="w-3.5 h-3.5 text-blue-600" />
-            <span>Now Available · Flagship Tier & Studio</span>
+        {/* Section Header */}
+        <div className="text-center max-w-3xl mx-auto mb-14">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold uppercase tracking-wider mb-4 shadow-2xs">
+            <Sliders className="w-3.5 h-3.5 text-blue-600" />
+            <span>Dukaan Pro Studio & Enterprise Tools</span>
           </div>
           
-          <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-brand-indigo leading-tight">
-            Take Your Business <br className="hidden sm:inline" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 relative inline-block">
-              Further
-              <span className="absolute left-0 bottom-1.5 w-full h-2.5 bg-blue-200/50 rounded-full -z-10" />
-            </span>.
+          <h2 className="font-sans font-black text-3xl sm:text-4xl lg:text-5xl tracking-tight text-slate-950 leading-tight">
+            Inside <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800">Dukaan Pro Studio</span>
           </h2>
 
-          <p className="mt-4 text-base sm:text-lg text-slate-600 font-medium leading-relaxed">
-            <strong className="text-blue-700 font-bold block text-lg sm:text-xl mb-1">More Power. More Possibilities.</strong>
-            Engineered for ambitious, high-volume retail stores. Unlock full store personalization with <strong>Dukaan Pro Studio</strong>, cashier margin protection, 58mm/80mm thermal branding, and built-in voice soundbox.
+          <p className="mt-3.5 text-base sm:text-lg text-slate-600 font-normal leading-relaxed">
+            Full retail customization at your fingertips. Switch between 58mm & 80mm thermal slips, mask purchase costs with Master PIN, and test voice soundbox announcements live.
           </p>
         </div>
 
