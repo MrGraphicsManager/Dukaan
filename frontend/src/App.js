@@ -45,6 +45,9 @@ import Info from "./pages/Info.jsx";
 import Careers from "./pages/Careers";
 import ProPlanPage from "./pages/ProPlanPage";
 import ProStudioPage from "./pages/ProStudioPage";
+import StarterPlanPage from "./pages/StarterPlanPage";
+import BusinessPlanPage from "./pages/BusinessPlanPage";
+import PremiumPlanPage from "./pages/PremiumPlanPage";
 
 /* =========================================================
    PROTECTED ROUTES
@@ -202,6 +205,30 @@ function LaunchController() {
       <Route
         path="/studio"
         element={<ProStudioPage />}
+      />
+      <Route
+        path="/starter-plan"
+        element={<StarterPlanPage />}
+      />
+      <Route
+        path="/starter"
+        element={<StarterPlanPage />}
+      />
+      <Route
+        path="/business-plan"
+        element={<BusinessPlanPage />}
+      />
+      <Route
+        path="/business"
+        element={<BusinessPlanPage />}
+      />
+      <Route
+        path="/premium-plan"
+        element={<PremiumPlanPage />}
+      />
+      <Route
+        path="/premium"
+        element={<PremiumPlanPage />}
       />
 
       {/* ===================================================

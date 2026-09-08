@@ -510,6 +510,51 @@ export default function Landing() {
 
 
                   <Link
+                    to="/starter-plan"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="p-3 rounded-xl bg-emerald-50 text-emerald-950 hover:bg-emerald-100 border border-emerald-200 flex items-center gap-2.5 transition-colors"
+                  >
+                    <Zap className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <div className="text-left">
+                      <div className="text-xs font-bold text-emerald-950 flex items-center gap-1">
+                        <span>Starter</span>
+                        <span className="text-[9px] bg-emerald-600 text-white font-black px-1 rounded-sm">₹79</span>
+                      </div>
+                      <div className="text-[10px] text-emerald-700/70 font-medium">Fast POS Billing</div>
+                    </div>
+                  </Link>
+
+                  <Link
+                    to="/business-plan"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="p-3 rounded-xl bg-amber-50 text-amber-950 hover:bg-amber-100 border border-amber-300 flex items-center gap-2.5 transition-colors"
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div className="text-left">
+                      <div className="text-xs font-bold text-amber-950 flex items-center gap-1">
+                        <span>Business</span>
+                        <span className="text-[9px] bg-amber-500 text-slate-950 font-black px-1 rounded-sm">₹119</span>
+                      </div>
+                      <div className="text-[10px] text-amber-800/70 font-medium">Khata & WhatsApp</div>
+                    </div>
+                  </Link>
+
+                  <Link
+                    to="/premium-plan"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="p-3 rounded-xl bg-indigo-50 text-indigo-950 hover:bg-indigo-100 border border-indigo-200 flex items-center gap-2.5 transition-colors"
+                  >
+                    <Layers className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <div className="text-left">
+                      <div className="text-xs font-bold text-indigo-950 flex items-center gap-1">
+                        <span>Premium</span>
+                        <span className="text-[9px] bg-indigo-600 text-white font-black px-1 rounded-sm">₹239</span>
+                      </div>
+                      <div className="text-[10px] text-indigo-700/70 font-medium">Multi-Shop & GST</div>
+                    </div>
+                  </Link>
+
+                  <Link
                     to="/pro-plan"
                     onClick={() => setMobileMenuOpen(false)}
                     className="p-3 rounded-xl bg-blue-50 text-blue-900 hover:bg-blue-100 border border-blue-200 flex items-center gap-2.5 transition-colors"
@@ -527,16 +572,19 @@ export default function Landing() {
                   <Link
                     to="/pro-studio"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="p-3 rounded-xl bg-indigo-50 text-indigo-950 hover:bg-indigo-100 border border-indigo-200 flex items-center gap-2.5 transition-colors"
+                    className="col-span-2 p-3 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 text-indigo-950 hover:from-blue-100 hover:to-indigo-100 border border-blue-200 flex items-center justify-between transition-colors"
                   >
-                    <Sliders className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <div className="text-left">
-                      <div className="text-xs font-bold text-indigo-950 flex items-center gap-1">
-                        <span>Pro Studio</span>
-                        <span className="text-[9px] bg-indigo-600 text-white font-black px-1 rounded-sm">NEW</span>
+                    <div className="flex items-center gap-2.5">
+                      <Sliders className="w-4 h-4 text-blue-600 shrink-0" />
+                      <div className="text-left">
+                        <div className="text-xs font-bold text-indigo-950 flex items-center gap-1">
+                          <span>Dukaan Pro Studio</span>
+                          <span className="text-[9px] bg-blue-600 text-white font-black px-1.5 rounded-full">INCLUDED IN PRO</span>
+                        </div>
+                        <div className="text-[10px] text-indigo-700/70 font-medium">Custom Receipts & Soundbox Studio</div>
                       </div>
-                      <div className="text-[10px] text-indigo-700/70 font-medium">Receipt Customizer</div>
                     </div>
+                    <ArrowRight className="w-3.5 h-3.5 text-blue-600" />
                   </Link>
 
 
@@ -861,16 +909,30 @@ export default function Landing() {
                   </ul>
                 </div>
 
-                <div className="mt-auto pt-4">
+                <div className="mt-auto pt-4 space-y-2.5">
+                  <Link
+                    to={`/${(p.id || p.name).toLowerCase()}-plan`}
+                    className={`w-full h-11 rounded-full text-xs font-bold border-2 transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-xs ${
+                      p.is_pro
+                        ? "border-amber-400 bg-amber-50/90 hover:bg-amber-100 text-amber-950 font-black"
+                        : p.featured
+                        ? "border-blue-300 bg-blue-50/80 hover:bg-blue-100 text-blue-900 font-extrabold"
+                        : "border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold"
+                    }`}
+                  >
+                    <span>Explore {p.name} Plan</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+
                   <Button 
                     onClick={() => nav(`/subscribe?plan=${(p.id || p.name).toLowerCase()}`)} 
                     data-testid={`price-cta-${(p.id || p.name).toLowerCase()}`} 
-                    className={`w-full h-12 rounded-full text-sm font-bold active:scale-95 transition-all shadow-md ${
+                    className={`w-full h-11 rounded-full text-xs font-bold active:scale-95 transition-all shadow-md ${
                       p.is_pro
                         ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-black shadow-amber-500/20"
                         : p.featured 
                         ? "bg-brand-terracotta hover:bg-brand-terracotta/90 text-white" 
-                        : "bg-brand-sand border-2 border-brand-mitti hover:border-brand-indigo text-brand-indigo"
+                        : "bg-slate-900 hover:bg-slate-800 text-white"
                     }`}
                   >
                     Choose {p.name}
@@ -960,8 +1022,11 @@ export default function Landing() {
           </div>
         </div>
         <p className="text-xs text-brand-indigo/60 mb-6 font-medium">Run Your Dukaan. Smarter.</p>
-        <div className="flex flex-wrap items-center justify-center gap-5 md:gap-7 mb-8 text-sm font-medium">
-          <Link to="/pro-plan" className="text-blue-700 font-bold hover:text-blue-800 transition-colors">Dukaan Pro Plan</Link>
+        <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 mb-8 text-sm font-medium">
+          <Link to="/starter-plan" className="text-emerald-700 font-bold hover:text-emerald-800 transition-colors">Starter Plan (₹79)</Link>
+          <Link to="/business-plan" className="text-amber-700 font-bold hover:text-amber-800 transition-colors">Business Plan (₹119)</Link>
+          <Link to="/premium-plan" className="text-indigo-700 font-bold hover:text-indigo-800 transition-colors">Premium Plan (₹239)</Link>
+          <Link to="/pro-plan" className="text-blue-700 font-bold hover:text-blue-800 transition-colors">Dukaan Pro Plan (₹499)</Link>
           <Link to="/pro-studio" className="text-blue-700 font-bold hover:text-blue-800 transition-colors">Dukaan Pro Studio</Link>
           <a href="#features" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Features</a>
           <a href="#pricing" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Pricing Plans</a>
