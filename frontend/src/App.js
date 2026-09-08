@@ -15,6 +15,7 @@ import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import VerifyEmail from "@/pages/VerifyEmail";
+import VerifyPhone from "@/pages/VerifyPhone";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import GoogleAuthCallback from "@/pages/GoogleAuthCallback";
@@ -77,9 +78,14 @@ function Protected({ children }) {
     return <Navigate to="/admin" replace />;
   }
 
-  // If email is not verified, redirect to email verification
-  if (user.is_verified === false) {
+  // Strict Gate 1: If email is not verified, redirect to email verification
+  if (user.is_verified === false || user.email_verified === false) {
     return <Navigate to={`/verify-email?email=${encodeURIComponent(user.email || "")}`} replace />;
+  }
+
+  // Strict Gate 2: If phone is not verified, redirect to mobile OTP verification
+  if (!user.phone_verified) {
+    return <Navigate to={`/verify-phone?email=${encodeURIComponent(user.email || "")}`} replace />;
   }
 
   // Check subscription: from user state or fallback to localStorage
@@ -105,9 +111,9 @@ function Protected({ children }) {
     }
   }
 
-  // If user has no active subscription and is not admin, redirect to subscribe
+  // Strict Gate 3: Merchant must buy subscription to access dashboard
   const hasActiveSub = Boolean(isSubActive(sub));
-  if (!hasActiveSub && !loc.pathname.startsWith("/app/billing") && !loc.pathname.startsWith("/app/settings")) {
+  if (!hasActiveSub) {
     return <Navigate to="/subscribe" replace />;
   }
 
@@ -248,6 +254,11 @@ function LaunchController() {
       <Route
         path="/verify-email"
         element={<VerifyEmail />}
+      />
+
+      <Route
+        path="/verify-phone"
+        element={<VerifyPhone />}
       />
 
       <Route

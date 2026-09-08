@@ -55,9 +55,9 @@ export default function VerifyEmail() {
     setBusy(false);
     if (res.ok) {
       setVerified(true);
-      toast.success("Email verified successfully! Please select your subscription plan.");
+      toast.success("Email verified successfully! Please verify your mobile number.");
       setTimeout(() => {
-        nav("/subscribe");
+        nav(`/verify-phone?email=${encodeURIComponent(targetEmail)}`);
       }, 1500);
     } else {
       setErr(res.error || "Failed to verify email link. Please enter the 6-digit code manually.");
@@ -81,9 +81,9 @@ export default function VerifyEmail() {
     setBusy(false);
     if (res.ok) {
       setVerified(true);
-      toast.success("Email verified successfully! Welcome to Dukaan.");
+      toast.success("Email verified successfully! Please verify your mobile number.");
       setTimeout(() => {
-        nav("/subscribe");
+        nav(`/verify-phone?email=${encodeURIComponent(email)}`);
       }, 1500);
     } else {
       setErr(res.error || "Invalid verification code. Please check your email and try again.");
@@ -156,14 +156,14 @@ export default function VerifyEmail() {
                   Email Verified!
                 </h2>
                 <p className="text-xs text-slate-600 font-medium">
-                  Your account is now verified. Redirecting you to choose your subscription plan...
+                  Your email is confirmed. Redirecting you to verify your mobile number...
                 </p>
                 <div className="pt-2">
                   <Button
-                    onClick={() => nav("/subscribe")}
+                    onClick={() => nav(`/verify-phone?email=${encodeURIComponent(email)}`)}
                     className="w-full h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-500/25"
                   >
-                    Continue to Plans <ArrowRight className="w-4 h-4 ml-2" />
+                    Verify Mobile Number <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </div>
               </div>

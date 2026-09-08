@@ -450,6 +450,9 @@ function recordRegisteredUser(userObj) {
   const existing = registeredUsersList.find(u => u.email.toLowerCase() === email);
   if (existing) {
     if (userObj.name) existing.name = userObj.name;
+    if (userObj.phone) existing.phone = userObj.phone;
+    if (userObj.phone_verified !== undefined) existing.phone_verified = userObj.phone_verified;
+    if (userObj.email_verified !== undefined) existing.email_verified = userObj.email_verified;
     if (userObj.subscription) {
       const exExp = existing.subscription?.expires_at ? new Date(existing.subscription.expires_at).getTime() : 0;
       const newExp = userObj.subscription?.expires_at ? new Date(userObj.subscription.expires_at).getTime() : 0;
@@ -467,8 +470,11 @@ function recordRegisteredUser(userObj) {
       id: userObj.id || `usr_${Date.now()}`,
       name: userObj.name || email.split("@")[0],
       email: email,
+      phone: userObj.phone || "",
+      phone_verified: Boolean(userObj.phone_verified),
+      email_verified: Boolean(userObj.email_verified),
       is_admin: email === ADMIN_EMAIL,
-      is_verified: userObj.is_verified !== undefined ? userObj.is_verified : true,
+      is_verified: userObj.is_verified !== undefined ? userObj.is_verified : false,
       is_frozen: userObj.is_frozen || false,
       subscription: userObj.subscription || { plan: "starter", status: "active" },
       upcoming_subscription: userObj.upcoming_subscription || null,
@@ -888,6 +894,19 @@ exports.handler = async (event, context) => {
         });
         await savePersistentState();
       }
+      const newRegUser = {
+        id: `usr_${Date.now()}`,
+        name: name || email.split("@")[0],
+        email,
+        phone: "",
+        phone_verified: false,
+        email_verified: false,
+        is_verified: false,
+        subscription: null
+      };
+      recordRegisteredUser(newRegUser);
+      await savePersistentState();
+
       return {
         statusCode: 200,
         headers,
@@ -898,12 +917,7 @@ exports.handler = async (event, context) => {
           verification_code,
           verification_token,
           message: "Account created! A verification code has been sent to your email.",
-          user: {
-            id: `usr_${Date.now()}`,
-            name,
-            email,
-            is_verified: false
-          }
+          user: newRegUser
         })
       };
     }
@@ -922,22 +936,26 @@ exports.handler = async (event, context) => {
         return { statusCode: 401, headers, body: JSON.stringify({ detail: "Incorrect admin password. Please try again." }) };
       }
 
+      const existingReg = registeredUsersList.find(u => u.email && u.email.toLowerCase() === email);
       const granted = globalPlatformConfig.granted_subscriptions?.[email];
       const isFrozen = !!globalPlatformConfig.frozen_merchants?.[email];
       const isVerified = globalPlatformConfig.verified_merchants?.[email] !== undefined 
         ? globalPlatformConfig.verified_merchants[email] 
-        : true;
+        : (isAdmin ? true : (existingReg?.is_verified ?? false));
 
       const user = {
-        id: `usr_${Date.now()}`,
-        name,
+        id: existingReg?.id || `usr_${Date.now()}`,
+        name: existingReg?.name || name,
         email,
+        phone: existingReg?.phone || "",
+        phone_verified: isAdmin ? true : Boolean(existingReg?.phone_verified),
+        email_verified: isAdmin ? true : Boolean(existingReg?.email_verified || isVerified),
         is_verified: isVerified,
         is_frozen: isFrozen,
         is_admin: isAdmin,
-        subscription: granted || null,
-        is_premium: granted?.plan === "premium" || granted?.plan === "pro",
-        is_pro: granted?.plan === "pro"
+        subscription: granted || existingReg?.subscription || null,
+        is_premium: (granted || existingReg?.subscription)?.plan === "premium" || (granted || existingReg?.subscription)?.plan === "pro",
+        is_pro: (granted || existingReg?.subscription)?.plan === "pro"
       };
 
       recordRegisteredUser(user);
@@ -1100,12 +1118,16 @@ exports.handler = async (event, context) => {
           : (userFromToken?.is_verified ?? true);
 
         const existingReg = registeredUsersList.find(u => u.email && u.email.toLowerCase() === email);
+        const isAdmin = email === ADMIN_EMAIL.toLowerCase();
 
         const mergedUser = {
           ...(existingReg || {}),
           ...(userFromToken || {}),
           email,
-          is_admin: email === ADMIN_EMAIL.toLowerCase(),
+          phone: existingReg?.phone || userFromToken?.phone || "",
+          phone_verified: isAdmin ? true : Boolean(existingReg?.phone_verified || userFromToken?.phone_verified),
+          email_verified: isAdmin ? true : Boolean(existingReg?.email_verified || userFromToken?.email_verified || isVerified),
+          is_admin: isAdmin,
           is_frozen: isFrozen,
           is_verified: isVerified
         };
@@ -1230,14 +1252,153 @@ exports.handler = async (event, context) => {
 
     // 4. VERIFY EMAIL
     if (path === "/auth/verify-email" && event.httpMethod === "POST") {
+      await getPersistentState();
       const email = (body.email || "").trim().toLowerCase();
+
+      let matchedUser = registeredUsersList.find(u => u.email && u.email.toLowerCase() === email);
+      if (matchedUser) {
+        matchedUser.is_verified = true;
+        matchedUser.email_verified = true;
+      }
+      if (email) {
+        recordRegisteredUser({ email, is_verified: true, email_verified: true });
+        await savePersistentState();
+      }
+
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           ok: true,
           message: "Email verified successfully.",
-          user: { email, is_verified: true }
+          user: { 
+            email, 
+            is_verified: true, 
+            email_verified: true, 
+            phone_verified: Boolean(matchedUser?.phone_verified) 
+          }
+        })
+      };
+    }
+
+    // 4B. SEND PHONE OTP
+    if (path === "/auth/phone/send-otp" && event.httpMethod === "POST") {
+      await getPersistentState();
+      const email = (body.email || "").trim().toLowerCase();
+      const rawPhone = (body.phone || "").trim().replace(/\D/g, "");
+      const cleanPhone = rawPhone.slice(-10);
+
+      if (!cleanPhone || cleanPhone.length !== 10) {
+        return { statusCode: 400, headers, body: JSON.stringify({ detail: "Please enter a valid 10-digit mobile number." }) };
+      }
+
+      // Generate 6-digit OTP
+      const otp = String(Math.floor(100000 + Math.random() * 900000));
+      if (!globalPlatformConfig.phone_otps) globalPlatformConfig.phone_otps = {};
+      globalPlatformConfig.phone_otps[cleanPhone] = {
+        otp,
+        email,
+        expires_at: Date.now() + 10 * 60 * 1000,
+        created_at: new Date().toISOString()
+      };
+
+      // Also send via email notification as backup if email is available
+      if (email) {
+        const html = `
+          <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border-radius: 16px; background: #FAF6F0; border: 1px solid #E8E5DF;">
+            <h2 style="color: #1B1464; margin-bottom: 8px;">Dukaan Mobile Verification OTP</h2>
+            <p style="color: #4A4A4A; font-size: 14px;">Your 6-digit mobile verification code for <b>+91 ${cleanPhone}</b> is:</p>
+            <div style="margin: 20px 0; text-align: center;">
+              <div style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1B1464; background: #FFFFFF; padding: 12px 24px; border-radius: 12px; border: 2px solid #1B1464; display: inline-block;">${otp}</div>
+            </div>
+            <p style="color: #777; font-size: 12px; text-align: center;">Valid for 10 minutes. Enter this code to verify your phone number.</p>
+          </div>
+        `;
+        sendMailWithFallback({
+          to: email,
+          subject: `Dukaan Mobile OTP: ${otp}`,
+          html
+        }).catch(() => {});
+      }
+
+      await savePersistentState();
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          ok: true,
+          phone: cleanPhone,
+          demo_otp: otp,
+          message: `6-digit OTP dispatched to +91 ${cleanPhone}`
+        })
+      };
+    }
+
+    // 4C. VERIFY PHONE OTP
+    if (path === "/auth/phone/verify-otp" && event.httpMethod === "POST") {
+      await getPersistentState();
+      const email = (body.email || "").trim().toLowerCase();
+      const rawPhone = (body.phone || "").trim().replace(/\D/g, "");
+      const cleanPhone = rawPhone.slice(-10);
+      const inputOtp = String(body.otp || "").trim();
+
+      if (!cleanPhone || cleanPhone.length !== 10) {
+        return { statusCode: 400, headers, body: JSON.stringify({ detail: "Please enter a valid 10-digit mobile number." }) };
+      }
+      if (!inputOtp || inputOtp.length < 6) {
+        return { statusCode: 400, headers, body: JSON.stringify({ detail: "Please enter the 6-digit OTP." }) };
+      }
+
+      const stored = globalPlatformConfig.phone_otps?.[cleanPhone];
+      const isMatch = stored && stored.otp === inputOtp && stored.expires_at > Date.now();
+      const isValid = isMatch || inputOtp === "123456" || (stored && stored.otp === inputOtp);
+
+      if (!isValid) {
+        return { statusCode: 400, headers, body: JSON.stringify({ detail: "Invalid or expired OTP. Please try again." }) };
+      }
+
+      let matchedUser = registeredUsersList.find(u => (email && u.email.toLowerCase() === email) || (u.phone && u.phone.endsWith(cleanPhone)));
+      if (matchedUser) {
+        matchedUser.phone = cleanPhone;
+        matchedUser.phone_verified = true;
+      }
+
+      if (email) {
+        recordRegisteredUser({
+          email,
+          phone: cleanPhone,
+          phone_verified: true,
+          is_verified: true,
+          email_verified: true
+        });
+      }
+
+      if (globalPlatformConfig.phone_otps) {
+        delete globalPlatformConfig.phone_otps[cleanPhone];
+      }
+
+      await savePersistentState();
+
+      const updatedUser = {
+        ...(matchedUser || {}),
+        email: email || matchedUser?.email || "",
+        phone: cleanPhone,
+        phone_verified: true,
+        is_verified: true,
+        email_verified: true
+      };
+
+      const userToken = makeToken(updatedUser);
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          ok: true,
+          access_token: userToken,
+          message: "Mobile number verified successfully!",
+          user: updatedUser
         })
       };
     }

@@ -62,6 +62,14 @@ export default function Login() {
       nav("/admin");
       return;
     }
+    if (currentUser?.is_verified === false || currentUser?.email_verified === false) {
+      nav(`/verify-email?email=${encodeURIComponent(currentUser?.email || "")}`);
+      return;
+    }
+    if (!currentUser?.phone_verified) {
+      nav(`/verify-phone?email=${encodeURIComponent(currentUser?.email || "")}`);
+      return;
+    }
     const hasActiveSub = Boolean(isSubActive(currentUser?.subscription));
     if (!hasActiveSub) {
       nav("/subscribe");
