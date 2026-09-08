@@ -1447,7 +1447,7 @@ exports.handler = async (event, context) => {
 
       // 1. Attempt real SMS via Fast2SMS if API key is configured
       let smsDispatched = false;
-      const fast2smsKey = process.env.FAST2SMS_API_KEY;
+      const fast2smsKey = process.env.FAST2SMS_API_KEY || globalPlatformConfig.fast2sms_api_key;
       if (fast2smsKey) {
         try {
           const smsPayload = {
@@ -1471,7 +1471,7 @@ exports.handler = async (event, context) => {
       }
 
       // 2. Attempt SMS/WhatsApp via AuthKey if configured
-      const authkeyKey = process.env.AUTHKEY_API_KEY;
+      const authkeyKey = process.env.AUTHKEY_API_KEY || globalPlatformConfig.authkey_api_key;
       if (!smsDispatched && authkeyKey) {
         try {
           const akPayload = {
@@ -1491,6 +1491,22 @@ exports.handler = async (event, context) => {
           if (akRes.ok) smsDispatched = true;
         } catch (e) {
           console.warn("AuthKey SMS dispatch failed:", e);
+        }
+      }
+
+      // 3. Attempt SMS via 2Factor if configured
+      const twofactorKey = process.env.TWO_FACTOR_API_KEY || globalPlatformConfig.twofactor_api_key;
+      if (!smsDispatched && twofactorKey) {
+        try {
+          const tfRes = await safeHttpPost(
+            `https://2factor.in/API/V1/${twofactorKey}/SMS/${cleanPhone}/${otp}/DukaanOTP`,
+            {},
+            {},
+            5000
+          );
+          if (tfRes.ok) smsDispatched = true;
+        } catch (e) {
+          console.warn("2Factor SMS dispatch failed:", e);
         }
       }
 
