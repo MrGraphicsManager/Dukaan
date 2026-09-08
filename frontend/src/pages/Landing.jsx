@@ -231,6 +231,9 @@ export default function Landing() {
   // Desktop Pricing Layout: "horizontal" by default per user request, toggleable to "grid"
   const [desktopPricingLayout, setDesktopPricingLayout] = useState("horizontal");
 
+  // Mobile Comparison Plan Selector State
+  const [mobileComparePlan, setMobileComparePlan] = useState("business");
+
   // Hero Interactive Plan Switcher State
   const [activeHeroTab, setActiveHeroTab] = useState("pro"); // 'starter' | 'business' | 'premium' | 'pro' | 'studio'
   const [isPlayingHeroSoundbox, setIsPlayingHeroSoundbox] = useState(false);
@@ -1564,27 +1567,27 @@ export default function Landing() {
                   ))}
                 </ul>
 
-                {/* Mobile Proper Touch Buttons */}
+                {/* Mobile Proper Touch Buttons (48px+ touch targets) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                   <Button
                     onClick={() => nav(`/subscribe?plan=${p.id}`)}
-                    className={`w-full h-12 rounded-xl text-xs font-black shadow-sm flex items-center justify-center gap-2 active:scale-95 ${
+                    className={`w-full h-13 rounded-2xl text-sm font-black shadow-md flex items-center justify-center gap-2 active:scale-98 ${
                       p.is_pro
-                        ? "bg-amber-400 hover:bg-amber-300 text-slate-950"
+                        ? "bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-amber-400/20"
                         : p.featured
-                        ? "bg-blue-600 hover:bg-blue-700 text-white"
+                        ? "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20"
                         : "bg-slate-900 hover:bg-slate-800 text-white"
                     }`}
                   >
-                    <span>Choose {p.name}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    <span>Choose {p.name} (₹{p.price}/mo)</span>
+                    <ArrowRight className="w-4 h-4" />
                   </Button>
 
                   <Link
                     to={p.route}
-                    className="w-full h-12 rounded-xl text-xs font-bold border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-800 flex items-center justify-center gap-1.5 active:scale-95 text-center"
+                    className="w-full h-12 rounded-2xl text-xs font-bold border-2 border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-900 flex items-center justify-center gap-1.5 active:scale-98 text-center"
                   >
-                    <span>Explore Full Details</span>
+                    <span>Explore Full {p.name} Page</span>
                     <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
                   </Link>
                 </div>
@@ -1706,12 +1709,111 @@ export default function Landing() {
           </p>
         </div>
 
-        {/* Mobile Swipe Hint */}
-        <div className="sm:hidden text-center text-[11px] text-blue-700 font-bold mb-3 flex items-center justify-center gap-1.5 bg-blue-50 py-2 px-3 rounded-xl border border-blue-200">
-          <span>👈 Swipe sideways to compare all plans 👉</span>
+        {/* Mobile 1-Tap Plan Selector (md:hidden - Zero horizontal scroll, super easy to use!) */}
+        <div className="md:hidden space-y-4 mb-6">
+          <div className="text-center">
+            <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1 rounded-full">
+              Tap to Compare Plan
+            </span>
+          </div>
+
+          {/* 4 Clean Touch Pills */}
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { id: "starter", name: "Starter", price: "₹79", badge: "Essential" },
+              { id: "business", name: "Business", price: "₹119", badge: "Popular" },
+              { id: "premium", name: "Premium", price: "₹239", badge: "Multi-Shop" },
+              { id: "pro", name: "Dukaan Pro", price: "₹499", badge: "Flagship" }
+            ].map((tab) => {
+              const isSelected = mobileComparePlan === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setMobileComparePlan(tab.id)}
+                  className={`p-3 rounded-2xl border-2 text-left transition-all active:scale-95 flex flex-col justify-between ${
+                    isSelected
+                      ? "border-blue-600 bg-blue-50/80 shadow-sm"
+                      : "border-slate-200 bg-white hover:border-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-slate-900">{tab.name}</span>
+                    <span className={`text-[9px] font-black px-1.5 py-0.2 rounded uppercase ${
+                      isSelected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
+                    }`}>
+                      {tab.badge}
+                    </span>
+                  </div>
+                  <div className="text-sm font-black text-slate-900 mt-1">
+                    {tab.price}<span className="text-[10px] font-normal text-slate-500">/mo</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Selected Plan Details Card */}
+          {(() => {
+            const plan = ALL_PLANS.find(p => p.id === mobileComparePlan) || ALL_PLANS[1];
+            return (
+              <div className="p-5 rounded-3xl bg-white border-2 border-blue-600/60 shadow-lg space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-mono">PEAN RETAIL OS</span>
+                    <h3 className="text-lg font-black text-slate-900">{plan.name} Plan</h3>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-black text-slate-900">₹{plan.price}<span className="text-xs font-bold text-slate-500">/mo</span></div>
+                    {plan.discount && (
+                      <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded">
+                        {plan.discount}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-600 font-medium">
+                  {plan.tagline}
+                </p>
+
+                {/* Capabilities List */}
+                <div className="space-y-2 pt-2 border-t border-slate-100">
+                  <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Included Capabilities:</div>
+                  {plan.perks.map((perk, i) => (
+                    <div key={i} className="flex items-start gap-2 text-xs text-slate-700 font-medium">
+                      <div className="mt-0.5 rounded-full p-0.5 bg-emerald-100 text-emerald-700 shrink-0">
+                        <Check className="w-3.5 h-3.5" />
+                      </div>
+                      <span>{perk}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 2 Big Thumb Buttons */}
+                <div className="space-y-2 pt-2 border-t border-slate-100">
+                  <Button
+                    onClick={() => nav(`/subscribe?plan=${plan.id}`)}
+                    className="w-full h-13 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-sm shadow-md flex items-center justify-center gap-2 active:scale-98"
+                  >
+                    <span>Choose {plan.name} (₹{plan.price}/mo)</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+
+                  <Link
+                    to={plan.route}
+                    className="w-full h-12 rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-900 font-bold text-xs border border-slate-200 flex items-center justify-center gap-1.5 active:scale-98 text-center"
+                  >
+                    <span>Explore Full {plan.name} Page</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
+                  </Link>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-md overflow-hidden">
+        {/* Desktop Table View (Hidden on mobile, preserved 100% on desktop) */}
+        <div className="hidden md:block bg-white rounded-3xl border border-slate-200 shadow-md overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs sm:text-sm">
               <thead>
@@ -2063,8 +2165,9 @@ export default function Landing() {
 
       {/* =========================================================
           MOBILE STICKY ACTION BAR (PEAN RETAIL OS)
+          Comfortable 44px thumb controls for effortless mobile use
       ========================================================= */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-2.5 shadow-2xl flex items-center justify-between gap-3">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/98 backdrop-blur-md border-t border-slate-200 px-3.5 py-2.5 shadow-2xl flex items-center justify-between gap-2.5">
         <div className="flex items-center gap-2 min-w-0">
           <img src="/logo.png" alt="Dukaan" className="h-7 w-auto object-contain shrink-0" />
           <div className="flex flex-col min-w-0">
@@ -2075,17 +2178,18 @@ export default function Landing() {
         <div className="flex items-center gap-2 shrink-0">
           <a
             href="tel:7016430577"
-            className="h-9 px-3 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold flex items-center gap-1.5 transition-colors"
+            aria-label="Call Helpline"
+            className="h-11 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold flex items-center gap-1.5 transition-colors border border-slate-300 active:scale-95 shadow-2xs"
           >
-            <Phone className="w-3.5 h-3.5 text-blue-600" />
-            <span className="hidden xs:inline">Helpline</span>
+            <Phone className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Call</span>
           </a>
           <Button
             onClick={() => nav("/app")}
-            className="h-9 px-4 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md shadow-blue-500/20 flex items-center gap-1.5 active:scale-95"
+            className="h-11 px-4 sm:px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-black shadow-md shadow-blue-500/25 flex items-center gap-1.5 active:scale-95"
           >
             <span>Open App</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
       </div>
