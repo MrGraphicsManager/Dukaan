@@ -305,7 +305,22 @@ async function getPersistentState(force = false) {
             };
           }
           if (json.pricing) {
-            globalPlatformConfig.pricing = { ...globalPlatformConfig.pricing, ...json.pricing };
+            const isLegacy = json.pricing.starter?.monthly === 499 || 
+                             json.pricing.business?.monthly === 999 || 
+                             json.pricing.premium?.monthly === 1999 ||
+                             json.pricing.starter?.yearly === 4990 ||
+                             json.pricing.business?.yearly === 9990 ||
+                             json.pricing.premium?.yearly === 19990;
+            if (!isLegacy) {
+              globalPlatformConfig.pricing = { ...globalPlatformConfig.pricing, ...json.pricing };
+            } else {
+              globalPlatformConfig.pricing = {
+                starter: { monthly: 79, yearly: 799 },
+                business: { monthly: 119, yearly: 1199 },
+                premium: { monthly: 239, yearly: 2239 },
+                pro: { monthly: 499, yearly: 4999 }
+              };
+            }
           }
           if (typeof json.trial_days === "number") {
             globalPlatformConfig.trial_days = json.trial_days;
@@ -1285,16 +1300,18 @@ exports.handler = async (event, context) => {
     if (path === "/subscriptions/trial" && event.httpMethod === "POST") {
       await getPersistentState();
       const plan = body.plan || "business";
-      const trialDays = plan === "starter" ? 90 : plan === "business" ? 60 : 30;
+      const isProUpgrade = Boolean(body.is_pro_upgrade_trial) || (plan === "pro" && Number(body.amount) === 0);
+      const trialDays = Number(body.trial_days) || (plan === "pro" ? 14 : plan === "starter" ? 90 : plan === "business" ? 60 : 30);
       const expires_at = body.expires_at || new Date(Date.now() + trialDays * 86400000).toISOString();
       const subscription = {
         plan,
         status: "active",
         is_trial: true,
         trial_days: trialDays,
-        razorpay_payment_id: body.razorpay_payment_id || `pay_trial_${Date.now()}`,
+        is_pro_upgrade_trial: isProUpgrade,
+        razorpay_payment_id: body.razorpay_payment_id || (isProUpgrade ? `pro_free_trial_${Date.now()}` : `pay_trial_${Date.now()}`),
         mandate_verified: true,
-        amount: body.amount || 1,
+        amount: isProUpgrade ? 0 : (body.amount || 1),
         expires_at,
         activated_at: new Date().toISOString()
       };
@@ -1820,6 +1837,14 @@ exports.handler = async (event, context) => {
     // 12. PLATFORM CONFIG (Maintenance, Dynamic Pricing, Branding, OTA, Emergency Switch)
     if (path === "/platform/config" && event.httpMethod === "GET") {
       await getPersistentState();
+      if (globalPlatformConfig.pricing?.starter?.monthly === 499 || globalPlatformConfig.pricing?.business?.monthly === 999 || globalPlatformConfig.pricing?.premium?.monthly === 1999) {
+        globalPlatformConfig.pricing = {
+          starter: { monthly: 79, yearly: 799 },
+          business: { monthly: 119, yearly: 1199 },
+          premium: { monthly: 239, yearly: 2239 },
+          pro: { monthly: 499, yearly: 4999 }
+        };
+      }
       return {
         statusCode: 200,
         headers,

@@ -120,7 +120,7 @@ const PLANS = {
     discount: "Save 16.5%",
     monthly_offer: "1+1 Month Free",
     annual_offer: "12+6 Month Free (Save 16.5%)",
-    trial_days: 30,
+    trial_days: 14,
     badge: "VIP Flagship",
     vip: true,
     features: [
@@ -158,7 +158,9 @@ export default function Subscribe() {
   const [params] = useSearchParams();
   const nav = useNavigate();
   const { user, shops, currentShopId, loadShops, setActiveShop, refresh, updateUser } = useAuth();
-  const [selected, setSelected] = useState(params.get("plan") || "business");
+  const rawPlanParam = (params.get("plan") || "").toLowerCase().trim();
+  const initialPlan = (rawPlanParam && PLANS[rawPlanParam]) ? rawPlanParam : "business";
+  const [selected, setSelected] = useState(initialPlan);
   const [billingCycle, setBillingCycle] = useState("monthly"); // "monthly" or "annual"
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
@@ -166,6 +168,14 @@ export default function Subscribe() {
   const [expandedFaq, setExpandedFaq] = useState(0);
 
   const renew = params.get("renew") === "1";
+
+  // Keep selected in sync if user navigates with ?plan=...
+  useEffect(() => {
+    const p = (params.get("plan") || "").toLowerCase().trim();
+    if (p && PLANS[p]) {
+      setSelected(p);
+    }
+  }, [params]);
   
   // Feature 13: Dynamic Pricing from Platform Config
   const [platformConfig, setPlatformConfig] = useState(null);
@@ -178,31 +188,45 @@ export default function Subscribe() {
   }, []);
 
   const effectivePlans = useMemo(() => {
-    if (!platformConfig?.pricing) return PLANS;
+    const base = PLANS;
+    const cfgPricing = platformConfig?.pricing;
+    const isLegacyServerPricing = cfgPricing && (
+      cfgPricing.starter?.monthly === 499 ||
+      cfgPricing.business?.monthly === 999 ||
+      cfgPricing.premium?.monthly === 1999 ||
+      cfgPricing.starter?.yearly === 4990 ||
+      cfgPricing.business?.yearly === 9990 ||
+      cfgPricing.premium?.yearly === 19990
+    );
+
+    if (!cfgPricing || isLegacyServerPricing) {
+      return base;
+    }
+
     return {
       starter: {
-        ...PLANS.starter,
-        monthly: platformConfig.pricing.starter?.monthly ?? PLANS.starter.monthly,
-        annual: platformConfig.pricing.starter?.yearly ?? PLANS.starter.annual,
-        trial_days: platformConfig.trial_days ?? PLANS.starter.trial_days
+        ...base.starter,
+        monthly: base.starter.monthly,
+        annual: (cfgPricing.starter?.yearly && cfgPricing.starter.yearly !== 4990) ? cfgPricing.starter.yearly : base.starter.annual,
+        trial_days: base.starter.trial_days
       },
       business: {
-        ...PLANS.business,
-        monthly: platformConfig.pricing.business?.monthly ?? PLANS.business.monthly,
-        annual: platformConfig.pricing.business?.yearly ?? PLANS.business.annual,
-        trial_days: platformConfig.trial_days ?? PLANS.business.trial_days
+        ...base.business,
+        monthly: base.business.monthly,
+        annual: (cfgPricing.business?.yearly && cfgPricing.business.yearly !== 9990) ? cfgPricing.business.yearly : base.business.annual,
+        trial_days: base.business.trial_days
       },
       premium: {
-        ...PLANS.premium,
-        monthly: platformConfig.pricing.premium?.monthly ?? PLANS.premium.monthly,
-        annual: platformConfig.pricing.premium?.yearly ?? PLANS.premium.annual,
-        trial_days: platformConfig.trial_days ?? PLANS.premium.trial_days
+        ...base.premium,
+        monthly: base.premium.monthly,
+        annual: (cfgPricing.premium?.yearly && cfgPricing.premium.yearly !== 19990) ? cfgPricing.premium.yearly : base.premium.annual,
+        trial_days: base.premium.trial_days
       },
       pro: {
-        ...PLANS.pro,
-        monthly: platformConfig.pricing.pro?.monthly ?? PLANS.pro.monthly,
-        annual: platformConfig.pricing.pro?.yearly ?? PLANS.pro.annual,
-        trial_days: platformConfig.trial_days ?? PLANS.pro.trial_days
+        ...base.pro,
+        monthly: base.pro.monthly,
+        annual: (cfgPricing.pro?.yearly && cfgPricing.pro.yearly !== 5990) ? cfgPricing.pro.yearly : base.pro.annual,
+        trial_days: 14
       }
     };
   }, [platformConfig]);
@@ -322,6 +346,14 @@ export default function Subscribe() {
     user?.trial_used ||
     (userSub?.status === "active" && userPlan && !userSub?.is_trial)
   );
+
+  const isProPlan = selected === "pro";
+  const hasUsedProTrial = Boolean(
+    userSub?.is_pro_upgrade_trial || 
+    (userSub?.plan === "pro" && (userSub?.is_trial || userSub?.status === "active"))
+  );
+  // Free upgrade eligible if selecting Pro on monthly billing, user has already used a trial on any tier, but hasn't taken the Pro trial yet!
+  const isProFreeUpgradeEligible = isProPlan && !isAnnual && hasUsedTrial && !hasUsedProTrial;
 
   // Prevent selecting lower tier (downgrade) when current subscription is active
   useEffect(() => {
@@ -449,6 +481,78 @@ export default function Subscribe() {
   };
 
   /* =========================================================
+     DUKAAN PRO FREE UPGRADE (14 DAYS FREE - NO ₹1 CHARGE)
+     Eligible when user has already taken a trial of any tier
+     and wants to upgrade to Dukaan Pro for 14 days free!
+  ========================================================= */
+  const activateProFreeUpgrade = async () => {
+    if (!user) {
+      toast.info("Please sign in or create an account to activate your Dukaan Pro Free Upgrade.");
+      nav(`/register?redirect=/subscribe?plan=pro`);
+      return;
+    }
+
+    if (hasUsedProTrial) {
+      toast.error("You have already used your 14-day Dukaan Pro upgrade trial. Please subscribe to continue.");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      let baseTime = Date.now();
+      const rawUser = localStorage.getItem("dukaan_user");
+      const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
+      
+      if (parsed.subscription?.expires_at) {
+        const curExp = new Date(parsed.subscription.expires_at).getTime();
+        if (!isNaN(curExp) && curExp > baseTime) baseTime = curExp;
+      }
+      const newExpiry = new Date(baseTime + (14 * 86400000));
+
+      const newSub = { 
+        plan: "pro", 
+        status: "active", 
+        is_trial: true, 
+        is_pro_upgrade_trial: true,
+        trial_days: 14,
+        expires_at: newExpiry.toISOString(),
+        activated_at: new Date().toISOString()
+      };
+
+      commitSubscription(newSub);
+
+      try {
+        const apiRes = await api.post("/subscriptions/trial", { 
+          plan: "pro",
+          user_email: user?.email,
+          is_pro_upgrade_trial: true,
+          trial_days: 14,
+          amount: 0,
+          expires_at: newExpiry.toISOString()
+        }); 
+        if (apiRes.data?.access_token) {
+          localStorage.setItem("dukaan_access_token", apiRes.data.access_token);
+        }
+      } catch (_) {}
+
+      setDone({ 
+        status: "trial", 
+        plan: "pro",
+        trial_days: 14, 
+        amount_paid: 0,
+        is_pro_upgrade: true,
+        expires_at: newExpiry.toISOString() 
+      });
+      toast.success(`🎉 14-Day Free Dukaan Pro VIP Upgrade Activated! Valid until ${newExpiry.toLocaleDateString("en-IN")}`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to activate upgrade. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /* =========================================================
      FREE TRIAL WITH RAZORPAY AUTOPAY (₹1 CHARGE / MANDATE)
   ========================================================= */
   const startAutopayTrial = async () => {
@@ -473,6 +577,8 @@ export default function Subscribe() {
       return;
     }
 
+    const trialDays = selected === "pro" ? 14 : (plan.trial_days || 7);
+
     setBusy(true);
     try {
       await loadRazorpay();
@@ -482,7 +588,7 @@ export default function Subscribe() {
         amount: 100, // 100 paise = ₹1.00
         currency: "INR",
         name: "Dukaan Autopay",
-        description: `₹1 Autopay Mandate Setup for ${plan.name} ${plan.trial_days}-Day Trial`,
+        description: `₹1 Autopay Mandate Setup for ${plan.name} ${trialDays}-Day Trial`,
         prefill: { 
           name: user?.name || "Shop Owner", 
           email: user?.email || "owner@dukaan.in",
@@ -498,13 +604,13 @@ export default function Subscribe() {
             const curExp = new Date(parsed.subscription.expires_at).getTime();
             if (!isNaN(curExp) && curExp > baseTime) baseTime = curExp;
           }
-          const newExpiry = new Date(baseTime + ((plan.trial_days || 7) * 86400000));
+          const newExpiry = new Date(baseTime + (trialDays * 86400000));
 
           const newSub = { 
             plan: selected, 
             status: "active", 
             is_trial: true, 
-            trial_days: plan.trial_days || 7,
+            trial_days: trialDays,
             expires_at: newExpiry.toISOString(),
             activated_at: new Date().toISOString()
           };
@@ -518,6 +624,7 @@ export default function Subscribe() {
               razorpay_payment_id: response.razorpay_payment_id,
               mandate_verified: true,
               amount: 1,
+              trial_days: trialDays,
               expires_at: newExpiry.toISOString()
             }); 
             if (apiRes.data?.access_token) {
@@ -527,7 +634,7 @@ export default function Subscribe() {
 
           setDone({ 
             status: "trial", 
-            trial_days: plan.trial_days, 
+            trial_days: trialDays, 
             amount_paid: 1,
             autopay_active: true,
             expires_at: newExpiry.toISOString() 
@@ -546,12 +653,12 @@ export default function Subscribe() {
         r.open();
       } else {
         // Fallback simulation
-        const expires = new Date(Date.now() + (plan.trial_days || 7) * 86400000);
+        const expires = new Date(Date.now() + trialDays * 86400000);
         const fallbackSub = {
           plan: selected,
           status: "active",
           is_trial: true,
-          trial_days: plan.trial_days || 7,
+          trial_days: trialDays,
           expires_at: expires.toISOString(),
           activated_at: new Date().toISOString()
         };
@@ -559,21 +666,21 @@ export default function Subscribe() {
 
         setDone({ 
           status: "trial", 
-          trial_days: plan.trial_days, 
+          trial_days: trialDays, 
           amount_paid: 1,
           autopay_active: true,
           expires_at: expires.toISOString() 
         });
-        toast.success(`₹1 Mandate Verified! ${plan.trial_days}-Day Free Trial is now active.`);
+        toast.success(`₹1 Mandate Verified! ${trialDays}-Day Free Trial is now active.`);
       }
     } catch (e) {
       // Offline fallback simulation
-      const expires = new Date(Date.now() + (plan.trial_days || 7) * 86400000);
+      const expires = new Date(Date.now() + trialDays * 86400000);
       const fallbackSub = {
         plan: selected,
         status: "active",
         is_trial: true,
-        trial_days: plan.trial_days || 7,
+        trial_days: trialDays,
         expires_at: expires.toISOString(),
         activated_at: new Date().toISOString()
       };
@@ -581,12 +688,12 @@ export default function Subscribe() {
 
       setDone({ 
         status: "trial", 
-        trial_days: plan.trial_days, 
+        trial_days: trialDays, 
         amount_paid: 1,
         autopay_active: true,
         expires_at: expires.toISOString() 
       });
-      toast.success(`₹1 Mandate Verified! ${plan.trial_days}-Day Free Trial is now active.`);
+      toast.success(`₹1 Mandate Verified! ${trialDays}-Day Free Trial is now active.`);
     } finally { 
       setBusy(false); 
     }
@@ -831,7 +938,7 @@ export default function Subscribe() {
             4 PLAN TIERS GRID (September 2026 Updated)
         ========================================================= */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
-          {Object.entries(PLANS).map(([key, value], index) => {
+          {Object.entries(effectivePlans).map(([key, value], index) => {
             const isSelected = selected === key;
             const isFeatured = value.featured;
             const cardRank = PLAN_RANK[key] || 0;
@@ -964,6 +1071,16 @@ export default function Subscribe() {
                         {key === "pro" ? "12+6 Months Free · 18 Mo Total Access" : "Save 20% on 365 Days Access"}
                       </div>
                     </div>
+                  ) : (key === "pro" && hasUsedTrial && !hasUsedProTrial) ? (
+                    <div className="p-3 rounded-2xl bg-purple-50 border border-purple-200 text-purple-900 mb-4 text-left">
+                      <div className="font-heading font-extrabold text-xs flex items-center gap-1">
+                        <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                        <span>14 Days FREE VIP Upgrade</span>
+                      </div>
+                      <div className="text-[10px] text-purple-800/80 mt-0.5 font-semibold">
+                        ₹0 Activation · No ₹1 Required for Existing Trial Users
+                      </div>
+                    </div>
                   ) : hasUsedTrial ? (
                     <div className="p-3 rounded-2xl bg-blue-50 border border-blue-200 text-blue-900 mb-4 text-left">
                       <div className="font-heading font-extrabold text-xs flex items-center gap-1">
@@ -978,10 +1095,10 @@ export default function Subscribe() {
                     <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 mb-4 text-left">
                       <div className="font-heading font-extrabold text-xs flex items-center gap-1">
                         <Zap className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>{key === "pro" ? "1+1 Month Free Access" : `${value.trial_days} Days FREE Trial`}</span>
+                        <span>{key === "pro" ? "14 Days FREE VIP Trial" : `${value.trial_days} Days FREE Trial`}</span>
                       </div>
                       <div className="text-[10px] text-emerald-800/80 mt-0.5 font-medium">
-                        {key === "pro" ? "Pay ₹499 for 60 Days VIP Access" : `₹1 Autopay · Renews after ${value.trial_days}d.`}
+                        {key === "pro" ? "₹1 Autopay · Renews after 14d (1+1 Mo Free)" : `₹1 Autopay · Renews after ${value.trial_days}d.`}
                       </div>
                     </div>
                   )}
@@ -1125,10 +1242,22 @@ export default function Subscribe() {
               </div>
 
               <span className={`inline-flex items-center gap-1 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2 ${
-                isAnnual ? "bg-amber-100 text-amber-900" : "bg-emerald-100 text-emerald-800"
+                isAnnual 
+                  ? "bg-amber-100 text-amber-900" 
+                  : isProFreeUpgradeEligible 
+                  ? "bg-purple-100 text-purple-800 border border-purple-300"
+                  : "bg-emerald-100 text-emerald-800"
               }`}>
-                {isAnnual ? <BadgePercent className="w-3.5 h-3.5" /> : <Zap className="w-3.5 h-3.5" />}
-                <span>{isAnnual ? "Annual Plan · No Trial · Instant 1 Year Access" : "Monthly Plan · Free Trial with ₹1 Autopay"}</span>
+                {isAnnual ? <BadgePercent className="w-3.5 h-3.5" /> : isProFreeUpgradeEligible ? <Sparkles className="w-3.5 h-3.5 text-purple-600" /> : <Zap className="w-3.5 h-3.5" />}
+                <span>
+                  {isAnnual 
+                    ? "Annual Plan · No Trial · Instant 1 Year Access" 
+                    : isProFreeUpgradeEligible 
+                    ? "14-Day Free VIP Upgrade (No ₹1 Required)" 
+                    : hasUsedTrial
+                    ? "Monthly Plan · Instant Paid Renewal"
+                    : "Monthly Plan · Free Trial with ₹1 Autopay"}
+                </span>
               </span>
 
               <h2 className="font-display text-3xl font-bold text-brand-indigo">
@@ -1137,8 +1266,12 @@ export default function Subscribe() {
 
               <p className="mt-2 text-sm text-brand-indigo/70 max-w-md mx-auto">
                 {isAnnual
-                  ? `Pay once for 1 full year at ₹${plan.annual} (Save 17%). Full access starts immediately.`
-                  : `Start your ${plan.trial_days}-Day Free Trial today with a ₹1 Razorpay Autopay mandate verification.`
+                  ? `Pay once for 1 full year at ₹${plan.annual} (${selected === "pro" ? "12+6 Months Free · Save 16.5%" : "Save 20%"}). Full access starts immediately.`
+                  : isProFreeUpgradeEligible
+                  ? "Claim 14 days of full Dukaan Pro VIP access completely free as an existing merchant upgrade with zero payment required today."
+                  : hasUsedTrial
+                  ? `Your trial was previously used. Activate immediate 30-day ${plan.name} access for ₹${plan.monthly}/month.`
+                  : `Start your ${selected === "pro" ? 14 : plan.trial_days}-Day Free Trial today with a ₹1 Razorpay Autopay mandate verification.`
                 }
               </p>
 
@@ -1155,7 +1288,11 @@ export default function Subscribe() {
                   <span className="text-brand-indigo/70 font-semibold">Free Trial Status:</span>
                   {isAnnual ? (
                     <span className="font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md">
-                      Annual (Direct 17% Discount)
+                      Annual ({selected === "pro" ? "12+6 Mo Free · 16.5% Off" : "Direct 20% Discount"})
+                    </span>
+                  ) : isProFreeUpgradeEligible ? (
+                    <span className="font-bold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-md border border-purple-200">
+                      14-Day Free VIP Upgrade (No ₹1 Required)
                     </span>
                   ) : hasUsedTrial ? (
                     <span className="font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded-md">
@@ -1163,7 +1300,7 @@ export default function Subscribe() {
                     </span>
                   ) : (
                     <span className="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
-                      {plan.trial_days} Days Free (via ₹1 Autopay)
+                      {selected === "pro" ? 14 : plan.trial_days} Days Free (via ₹1 Autopay)
                     </span>
                   )}
                 </div>
@@ -1225,12 +1362,14 @@ export default function Subscribe() {
                   <div className="text-right">
                     {appliedPromo && (
                       <div className="text-xs text-slate-400 line-through">
-                        {isAnnual ? `₹${plan.annual}.00` : hasUsedTrial ? `₹${plan.monthly}.00` : "₹1.00"}
+                        {isAnnual ? `₹${plan.annual}.00` : isProFreeUpgradeEligible ? `₹${plan.monthly}.00` : hasUsedTrial ? `₹${plan.monthly}.00` : "₹1.00"}
                       </div>
                     )}
-                    <span className="font-display font-extrabold text-2xl text-brand-indigo">
+                    <span className={`font-display font-extrabold text-2xl ${isProFreeUpgradeEligible ? "text-purple-700" : "text-brand-indigo"}`}>
                       {isAnnual
                         ? `₹${Math.max(0, plan.annual - (appliedPromo?.discount_amount || 0))}.00`
+                        : isProFreeUpgradeEligible
+                        ? "₹0.00"
                         : hasUsedTrial
                           ? `₹${Math.max(0, plan.monthly - (appliedPromo?.discount_amount || 0))}.00`
                           : "₹1.00"
@@ -1241,14 +1380,18 @@ export default function Subscribe() {
 
                 <div className="text-[11px] text-brand-indigo/60 pt-1">
                   {isAnnual ? (
-                    <span>Covers full 12 months. Renews annually. Cancel anytime from Billing.</span>
+                    <span>{selected === "pro" ? "Covers 12+6 = 18 months total VIP access. Renews annually. Cancel anytime from Billing." : "Covers full 12 months. Renews annually. Cancel anytime from Billing."}</span>
+                  ) : isProFreeUpgradeEligible ? (
+                    <span>
+                      <b>100% Free 14-day Dukaan Pro VIP Upgrade</b> for existing merchants. Zero charge today (no ₹1 required). After 14 days, renews at ₹499/month with 1+1 month free.
+                    </span>
                   ) : hasUsedTrial ? (
                     <span>
-                      Instant activation for 30 days. Renews monthly at ₹{plan.monthly}/month.
+                      {selected === "pro" ? "Instant activation for 60 days (1+1 month free) at ₹499/month." : `Instant activation for 30 days. Renews monthly at ₹${plan.monthly}/month.`}
                     </span>
                   ) : (
                     <span>
-                      <b>₹1 will be charged via Razorpay Autopay</b> to verify UPI/card mandate. Monthly subscription of ₹{plan.monthly}/month will auto-charge only after {plan.trial_days} days.
+                      <b>₹1 will be charged via Razorpay Autopay</b> to verify UPI/card mandate. Monthly subscription of ₹{plan.monthly}/month will auto-charge only after {selected === "pro" ? 14 : plan.trial_days} days.
                     </span>
                   )}
                 </div>
@@ -1264,8 +1407,30 @@ export default function Subscribe() {
                     className="w-full h-14 rounded-2xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-extrabold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
                   >
                     <CreditCard className="w-4 h-4" />
-                    <span>{busy ? "Opening Razorpay…" : `Pay ₹${plan.annual} for 1 Year Access`}</span>
+                    <span>{busy ? "Opening Razorpay…" : selected === "pro" ? `Pay ₹${plan.annual} for 18 Months Access (12+6 Mo Free)` : `Pay ₹${plan.annual} for 1 Year Access`}</span>
                   </Button>
+                ) : isProFreeUpgradeEligible ? (
+                  // DUKAAN PRO FREE UPGRADE FOR MERCHANTS WHO ALREADY USED A TRIAL
+                  <>
+                    <Button 
+                      disabled={busy} 
+                      onClick={activateProFreeUpgrade} 
+                      className="w-full h-14 rounded-2xl bg-purple-700 hover:bg-purple-800 text-white font-extrabold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Sparkles className="w-4 h-4 text-amber-300" />
+                      <span>{busy ? "Activating Pro Upgrade…" : "Activate 14-Day Free Dukaan Pro Access (₹0)"}</span>
+                    </Button>
+
+                    <Button 
+                      disabled={busy} 
+                      onClick={pay} 
+                      variant="outline" 
+                      className="w-full h-11 rounded-2xl border-2 border-purple-200 hover:border-purple-600 text-purple-900 font-bold text-xs active:scale-95 transition-all flex items-center justify-center gap-2"
+                    >
+                      <CreditCard className="w-4 h-4 text-purple-700" />
+                      <span>Skip Trial & Pay ₹{plan.monthly}/month (1+1 Month Free)</span>
+                    </Button>
+                  </>
                 ) : hasUsedTrial ? (
                   // TRIAL ALREADY CLAIMED: STRICTLY PAID UPGRADE
                   <Button 
@@ -1274,7 +1439,7 @@ export default function Subscribe() {
                     className="w-full h-14 rounded-2xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-extrabold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
                   >
                     <CreditCard className="w-4 h-4" />
-                    <span>{busy ? "Opening Razorpay…" : `Pay ₹${plan.monthly}/month & Activate Plan`}</span>
+                    <span>{busy ? "Opening Razorpay…" : selected === "pro" ? `Pay ₹499/month (1+1 Mo Free) & Activate Pro` : `Pay ₹${plan.monthly}/month & Activate Plan`}</span>
                   </Button>
                 ) : (
                   // MONTHLY PLAN: ₹1 AUTOPAY MANDATE FOR FREE TRIAL
@@ -1285,7 +1450,7 @@ export default function Subscribe() {
                       className="w-full h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
                     >
                       <Zap className="w-4 h-4" />
-                      <span>{busy ? "Opening Autopay Verification…" : `Verify ₹1 & Start ${plan.trial_days}-Day FREE Trial`}</span>
+                      <span>{busy ? "Opening Autopay Verification…" : `Verify ₹1 & Start ${selected === "pro" ? 14 : plan.trial_days}-Day FREE Trial`}</span>
                     </Button>
 
                     <Button 
@@ -1295,7 +1460,7 @@ export default function Subscribe() {
                       className="w-full h-11 rounded-2xl border-2 border-brand-mitti hover:border-brand-indigo text-brand-indigo font-bold text-xs active:scale-95 transition-all flex items-center justify-center gap-2"
                     >
                       <CreditCard className="w-4 h-4 text-brand-terracotta" />
-                      <span>Skip Trial & Pay ₹{plan.monthly}/month Directly</span>
+                      <span>{selected === "pro" ? "Skip Trial & Pay ₹499/month (1+1 Mo Free) Directly" : `Skip Trial & Pay ₹${plan.monthly}/month Directly`}</span>
                     </Button>
                   </>
                 )}
@@ -1367,11 +1532,12 @@ export default function Subscribe() {
 function PremiumLiveAnimation({ plan, done, onOpen }) {
   const particles = Array.from({ length: 28 }, (_, i) => i);
   const isTrial = done?.status === "trial";
+  const isProUpgrade = Boolean(done?.is_pro_upgrade);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       if (onOpen) onOpen();
-    }, 2000);
+    }, 2500);
     return () => clearTimeout(timer);
   }, [onOpen]);
 
@@ -1401,12 +1567,16 @@ function PremiumLiveAnimation({ plan, done, onOpen }) {
         animate={{ opacity: 1, y: 0, scale: 1 }} 
         transition={{ duration: 0.6 }}
       >
-        <div className="w-20 h-20 rounded-3xl bg-emerald-600 text-white grid place-items-center mb-6 shadow-md">
+        <div className={`w-20 h-20 rounded-3xl ${isProUpgrade ? "bg-purple-700" : "bg-emerald-600"} text-white grid place-items-center mb-6 shadow-md`}>
           <Check className="w-10 h-10" strokeWidth={3} />
         </div>
 
         <div className="text-xs uppercase tracking-widest font-extrabold text-brand-terracotta mb-2">
-          {isTrial ? `₹1 Autopay Verified · ${plan?.trial_days}-Day Trial Live` : "Subscription Active"}
+          {isProUpgrade 
+            ? "🎉 14-Day Free VIP Upgrade Active (₹0 Charge)" 
+            : isTrial 
+            ? `₹1 Autopay Verified · ${plan?.trial_days || 14}-Day Trial Live` 
+            : "Subscription Active"}
         </div>
 
         <h1 className="font-display text-4xl md:text-5xl font-bold text-brand-indigo mb-3">
@@ -1414,7 +1584,9 @@ function PremiumLiveAnimation({ plan, done, onOpen }) {
         </h1>
 
         <p className="text-sm text-brand-indigo/75 max-w-sm mb-8 leading-relaxed font-medium">
-          {isTrial ? (
+          {isProUpgrade ? (
+            <span>Your <b>Dukaan Pro VIP 14-Day Free Upgrade</b> is now active with <b>₹0 charge</b>. Enjoy custom billing, custom dashboard, and 24/7 dedicated support!</span>
+          ) : isTrial ? (
             <span>Your <b>₹1 Autopay Mandate</b> is verified. Your <b>{plan?.name || "Business"} Plan</b> {plan?.trial_days}-Day Free Trial is now active.</span>
           ) : (
             <span>Your <b>{plan?.name || "Business"} Plan</b> {done?.annual ? "Annual Subscription" : "Subscription"} is now active.</span>
