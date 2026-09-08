@@ -27,6 +27,9 @@ import {
   Tooltip,
   CartesianGrid
 } from "recharts";
+import { useAuth } from "@/lib/AuthContext";
+import { isCashierModeActive, getProStaffSettings } from "@/lib/proStaffPermissions";
+import OwnerPinDialog from "@/components/OwnerPinDialog";
 
 function fyOf(value) {
   const d = new Date(value);
@@ -37,11 +40,30 @@ function fyOf(value) {
 }
 
 export default function Reports() {
+  const { currentShopId } = useAuth();
   const [orders, setOrders] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
   const [year, setYear] = useState("all");
   const [loading, setLoading] = useState(true);
+
+  // Cashier Mode & Owner Security PIN state
+  const [isCashierMode, setIsCashierMode] = useState(() => isCashierModeActive());
+  const [pinModalOpen, setPinModalOpen] = useState(false);
+
+  const staffSettings = useMemo(() => {
+    return getProStaffSettings(currentShopId);
+  }, [currentShopId]);
+
+  useEffect(() => {
+    const handleCashierChange = () => setIsCashierMode(isCashierModeActive());
+    window.addEventListener("dukaan_cashier_mode_changed", handleCashierChange);
+    window.addEventListener("dukaan_shift_ended", handleCashierChange);
+    return () => {
+      window.removeEventListener("dukaan_cashier_mode_changed", handleCashierChange);
+      window.removeEventListener("dukaan_shift_ended", handleCashierChange);
+    };
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -206,7 +228,13 @@ export default function Reports() {
           </div>
 
           <Button
-            onClick={exportSummary}
+            onClick={() => {
+              if (isCashierMode && staffSettings?.restrict_reports_export) {
+                setPinModalOpen(true);
+                return;
+              }
+              exportSummary();
+            }}
             className="h-11 px-5 rounded-2xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-xs shadow-md active:scale-95 transition-all flex items-center gap-2"
           >
             <Download className="w-4 h-4" /> Export Report
@@ -402,6 +430,19 @@ export default function Reports() {
         </div>
 
       </div>
+
+      {/* Security Owner PIN Dialog for Reports Export */}
+      <OwnerPinDialog
+        open={pinModalOpen}
+        onClose={() => setPinModalOpen(false)}
+        onSuccess={() => {
+          setPinModalOpen(false);
+          exportSummary();
+        }}
+        shopId={currentShopId}
+        title="Owner PIN Required"
+        description="Business Intelligence reports export is locked during Cashier Mode. Please enter the Owner PIN to download."
+      />
 
     </div>
   );

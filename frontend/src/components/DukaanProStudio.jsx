@@ -29,7 +29,12 @@ import {
   Eye,
   Check,
   AlertCircle,
-  AlertTriangle
+  AlertTriangle,
+  Lock,
+  KeyRound,
+  Users,
+  EyeOff,
+  FileSpreadsheet
 } from "lucide-react";
 import { 
   PRO_INVOICE_TEMPLATES, 
@@ -42,6 +47,13 @@ import {
   saveProLabsSettings, 
   getProWhatsAppSupportUrl 
 } from "@/lib/proCustomizations";
+import { 
+  getProStaffSettings, 
+  saveProStaffSettings, 
+  setCashierModeActive, 
+  isCashierModeActive, 
+  getShiftRecords 
+} from "@/lib/proStaffPermissions";
 import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
 import { playVoiceSoundbox } from "@/lib/soundbox";
 import { api } from "@/lib/api";
@@ -93,6 +105,82 @@ export default function DukaanProStudio({ user, currentShop, isPro }) {
   const [ticketSubject, setTicketSubject] = useState("");
   const [ticketMessage, setTicketMessage] = useState("");
   const [submittingTicket, setSubmittingTicket] = useState(false);
+
+  // 5. Staff & Permissions State
+  const [staff, setStaff] = useState(() => getProStaffSettings(shopId, currentShop));
+  const [savingStaff, setSavingStaff] = useState(false);
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [showCurrentPin, setShowCurrentPin] = useState(false);
+  const [shiftHistory, setShiftHistory] = useState(() => getShiftRecords(shopId));
+  const [cashierActive, setCashierActive] = useState(() => isCashierModeActive());
+  const [openingFloat, setOpeningFloat] = useState("500");
+
+  useEffect(() => {
+    setStaff(getProStaffSettings(shopId, currentShop));
+    setShiftHistory(getShiftRecords(shopId));
+    setCashierActive(isCashierModeActive());
+  }, [shopId, currentShop]);
+
+  // Handle Save Staff Settings
+  const handleSaveStaff = async () => {
+    setSavingStaff(true);
+    saveProStaffSettings(shopId, staff);
+
+    // Sync to backend MongoDB
+    try {
+      if (shopId && shopId !== "default") {
+        await api.put(`/shops/${shopId}`, {
+          name: currentShop?.name || "My Dukaan",
+          ...currentShop,
+          pro_settings: {
+            ...(currentShop?.pro_settings || {}),
+            staff
+          }
+        });
+      }
+    } catch (err) {
+      console.warn("Cloud sync for staff settings:", err);
+    }
+
+    setTimeout(() => {
+      setSavingStaff(false);
+      toast.success("Staff & security permission settings saved!");
+    }, 300);
+  };
+
+  // Handle Update Owner PIN
+  const handleUpdatePin = (e) => {
+    if (e) e.preventDefault();
+    if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
+      toast.error("PIN must be exactly 4 numeric digits (e.g. 1234)");
+      return;
+    }
+    if (newPin !== confirmPin) {
+      toast.error("New PIN and Confirm PIN do not match!");
+      return;
+    }
+    const updated = { ...staff, owner_pin: newPin };
+    setStaff(updated);
+    saveProStaffSettings(shopId, updated);
+    setNewPin("");
+    setConfirmPin("");
+    toast.success("Master Owner Security PIN updated successfully!");
+  };
+
+  // Handle Instant Cashier Mode Activation
+  const handleToggleCashierMode = () => {
+    if (cashierActive) {
+      setCashierModeActive(false);
+      setCashierActive(false);
+      toast.success("Exited Cashier Mode. Returned to Owner Mode.");
+    } else {
+      setCashierModeActive(true, staff.cashier_name || "Staff Cashier", Number(openingFloat) || 0);
+      setCashierActive(true);
+      toast.success(`Switched to Cashier Mode (${staff.cashier_name})! Opening counter float: ₹${openingFloat}`);
+      nav("/app/pos");
+    }
+  };
 
   useEffect(() => {
     setBilling(getProBillingSettings(shopId, currentShop));
@@ -428,6 +516,17 @@ export default function DukaanProStudio({ user, currentShop, isPro }) {
           >
             <Headphones className="w-3.5 h-3.5" />
             <span>24/7 Dedicated Support</span>
+          </button>
+          <button
+            onClick={() => setSubTab("staff")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+              subTab === "staff"
+                ? "bg-purple-600 text-white shadow-md border border-purple-400"
+                : "text-purple-200/70 hover:text-white hover:bg-white/10"
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Staff & Permissions</span>
           </button>
         </div>
       </div>
@@ -1219,6 +1318,319 @@ export default function DukaanProStudio({ user, currentShop, isPro }) {
                 </div>
               </form>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================
+          SUB-TAB 5: STAFF & CASHIER PERMISSIONS
+      ========================================================= */}
+      {subTab === "staff" && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            {/* Left Column: Security PIN & Cashier Mode Toggle */}
+            <div className="lg:col-span-5 space-y-6">
+
+              {/* Card 1: Master Owner Security PIN */}
+              <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 grid place-items-center shrink-0">
+                      <KeyRound className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-display font-bold text-base text-brand-indigo">
+                        Owner Security PIN
+                      </h3>
+                      <p className="text-xs text-brand-indigo/60">
+                        4-digit master code to authorize restricted actions
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 font-mono">
+                    ACTIVE
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-brand-mitti/60 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-brand-indigo/60 tracking-wider">Current Master PIN</span>
+                    <div className="font-mono text-base font-bold text-brand-indigo mt-0.5 tracking-widest">
+                      {showCurrentPin ? staff.owner_pin || "1234" : "••••"}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPin(v => !v)}
+                    className="text-xs font-bold text-purple-700 hover:underline flex items-center gap-1"
+                  >
+                    {showCurrentPin ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    <span>{showCurrentPin ? "Hide" : "Reveal"}</span>
+                  </button>
+                </div>
+
+                {/* Change PIN Form */}
+                <form onSubmit={handleUpdatePin} className="space-y-3 pt-2 border-t border-brand-mitti/50">
+                  <div className="text-xs font-bold text-brand-indigo">Change Master PIN:</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-[11px] text-brand-indigo/70">New 4-Digit PIN</Label>
+                      <Input
+                        type="password"
+                        maxLength={4}
+                        placeholder="e.g. 5678"
+                        value={newPin}
+                        onChange={(e) => setNewPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                        className="mt-1 h-10 rounded-xl border-brand-mitti font-mono text-center tracking-widest"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[11px] text-brand-indigo/70">Confirm PIN</Label>
+                      <Input
+                        type="password"
+                        maxLength={4}
+                        placeholder="Re-enter PIN"
+                        value={confirmPin}
+                        onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                        className="mt-1 h-10 rounded-xl border-brand-mitti font-mono text-center tracking-widest"
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    type="submit"
+                    disabled={newPin.length !== 4 || confirmPin.length !== 4}
+                    className="w-full h-10 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs shadow-xs"
+                  >
+                    <Check className="w-3.5 h-3.5 mr-1" /> Update Owner PIN
+                  </Button>
+                </form>
+              </div>
+
+              {/* Card 2: Cashier Counter Activation & Shift Handover */}
+              <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-sm space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 grid place-items-center shrink-0">
+                    <Lock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold text-base text-brand-indigo">
+                      Cashier Counter Mode
+                    </h3>
+                    <p className="text-xs text-brand-indigo/60">
+                      Hand over the terminal to cashier with secret costs hidden
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-1">
+                  <div>
+                    <Label className="text-xs font-bold text-brand-indigo">Cashier / Staff Name</Label>
+                    <Input
+                      value={staff.cashier_name}
+                      onChange={(e) => setStaff(prev => ({ ...prev, cashier_name: e.target.value }))}
+                      placeholder="e.g. Ramesh (Counter 1)"
+                      className="mt-1 h-10 rounded-xl border-brand-mitti"
+                    />
+                  </div>
+
+                  {!cashierActive && (
+                    <div>
+                      <Label className="text-xs font-bold text-brand-indigo">Opening Drawer Cash Float (₹)</Label>
+                      <Input
+                        type="number"
+                        value={openingFloat}
+                        onChange={(e) => setOpeningFloat(e.target.value)}
+                        placeholder="500"
+                        className="mt-1 h-10 rounded-xl border-brand-mitti font-mono"
+                      />
+                      <p className="text-[10px] text-brand-indigo/50 mt-1">
+                        Starting change money given to cashier at shift opening.
+                      </p>
+                    </div>
+                  )}
+
+                  <Button
+                    type="button"
+                    onClick={handleToggleCashierMode}
+                    className={`w-full h-12 rounded-2xl font-bold text-xs shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 ${
+                      cashierActive
+                        ? "bg-amber-500 hover:bg-amber-600 text-slate-950"
+                        : "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950"
+                    }`}
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span>{cashierActive ? "Unlock & Exit Cashier Mode" : "🔒 Lock Counter in Cashier Mode"}</span>
+                  </Button>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Right Column: Permission Matrix & Shift History */}
+            <div className="lg:col-span-7 space-y-6">
+
+              {/* Permission Controls Matrix */}
+              <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-display font-bold text-lg text-brand-indigo flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-purple-600" />
+                      <span>Staff Permission Controls</span>
+                    </h3>
+                    <p className="text-xs text-brand-indigo/60">
+                      Specify what staff can see and do when Cashier Mode is active.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleSaveStaff}
+                    disabled={savingStaff}
+                    size="sm"
+                    className="h-9 px-4 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs shadow-xs"
+                  >
+                    {savingStaff ? "Saving…" : "Save Permissions"}
+                  </Button>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  {/* Permission 1: Hide Purchase Price & Profit */}
+                  <div className="p-4 rounded-2xl border-2 border-brand-mitti/80 hover:border-purple-300 bg-slate-50/50 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-bold text-xs text-brand-indigo">
+                        Hide Purchase / Cost Prices & Margins
+                      </div>
+                      <p className="text-[11px] text-brand-indigo/60 mt-0.5">
+                        Cashier cannot see wholesale purchase prices or profit margins across Products, Inventory, or Dashboard.
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={staff.hide_purchase_price}
+                        onChange={(e) => setStaff(prev => ({ ...prev, hide_purchase_price: e.target.checked }))}
+                        className="sr-only peer"
+                      />
+                      <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                  </div>
+
+                  {/* Permission 2: Block Bill Deletion */}
+                  <div className="p-4 rounded-2xl border-2 border-brand-mitti/80 hover:border-purple-300 bg-slate-50/50 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-bold text-xs text-brand-indigo">
+                        Block Deleting or Voiding Past Bills
+                      </div>
+                      <p className="text-[11px] text-brand-indigo/60 mt-0.5">
+                        Cashier cannot cancel, delete, or modify completed invoices without entering Owner PIN.
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={staff.block_bill_deletion}
+                        onChange={(e) => setStaff(prev => ({ ...prev, block_bill_deletion: e.target.checked }))}
+                        className="sr-only peer"
+                      />
+                      <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                  </div>
+
+                  {/* Permission 3: Block Product Deletion */}
+                  <div className="p-4 rounded-2xl border-2 border-brand-mitti/80 hover:border-purple-300 bg-slate-50/50 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-bold text-xs text-brand-indigo">
+                        Block Product & Price Editing
+                      </div>
+                      <p className="text-[11px] text-brand-indigo/60 mt-0.5">
+                        Cashier cannot delete items or change selling prices directly from the counter.
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={staff.block_product_deletion}
+                        onChange={(e) => setStaff(prev => ({ ...prev, block_product_deletion: e.target.checked }))}
+                        className="sr-only peer"
+                      />
+                      <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                  </div>
+
+                  {/* Permission 4: Restrict Financial Reports Export */}
+                  <div className="p-4 rounded-2xl border-2 border-brand-mitti/80 hover:border-purple-300 bg-slate-50/50 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-bold text-xs text-brand-indigo">
+                        Lock Financial Reports & Excel Exports
+                      </div>
+                      <p className="text-[11px] text-brand-indigo/60 mt-0.5">
+                        Prevent exporting full shop customer contact databases, GST audit files, or yearly P&L.
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={staff.restrict_reports_export}
+                        onChange={(e) => setStaff(prev => ({ ...prev, restrict_reports_export: e.target.checked }))}
+                        className="sr-only peer"
+                      />
+                      <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Shift Handover Logs Table */}
+              <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileSpreadsheet className="w-4 h-4 text-purple-600" />
+                    <h3 className="font-display font-bold text-base text-brand-indigo">
+                      Recent Cashier Shift Logs
+                    </h3>
+                  </div>
+                  <span className="text-[11px] font-mono text-brand-indigo/50">
+                    {shiftHistory.length} recorded
+                  </span>
+                </div>
+
+                {shiftHistory.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-brand-indigo/50 border border-dashed border-brand-mitti rounded-2xl">
+                    No closed shifts recorded yet. Shifts are logged when a cashier completes "Shift Handover" in POS.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-brand-mitti/60 max-h-60 overflow-y-auto pr-1">
+                    {shiftHistory.slice(0, 10).map((sh, idx) => {
+                      const variance = Number(sh.variance || 0);
+                      return (
+                        <div key={sh.id || idx} className="py-2.5 flex items-center justify-between text-xs">
+                          <div>
+                            <div className="font-bold text-brand-indigo flex items-center gap-1.5">
+                              <span>{sh.cashier_name || "Cashier"}</span>
+                              <span className="text-[10px] font-normal text-brand-indigo/50">
+                                {sh.ended_at ? new Date(sh.ended_at).toLocaleDateString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Active"}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-brand-indigo/60">
+                              Bills: {sh.bills_count || 0} · Cash Sales: ₹{sh.cash_collected || 0} · UPI: ₹{sh.upi_collected || 0}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-mono font-bold text-brand-indigo">
+                              Drawer: ₹{sh.counted_cash ?? (sh.cash_collected || 0)}
+                            </div>
+                            <div className={`text-[10px] font-bold ${variance === 0 ? "text-emerald-600" : variance > 0 ? "text-blue-600" : "text-rose-600"}`}>
+                              {variance === 0 ? "Balanced (₹0)" : variance > 0 ? `Surplus (+₹${variance})` : `Shortage (-₹${Math.abs(variance)})`}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+            </div>
+
           </div>
         </div>
       )}

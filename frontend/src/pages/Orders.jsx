@@ -215,9 +215,19 @@ export default function Orders() {
                     {(o.created_at || "").slice(0, 16).replace("T", " ")}
                   </td>
 
-                  {/* Customer */}
-                  <td className="px-6 py-4 font-bold text-sm text-brand-indigo">
-                    {o.customer_name || "Walk-in Customer"}
+                  {/* Customer & Cashier */}
+                  <td className="px-6 py-4">
+                    <div className="font-bold text-sm text-brand-indigo">
+                      {o.customer_name || "Walk-in Customer"}
+                    </div>
+                    {o.billed_by && (
+                      <div className="text-[11px] text-brand-indigo/60 flex items-center gap-1 mt-0.5 font-medium">
+                        <span className="text-slate-400">Cashier:</span>
+                        <span className="bg-brand-sand px-1.5 py-0.2 rounded text-[10px] text-brand-indigo font-bold border border-brand-mitti/60">
+                          {o.billed_by}
+                        </span>
+                      </div>
+                    )}
                   </td>
 
                   {/* Items */}

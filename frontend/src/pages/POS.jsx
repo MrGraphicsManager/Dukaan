@@ -40,7 +40,9 @@ import {
   LayoutGrid,
   Minimize2,
   PauseCircle,
-  PlayCircle
+  PlayCircle,
+  ShieldCheck,
+  Clock
 } from "lucide-react";
 import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
 import { useAuth } from "@/lib/AuthContext";
@@ -52,6 +54,12 @@ import {
   saveProThemeSettings, 
   getProLabsSettings 
 } from "@/lib/proCustomizations";
+import { 
+  isCashierModeActive, 
+  getActiveCashierName, 
+  getCurrentShift, 
+  endCurrentShift 
+} from "@/lib/proStaffPermissions";
 
 export default function POS() {
   const nav = useNavigate();
@@ -108,6 +116,14 @@ export default function POS() {
     }
   });
 
+  // Shift Handover Modal State (F9)
+  const [shiftHandoverOpen, setShiftHandoverOpen] = useState(false);
+  const [countedCashInput, setCountedCashInput] = useState("");
+
+  const activeCashierName = isCashierModeActive() 
+    ? getActiveCashierName(currentShopId) 
+    : (user?.name || "Owner");
+
   const handleHoldCart = () => {
     if (cart.length === 0) {
       toast.info("Cart is empty. Add products before holding bill.");
@@ -154,11 +170,183 @@ export default function POS() {
         e.preventDefault();
         handleRecallCart();
       }
+      // F9: Shift Handover
+      else if (e.key === "F9") {
+        e.preventDefault();
+        setShiftHandoverOpen(true);
+      }
     };
     window.addEventListener("keydown", handlePosShortcuts);
     return () => window.removeEventListener("keydown", handlePosShortcuts);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cart, customerId, discount, discountType, heldCart, currentShopId]);
+
+  // Shift Handover Computation (F9)
+  const currentShift = getCurrentShift() || {
+    cashier_name: activeCashierName,
+    started_at: new Date().toISOString(),
+    opening_cash: 0
+  };
+
+  const shiftOrders = useMemo(() => {
+    try {
+      const orders = JSON.parse(localStorage.getItem("dukaan_orders") || "[]");
+      const startTime = currentShift?.started_at ? new Date(currentShift.started_at).getTime() : 0;
+      return orders.filter(o => {
+        const orderTime = o.created_at ? new Date(o.created_at).getTime() : 0;
+        return orderTime >= startTime;
+      });
+    } catch {
+      return [];
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentShift?.started_at, shiftHandoverOpen]);
+
+  const shiftStats = useMemo(() => {
+    let cashSales = 0;
+    let upiSales = 0;
+    let cardSales = 0;
+    let udhaarSales = 0;
+
+    shiftOrders.forEach(o => {
+      const amt = Number(o.total || 0);
+      const m = (o.payment_method || "cash").toLowerCase();
+      if (m === "cash") cashSales += amt;
+      else if (m === "upi" || m === "qr") upiSales += amt;
+      else if (m === "card") cardSales += amt;
+      else if (m === "udhaar") udhaarSales += amt;
+      else cashSales += amt;
+    });
+
+    const totalSales = cashSales + upiSales + cardSales + udhaarSales;
+    const openingCash = Number(currentShift?.opening_cash || 0);
+    const expectedCash = openingCash + cashSales;
+    const countedCash = countedCashInput === "" ? expectedCash : Number(countedCashInput) || 0;
+    const variance = countedCash - expectedCash;
+
+    return {
+      cashSales,
+      upiSales,
+      cardSales,
+      udhaarSales,
+      totalSales,
+      totalBills: shiftOrders.length,
+      openingCash,
+      expectedCash,
+      countedCash,
+      variance
+    };
+  }, [shiftOrders, currentShift?.opening_cash, countedCashInput]);
+
+  const handlePrintHandoverSlip = () => {
+    const shopName = shop?.name || activeShop?.name || "Apni Dukaan";
+    const shopPhone = shop?.phone || activeShop?.phone || "";
+    const printWin = window.open("", "_blank", "width=380,height=600");
+    if (!printWin) {
+      toast.error("Please allow popups to print shift handover slip.");
+      return;
+    }
+
+    const varianceText = shiftStats.variance === 0 
+      ? "PERFECT (BALANCED)" 
+      : shiftStats.variance > 0 
+        ? `+Rs.${shiftStats.variance.toFixed(2)} SURPLUS (EXTRA)` 
+        : `-Rs.${Math.abs(shiftStats.variance).toFixed(2)} SHORTAGE (KAM)`;
+
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Shift Handover - ${activeCashierName}</title>
+          <style>
+            body { font-family: 'Courier New', Courier, monospace; font-size: 12px; margin: 0; padding: 14px; width: 80mm; }
+            .center { text-align: center; }
+            .dashed { border-top: 1px dashed #000; margin: 8px 0; }
+            .bold { font-weight: bold; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+            td { padding: 2px 0; }
+            .right { text-align: right; }
+          </style>
+        </head>
+        <body onload="window.print(); window.close();">
+          <div class="center bold" style="font-size: 16px;">${shopName}</div>
+          <div class="center" style="font-size: 11px;">${shopPhone}</div>
+          <div class="dashed"></div>
+          <div class="center bold">SHIFT HANDOVER REPORT</div>
+          <div class="center" style="font-size: 11px;">Cashier: ${activeCashierName}</div>
+          <div class="center" style="font-size: 10px;">Shift: ${new Date(currentShift?.started_at || Date.now()).toLocaleTimeString("en-IN")} to ${new Date().toLocaleTimeString("en-IN")}</div>
+          <div class="dashed"></div>
+          <table>
+            <tr><td>Total Bills Issued:</td><td class="right bold">${shiftStats.totalBills}</td></tr>
+            <tr><td>Total Revenue:</td><td class="right bold">Rs. ${shiftStats.totalSales.toFixed(2)}</td></tr>
+            <tr><td colspan="2" class="dashed"></td></tr>
+            <tr><td>Opening Drawer Float:</td><td class="right">Rs. ${shiftStats.openingCash.toFixed(2)}</td></tr>
+            <tr><td>Cash Collected:</td><td class="right">Rs. ${shiftStats.cashSales.toFixed(2)}</td></tr>
+            <tr><td>Digital / UPI:</td><td class="right">Rs. ${shiftStats.upiSales.toFixed(2)}</td></tr>
+            <tr><td>Card / Other:</td><td class="right">Rs. ${shiftStats.cardSales.toFixed(2)}</td></tr>
+            <tr><td>Udhaar / Credit:</td><td class="right">Rs. ${shiftStats.udhaarSales.toFixed(2)}</td></tr>
+            <tr><td colspan="2" class="dashed"></td></tr>
+            <tr><td class="bold">Expected Drawer Cash:</td><td class="right bold">Rs. ${shiftStats.expectedCash.toFixed(2)}</td></tr>
+            <tr><td class="bold">Actual Counted Cash:</td><td class="right bold">Rs. ${shiftStats.countedCash.toFixed(2)}</td></tr>
+            <tr style="font-size: 13px;"><td class="bold">Variance Status:</td><td class="right bold">${varianceText}</td></tr>
+          </table>
+          <div class="dashed"></div>
+          <br/><br/>
+          <table style="margin-top: 15px;">
+            <tr>
+              <td class="center" style="width: 50%;">________________<br/>Cashier Signature</td>
+              <td class="center" style="width: 50%;">________________<br/>Owner Signature</td>
+            </tr>
+          </table>
+          <div class="dashed"></div>
+          <div class="center" style="font-size: 10px; margin-top: 6px;">
+            Dukaan Pro Security & Shift Ledger
+          </div>
+        </body>
+      </html>
+    `);
+    printWin.document.close();
+  };
+
+  const handleShareShiftWhatsApp = () => {
+    const shopName = shop?.name || activeShop?.name || "Apni Dukaan";
+    const varianceStatus = shiftStats.variance === 0 
+      ? "✅ Balanced (0 Variance)" 
+      : shiftStats.variance > 0 
+        ? `🟢 +₹${shiftStats.variance.toFixed(2)} Surplus (Extra)` 
+        : `🔴 -₹${Math.abs(shiftStats.variance).toFixed(2)} Shortage (Kam)`;
+
+    const msg = `📊 *SHIFT HANDOVER REPORT*\\n` +
+      `*Store:* ${shopName}\\n` +
+      `*Cashier:* ${activeCashierName}\\n` +
+      `*Shift:* ${new Date(currentShift?.started_at || Date.now()).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })} - ${new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}\\n` +
+      `------------------------------\\n` +
+      `• Bills Issued: ${shiftStats.totalBills}\\n` +
+      `• Total Revenue: ₹${shiftStats.totalSales.toFixed(2)}\\n` +
+      `• Cash Collected: ₹${shiftStats.cashSales.toFixed(2)}\\n` +
+      `• Digital / UPI: ₹${shiftStats.upiSales.toFixed(2)}\\n` +
+      `------------------------------\\n` +
+      `💵 *Opening Cash:* ₹${shiftStats.openingCash.toFixed(2)}\\n` +
+      `📥 *Expected Cash:* ₹${shiftStats.expectedCash.toFixed(2)}\\n` +
+      `🤝 *Counted Cash:* ₹${shiftStats.countedCash.toFixed(2)}\\n` +
+      `⚖️ *Variance:* ${varianceStatus}\\n` +
+      `------------------------------\\n` +
+      `_Logged via Dukaan Pro POS_`;
+
+    const ownerPhone = (shop?.phone || activeShop?.phone || "").replace(/\\D/g, "");
+    const url = `https://wa.me/${ownerPhone ? `91${ownerPhone}` : ""}?text=${encodeURIComponent(msg)}`;
+    window.open(url, "_blank");
+    toast.success("Opening WhatsApp with Shift Report...");
+  };
+
+  const handleFinalizeShift = () => {
+    endCurrentShift(currentShopId, {
+      ...shiftStats,
+      shift_duration: `${new Date(currentShift?.started_at || Date.now()).toLocaleTimeString("en-IN")} - ${new Date().toLocaleTimeString("en-IN")}`
+    });
+    setShiftHandoverOpen(false);
+    toast.success("✅ Shift closed successfully! Counter locked.");
+  };
 
   useEffect(() => {
     api.get("/products")
@@ -424,7 +612,10 @@ export default function POS() {
         customer_name: selectedCustomerObj?.name || "Walk-in Customer",
         customer_phone: selectedCustomerObj?.phone || "",
         change: method === "cash" && Number(amountReceived) > total ? Number(amountReceived) - total : 0,
+        billed_by: activeCashierName
       };
+
+      order.billed_by = activeCashierName;
 
       setPayOpen(false);
       setCompletedBill(billData);
@@ -466,6 +657,7 @@ export default function POS() {
         created_at: new Date().toISOString(),
         items: cart,
         change: method === "cash" && Number(amountReceived) > total ? Number(amountReceived) - total : 0,
+        billed_by: activeCashierName
       };
 
       const savedOrders = JSON.parse(localStorage.getItem("dukaan_orders") || "[]");
@@ -832,6 +1024,17 @@ export default function POS() {
               <span className="font-mono text-[10px] text-purple-200">F8</span>
             </button>
           )}
+
+          {/* Shift Handover (F9) */}
+          <button
+            onClick={() => setShiftHandoverOpen(true)}
+            className="px-3 h-10 rounded-full border border-brand-mitti bg-white hover:bg-brand-sand text-brand-indigo text-xs font-bold flex items-center gap-1.5 shadow-xs active:scale-95 transition-all"
+            title="Shift Handover & Drawer Cash (F9)"
+          >
+            <Clock className="w-3.5 h-3.5 text-blue-600" />
+            <span className="hidden sm:inline">Shift</span>
+            <span className="font-mono text-[10px] text-brand-indigo/50">F9</span>
+          </button>
 
           <Button
             variant="outline"
@@ -1651,6 +1854,134 @@ export default function POS() {
               Save Customer
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* =========================================================
+          SHIFT HANDOVER & CASH RECONCILIATION MODAL (F9)
+      ========================================================= */}
+      <Dialog open={shiftHandoverOpen} onOpenChange={setShiftHandoverOpen}>
+        <DialogContent className="max-w-md rounded-3xl p-6 border-2 border-brand-mitti shadow-2xl">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div>
+                <DialogTitle className="font-display text-xl text-brand-indigo flex items-center gap-2">
+                  Shift Handover & Drawer
+                </DialogTitle>
+                <p className="text-xs text-brand-indigo/60">
+                  Cashier: <strong className="text-brand-indigo">{activeCashierName}</strong> · Started: {new Date(currentShift?.started_at || Date.now()).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-4 my-2">
+            {/* Shift Sales Metric Grid */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="p-3 rounded-2xl bg-brand-sand/60 border border-brand-mitti">
+                <span className="text-[11px] font-bold text-brand-indigo/60 uppercase">Total Bills</span>
+                <p className="text-lg font-extrabold text-brand-indigo font-display">{shiftStats.totalBills}</p>
+              </div>
+              <div className="p-3 rounded-2xl bg-brand-sand/60 border border-brand-mitti">
+                <span className="text-[11px] font-bold text-brand-indigo/60 uppercase">Total Revenue</span>
+                <p className="text-lg font-extrabold text-brand-indigo font-display">{money(shiftStats.totalSales)}</p>
+              </div>
+              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200">
+                <span className="text-[11px] font-bold text-emerald-800 uppercase">Cash Collected</span>
+                <p className="text-lg font-extrabold text-emerald-700 font-display">{money(shiftStats.cashSales)}</p>
+              </div>
+              <div className="p-3 rounded-2xl bg-purple-50 border border-purple-200">
+                <span className="text-[11px] font-bold text-purple-800 uppercase">UPI / Digital</span>
+                <p className="text-lg font-extrabold text-purple-700 font-display">{money(shiftStats.upiSales)}</p>
+              </div>
+            </div>
+
+            {/* Cash Drawer Reconciliation */}
+            <div className="p-4 rounded-2xl bg-white border-2 border-brand-mitti space-y-3">
+              <div className="flex items-center justify-between text-xs font-medium text-brand-indigo/70">
+                <span>Opening Cash Float:</span>
+                <span className="font-mono font-bold text-brand-indigo">{money(shiftStats.openingCash)}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs font-bold text-brand-indigo border-t border-brand-mitti/50 pt-2">
+                <span>Expected Drawer Cash:</span>
+                <span className="font-mono text-sm text-brand-indigo">{money(shiftStats.expectedCash)}</span>
+              </div>
+
+              <div>
+                <Label className="text-xs font-bold text-brand-indigo flex items-center justify-between">
+                  <span>Actual Counted Cash in Drawer</span>
+                  <button 
+                    type="button" 
+                    onClick={() => setCountedCashInput(String(shiftStats.expectedCash))}
+                    className="text-[10px] text-blue-600 hover:underline font-normal"
+                  >
+                    Match Expected
+                  </button>
+                </Label>
+                <div className="relative mt-1">
+                  <span className="absolute left-3 top-2.5 text-sm font-bold text-brand-indigo/50">₹</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder={String(shiftStats.expectedCash)}
+                    value={countedCashInput}
+                    onChange={(e) => setCountedCashInput(e.target.value)}
+                    className="pl-7 rounded-xl border-brand-mitti font-bold text-base text-brand-indigo"
+                  />
+                </div>
+              </div>
+
+              {/* Variance Indicator */}
+              <div className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between ${
+                shiftStats.variance === 0
+                  ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+                  : shiftStats.variance > 0
+                    ? "bg-blue-50 border-blue-300 text-blue-800"
+                    : "bg-rose-50 border-rose-300 text-rose-800"
+              }`}>
+                <span>Reconciliation:</span>
+                <span>
+                  {shiftStats.variance === 0 
+                    ? "✓ Perfect Match (₹0)" 
+                    : shiftStats.variance > 0 
+                      ? `+₹${shiftStats.variance.toFixed(2)} Surplus (Extra)` 
+                      : `-₹${Math.abs(shiftStats.variance).toFixed(2)} Shortage (Kam)`}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2 mt-1">
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                onClick={handlePrintHandoverSlip}
+                className="rounded-xl border-brand-mitti text-xs font-bold flex items-center justify-center gap-1.5 h-10 hover:border-brand-indigo"
+              >
+                <Printer className="w-3.5 h-3.5 text-slate-700" />
+                <span>Print Thermal Slip</span>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleShareShiftWhatsApp}
+                className="rounded-xl border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center justify-center gap-1.5 h-10"
+              >
+                <Share2 className="w-3.5 h-3.5 text-emerald-700" />
+                <span>WhatsApp Owner</span>
+              </Button>
+            </div>
+
+            <Button
+              onClick={handleFinalizeShift}
+              className="w-full h-11 rounded-xl bg-brand-indigo hover:bg-brand-indigo/90 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2"
+            >
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Close Shift & Lock Counter</span>
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
       {/* =========================================================

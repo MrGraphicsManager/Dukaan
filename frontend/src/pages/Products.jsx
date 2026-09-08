@@ -34,11 +34,14 @@ import {
   Barcode,
   Zap,
   RefreshCw,
-  Store
+  Store,
+  Lock
 } from "lucide-react";
 import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
 import { useAuth } from "@/lib/AuthContext";
 import { FMCG_MASTER_CATALOG, findFMCGByBarcode, searchFMCGCatalog } from "@/lib/fmcgMasterCatalog";
+import { isCashierModeActive, getProStaffSettings } from "@/lib/proStaffPermissions";
+import OwnerPinDialog from "@/components/OwnerPinDialog";
 
 export const getExpiryStatus = (expiryDate) => {
   if (!expiryDate) return { status: "none", label: "", daysLeft: null, color: "" };
@@ -127,6 +130,27 @@ export default function Products() {
   const [viewMode, setViewMode] = useState("grid"); // "grid" or "table"
   const [form, setForm] = useState({ open: false, mode: "create", data: EMPTY });
   const [busy, setBusy] = useState(false);
+
+  // Cashier Mode & Owner Security PIN state
+  const [isCashierMode, setIsCashierMode] = useState(() => isCashierModeActive());
+  const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [pendingDeleteProduct, setPendingDeleteProduct] = useState(null);
+
+  const staffSettings = useMemo(() => {
+    return getProStaffSettings(currentShopId, activeShop);
+  }, [currentShopId, activeShop]);
+
+  const isHideCostActive = isCashierMode && staffSettings?.hide_purchase_price;
+
+  useEffect(() => {
+    const handleCashierChange = () => setIsCashierMode(isCashierModeActive());
+    window.addEventListener("dukaan_cashier_mode_changed", handleCashierChange);
+    window.addEventListener("dukaan_shift_ended", handleCashierChange);
+    return () => {
+      window.removeEventListener("dukaan_cashier_mode_changed", handleCashierChange);
+      window.removeEventListener("dukaan_shift_ended", handleCashierChange);
+    };
+  }, []);
 
   // Feature 18 & Feature 35 states
   const [fmcgModalOpen, setFmcgModalOpen] = useState(false);
@@ -308,8 +332,7 @@ export default function Products() {
     }
   };
 
-  const del = async (p) => {
-    if (!confirm(`Are you sure you want to delete ${p.name}?`)) return;
+  const performDeleteProduct = async (p) => {
     try {
       try { await api.delete(`/products/${p.id}`); } catch (_) {}
       const currentStored = getStoredProducts();
@@ -320,6 +343,17 @@ export default function Products() {
     } catch {
       toast.error("Failed to delete product");
     }
+  };
+
+  const del = async (p) => {
+    if (isCashierMode && staffSettings?.block_product_deletion) {
+      setPendingDeleteProduct(p);
+      setPinModalOpen(true);
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${p.name}?`)) return;
+    performDeleteProduct(p);
   };
 
   // Live profit margin calculation for modal form
@@ -611,14 +645,21 @@ export default function Products() {
                     {p.purchase_price > 0 && (
                       <div className="text-right">
                         <div className="text-[10px] text-brand-indigo/50 uppercase font-bold">Cost / Margin</div>
-                        <div className="text-xs font-semibold text-emerald-700 flex items-center justify-end gap-1">
-                          <span>{money(p.purchase_price)}</span>
-                          {margin !== null && (
-                            <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded text-[10px] font-bold">
-                              +{margin}%
-                            </span>
-                          )}
-                        </div>
+                        {isHideCostActive ? (
+                          <div className="text-[11px] font-semibold text-brand-indigo/40 flex items-center justify-end gap-1" title="Protected (Owner Only)">
+                            <Lock className="w-3 h-3 text-amber-600" />
+                            <span>Cost Hidden</span>
+                          </div>
+                        ) : (
+                          <div className="text-xs font-semibold text-emerald-700 flex items-center justify-end gap-1">
+                            <span>{money(p.purchase_price)}</span>
+                            {margin !== null && (
+                              <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                                +{margin}%
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -699,7 +740,15 @@ export default function Products() {
                       </td>
                     )}
                     <td className="px-6 py-4 text-right font-display font-bold text-base">{money(p.selling_price)}</td>
-                    <td className="px-6 py-4 text-right text-xs font-mono text-brand-indigo/60">{p.purchase_price ? money(p.purchase_price) : "—"}</td>
+                    <td className="px-6 py-4 text-right text-xs font-mono text-brand-indigo/60">
+                      {isHideCostActive ? (
+                        <span className="text-slate-400 font-sans font-medium flex items-center justify-end gap-1" title="Protected (Owner Only)">
+                          <Lock className="w-3 h-3 text-amber-600 inline" /> Hidden
+                        </span>
+                      ) : (
+                        p.purchase_price ? money(p.purchase_price) : "—"
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-right font-display font-bold text-base">
                       {p.unlimited_stock ? <InfinityIcon className="w-4 h-4 inline text-brand-indigo/40" /> : p.stock}
                     </td>
@@ -826,19 +875,26 @@ export default function Products() {
 
               <div>
                 <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Purchase Cost (₹)</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={form.data.purchase_price}
-                  onChange={(e) => setForm({ ...form, data: { ...form.data, purchase_price: e.target.value } })}
-                  placeholder="190"
-                  className="mt-1 h-11 rounded-xl border-brand-mitti text-base font-mono"
-                />
+                {isHideCostActive ? (
+                  <div className="mt-1 h-11 px-3.5 rounded-xl border border-dashed border-brand-mitti bg-slate-50 text-xs text-brand-indigo/50 flex items-center gap-2 font-medium">
+                    <Lock className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Cost Hidden (Owner Protected)</span>
+                  </div>
+                ) : (
+                  <Input
+                    type="number"
+                    min="0"
+                    value={form.data.purchase_price}
+                    onChange={(e) => setForm({ ...form, data: { ...form.data, purchase_price: e.target.value } })}
+                    placeholder="190"
+                    className="mt-1 h-11 rounded-xl border-brand-mitti text-base font-mono"
+                  />
+                )}
               </div>
             </div>
 
             {/* Profit Margin Preview Bar */}
-            {profitMargin > 0 && (
+            {profitMargin > 0 && !isHideCostActive && (
               <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs font-bold text-emerald-800">
                 <span>Estimated Profit Margin:</span>
                 <span className="font-heading text-sm text-emerald-700">+{profitMargin}% per item</span>
@@ -1044,6 +1100,24 @@ export default function Products() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Security Owner PIN Dialog for Product Deletion */}
+      <OwnerPinDialog
+        open={pinModalOpen}
+        onClose={() => {
+          setPinModalOpen(false);
+          setPendingDeleteProduct(null);
+        }}
+        onSuccess={() => {
+          if (pendingDeleteProduct) {
+            performDeleteProduct(pendingDeleteProduct);
+            setPendingDeleteProduct(null);
+          }
+        }}
+        shopId={currentShopId}
+        title="Delete Protected Product"
+        description={`Owner Security PIN required to delete "${pendingDeleteProduct?.name || ''}" during Cashier Mode.`}
+      />
 
     </div>
   );

@@ -8,6 +8,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import RenewalBanner from "@/components/RenewalBanner";
+import { isCashierModeActive, getActiveCashierName, setCashierModeActive } from "@/lib/proStaffPermissions";
+import OwnerPinDialog from "@/components/OwnerPinDialog";
+import { toast } from "sonner";
 
 const NAV = [
   { to: "/app", key: "dashboard", Icon: LayoutDashboard, end: true },
@@ -158,6 +161,26 @@ export default function AppLayout() {
       window.removeEventListener("storage", handleThemeEvent);
     };
   }, []);
+
+  // Cashier Mode State & Listeners
+  const [isCashierMode, setIsCashierMode] = useState(() => isCashierModeActive());
+  const [cashierName, setCashierName] = useState(() => getActiveCashierName(currentShopId));
+  const [pinModalOpen, setPinModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleCashierEvent = () => {
+      setIsCashierMode(isCashierModeActive());
+      setCashierName(getActiveCashierName(currentShopId));
+    };
+    window.addEventListener("dukaan_cashier_mode_changed", handleCashierEvent);
+    window.addEventListener("dukaan_shift_ended", handleCashierEvent);
+    window.addEventListener("storage", handleCashierEvent);
+    return () => {
+      window.removeEventListener("dukaan_cashier_mode_changed", handleCashierEvent);
+      window.removeEventListener("dukaan_shift_ended", handleCashierEvent);
+      window.removeEventListener("storage", handleCashierEvent);
+    };
+  }, [currentShopId]);
 
   // Read the current subscription from the backend if available; otherwise keep local state
   useEffect(() => {
@@ -515,6 +538,25 @@ export default function AppLayout() {
         </div>
       )}
 
+      {/* Cashier Mode Active Alert Banner */}
+      {isCashierMode && (
+        <div className="bg-gradient-to-r from-amber-600 via-purple-950 to-amber-700 text-white px-4 py-1.5 text-xs font-bold flex items-center justify-between shadow-md sticky top-0 z-50">
+          <div className="flex items-center gap-2">
+            <Lock className="w-4 h-4 shrink-0 text-amber-300 animate-pulse" />
+            <span>
+              <strong>🔒 Cashier Counter Active ({cashierName}):</strong> Wholesale cost prices & margins hidden. Deleting bills & products requires Owner PIN.
+            </span>
+          </div>
+          <Button
+            onClick={() => setPinModalOpen(true)}
+            size="sm"
+            className="bg-amber-400 text-slate-950 hover:bg-amber-300 font-extrabold text-[11px] h-6 px-3 rounded-lg shadow-sm"
+          >
+            Owner PIN Unlock
+          </Button>
+        </div>
+      )}
+
       {/* =====================================================
           TOP NAVIGATION BAR
       ===================================================== */}
@@ -552,7 +594,17 @@ export default function AppLayout() {
               <span className="text-[10px] font-mono font-bold text-brand-indigo/50 tracking-wider bg-brand-sand px-2 py-0.5 rounded-full border border-brand-mitti">
                 by PEAN
               </span>
-              {isPro ? (
+              {isCashierMode ? (
+                <button
+                  onClick={() => setPinModalOpen(true)}
+                  title="Cashier Counter Active · Click to Unlock as Owner"
+                  className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-md border border-amber-300 font-sans flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer animate-pulse"
+                >
+                  <Lock className="w-3.5 h-3.5 text-slate-950" />
+                  <span>Cashier ({cashierName})</span>
+                  <span className="text-[10px] bg-black/20 px-1.5 py-0.5 rounded font-mono font-semibold">Unlock</span>
+                </button>
+              ) : isPro ? (
                 <button
                   onClick={() => nav("/app/settings?tab=pro")}
                   title="Open Dukaan Pro Flagship Studio"
@@ -980,6 +1032,20 @@ export default function AppLayout() {
           })}
         </div>
       </nav>
+
+      {/* Universal Owner PIN Dialog */}
+      <OwnerPinDialog
+        isOpen={pinModalOpen}
+        onClose={() => setPinModalOpen(false)}
+        onSuccess={() => {
+          setCashierModeActive(false);
+          setIsCashierMode(false);
+          toast.success("Owner mode unlocked! Full access restored.");
+        }}
+        shopId={currentShopId || "default"}
+        title="Unlock Owner Mode"
+        description="Enter your 4-digit Owner PIN to return to full Owner Mode with all admin controls."
+      />
     </div>
   );
 }

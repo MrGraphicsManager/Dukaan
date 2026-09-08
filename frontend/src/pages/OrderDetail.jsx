@@ -159,6 +159,13 @@ export default function OrderDetail() {
             <span className="font-bold uppercase text-brand-terracotta">{o.payment_method}</span>
             <span className="text-[10px] text-emerald-700 font-bold block">Status: {o.status?.toUpperCase()}</span>
           </div>
+
+          {o.billed_by && (
+            <div className="col-span-2 pt-2 border-t border-brand-mitti/40 flex items-center justify-between text-xs text-brand-indigo/70">
+              <span className="font-medium">Billed By (Cashier):</span>
+              <span className="font-bold text-brand-indigo">{o.billed_by}</span>
+            </div>
+          )}
         </div>
 
         {/* Line Items Table */}
