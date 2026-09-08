@@ -31,6 +31,7 @@ import {
   UserPlus, 
   Crown, 
   Sliders,
+  ChevronDown,
   Printer,
   Building2,
   Lock,
@@ -222,6 +223,9 @@ export default function Landing() {
   // Mobile Drawer State
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Desktop Plans Dropdown State
+  const [plansDropdownOpen, setPlansDropdownOpen] = useState(false);
+
   // Hero Interactive Plan Switcher State
   const [activeHeroTab, setActiveHeroTab] = useState("pro"); // 'starter' | 'business' | 'premium' | 'pro' | 'studio'
   const [isPlayingHeroSoundbox, setIsPlayingHeroSoundbox] = useState(false);
@@ -364,64 +368,156 @@ export default function Landing() {
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-1.5 xl:gap-2.5 text-xs xl:text-sm font-semibold text-slate-700 shrink-0">
-            <Link 
-              to="/starter-plan" 
-              className="hover:text-emerald-700 hover:bg-emerald-50 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+          <nav className="hidden lg:flex items-center gap-2 xl:gap-3 text-xs xl:text-sm font-semibold text-slate-700 shrink-0">
+            {/* Interactive Plans Dropdown */}
+            <div 
+              className="relative"
+              onMouseEnter={() => setPlansDropdownOpen(true)}
+              onMouseLeave={() => setPlansDropdownOpen(false)}
             >
-              <span>Starter</span>
-              <span className="text-[9px] font-black bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded">₹79</span>
-            </Link>
+              <button 
+                type="button"
+                onClick={() => setPlansDropdownOpen(prev => !prev)}
+                className={`flex items-center gap-1.5 py-1.5 px-3 rounded-lg font-bold transition-all ${
+                  plansDropdownOpen ? "text-blue-600 bg-blue-50" : "text-slate-800 hover:text-blue-600 hover:bg-slate-100"
+                }`}
+              >
+                <span>Plans</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${plansDropdownOpen ? "rotate-180 text-blue-600" : "text-slate-400"}`} />
+              </button>
 
-            <Link 
-              to="/business-plan" 
-              className="hover:text-amber-800 hover:bg-amber-50 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1"
-            >
-              <span>Business</span>
-              <span className="text-[9px] font-black bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded">₹119</span>
-            </Link>
+              {/* Dropdown Menu Popover */}
+              <AnimatePresence>
+                {plansDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute top-full left-0 mt-1 w-80 bg-white rounded-2xl border border-slate-200 shadow-2xl shadow-slate-900/10 p-2.5 z-50 text-left"
+                  >
+                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2.5 py-1">
+                      Choose Your PEAN Edition
+                    </div>
+                    <div className="space-y-1 mt-1">
+                      <Link
+                        to="/starter-plan"
+                        onClick={() => setPlansDropdownOpen(false)}
+                        className="flex items-center justify-between p-2 rounded-xl hover:bg-emerald-50 text-slate-900 transition-colors group"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                            <Zap className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold group-hover:text-emerald-700 transition-colors">Starter Plan</div>
+                            <div className="text-[10px] text-slate-500">Fast POS billing</div>
+                          </div>
+                        </div>
+                        <span className="text-[11px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">₹79</span>
+                      </Link>
 
-            <Link 
-              to="/premium-plan" 
-              className="hover:text-indigo-800 hover:bg-indigo-50 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1"
-            >
-              <span>Premium</span>
-              <span className="text-[9px] font-black bg-indigo-100 text-indigo-900 px-1.5 py-0.2 rounded">₹239</span>
-            </Link>
+                      <Link
+                        to="/business-plan"
+                        onClick={() => setPlansDropdownOpen(false)}
+                        className="flex items-center justify-between p-2 rounded-xl hover:bg-amber-50 text-slate-900 transition-colors group"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                            <Sparkles className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold group-hover:text-amber-800 transition-colors">Business Plan</div>
+                            <div className="text-[10px] text-slate-500">Khata & WhatsApp reminders</div>
+                          </div>
+                        </div>
+                        <span className="text-[11px] font-black text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full">₹119</span>
+                      </Link>
 
-            <Link 
-              to="/pro-plan" 
-              className="hover:text-blue-700 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 font-bold text-blue-700"
-            >
-              <Crown className="w-3.5 h-3.5 text-blue-600" />
-              <span>Dukaan Pro</span>
-              <span className="text-[9px] font-black bg-blue-600 text-white px-1.5 py-0.2 rounded">₹499</span>
-            </Link>
+                      <Link
+                        to="/premium-plan"
+                        onClick={() => setPlansDropdownOpen(false)}
+                        className="flex items-center justify-between p-2 rounded-xl hover:bg-indigo-50 text-slate-900 transition-colors group"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-800 flex items-center justify-center shrink-0">
+                            <Building2 className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold group-hover:text-indigo-800 transition-colors">Premium Plan</div>
+                            <div className="text-[10px] text-slate-500">Multi-Shop HQ & permissions</div>
+                          </div>
+                        </div>
+                        <span className="text-[11px] font-black text-indigo-900 bg-indigo-100 px-2 py-0.5 rounded-full">₹239</span>
+                      </Link>
 
-            <Link 
-              to="/pro-studio" 
-              className="hover:text-blue-700 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 font-bold text-slate-900 border border-blue-200 bg-blue-50/50"
-            >
-              <Sliders className="w-3.5 h-3.5 text-blue-600" />
-              <span>Pro Studio</span>
-              <span className="text-[9px] font-black bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-1.5 py-0.2 rounded uppercase">New</span>
-            </Link>
+                      <Link
+                        to="/pro-plan"
+                        onClick={() => setPlansDropdownOpen(false)}
+                        className="flex items-center justify-between p-2 rounded-xl bg-blue-50/70 hover:bg-blue-100 text-slate-900 border border-blue-200 transition-colors group"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                            <Crown className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="text-xs font-black text-blue-900 flex items-center gap-1">
+                              <span>Dukaan Pro</span>
+                              <span className="text-[9px] bg-blue-600 text-white font-black px-1.5 py-0.2 rounded-full">Popular</span>
+                            </div>
+                            <div className="text-[10px] text-blue-700">1+1 Free Lifetime · 0% Fee</div>
+                          </div>
+                        </div>
+                        <span className="text-[11px] font-black text-white bg-blue-600 px-2 py-0.5 rounded-full">₹499</span>
+                      </Link>
+
+                      <Link
+                        to="/pro-studio"
+                        onClick={() => setPlansDropdownOpen(false)}
+                        className="flex items-center justify-between p-2 rounded-xl hover:bg-purple-50 text-slate-900 transition-colors group"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                            <Sliders className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold group-hover:text-purple-700 transition-colors flex items-center gap-1">
+                              <span>Pro Studio</span>
+                              <span className="text-[9px] bg-purple-600 text-white font-black px-1 rounded-sm uppercase">Suite</span>
+                            </div>
+                            <div className="text-[10px] text-slate-500">Thermal Designer & Soundbox</div>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-black text-purple-800 bg-purple-100 px-2 py-0.5 rounded-full">FREE in Pro</span>
+                      </Link>
+                    </div>
+
+                    <div className="mt-2 pt-2 border-t border-slate-100 px-2 flex items-center justify-between">
+                      <a
+                        href="#pricing"
+                        onClick={() => setPlansDropdownOpen(false)}
+                        className="text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-1"
+                      >
+                        <span>Compare all plans in detail</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </a>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             <a href="#features" className="hover:text-blue-600 px-2.5 py-1.5 rounded-lg transition-colors">Features</a>
             <a href="#pricing" className="hover:text-blue-600 px-2.5 py-1.5 rounded-lg transition-colors">Pricing</a>
             <a href="#faq" className="hover:text-blue-600 px-2.5 py-1.5 rounded-lg transition-colors">FAQ</a>
+            <Link to="/careers" className="hover:text-blue-600 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1">
+              <span>Careers</span>
+              <span className="text-[9px] font-bold bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded-full">Hiring</span>
+            </Link>
           </nav>
 
           {/* Right Action Buttons */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <Link 
-              to="/careers" 
-              className="hidden xl:inline-flex items-center gap-1 text-[11px] font-bold bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 px-2.5 py-1 rounded-full transition-colors shrink-0"
-            >
-              <Briefcase className="w-3 h-3 text-blue-600" />
-              <span>Hiring</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-ping" />
-            </Link>
 
             <Button 
               onClick={() => nav("/login")} 
@@ -1533,42 +1629,130 @@ export default function Landing() {
       {/* =========================================================
           FOOTER (A PRODUCT BY PEAN SYSTEM)
       ========================================================= */}
-      <footer className="border-t border-slate-200 bg-white py-14 text-center relative z-10">
-        <div className="max-w-6xl mx-auto px-4">
-          
-          <div className="flex items-center justify-center gap-3 mb-3">
-            <img src="/logo.png" alt="Dukaan" className="h-9 object-contain" />
-            <div className="h-6 w-px bg-slate-300" />
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-              <span className="text-slate-400 text-[10px] font-mono uppercase">A product of</span>
-              <span className="font-black text-sm tracking-tight text-slate-950">PEAN</span>
+      {/* =========================================================
+          FOOTER (A PRODUCT BY PEAN SYSTEM - CLEAN 4-COLUMN GRID)
+      ========================================================= */}
+      <footer className="border-t border-slate-200 bg-white pt-16 pb-12 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-slate-200">
+            
+            {/* Col 1 (Span 2): Brand & PEAN Ecosystem */}
+            <div className="lg:col-span-2 space-y-4">
+              <div className="flex items-center gap-2.5">
+                <img src="/logo.png" alt="Dukaan" className="h-9 w-auto object-contain" />
+                <div className="flex flex-col border-l border-slate-200 pl-2.5">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 font-mono leading-none">by</span>
+                  <span className="text-xs font-black tracking-tight text-slate-950 leading-tight">PEAN</span>
+                </div>
+              </div>
+              <p className="text-sm text-slate-500 max-w-sm font-normal leading-relaxed">
+                The high-performance Operating System for Indian Retail. Built with sub-2s offline-first POS billing, WhatsApp Khata, multi-counter sync, and thermal receipt studios.
+              </p>
+              <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-blue-50 text-blue-700 px-3 py-1 rounded-full border border-blue-100">
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                  <span>256-Bit SSL Encrypted</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full border border-emerald-100">
+                  <Server className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>99.9% Uptime SLA</span>
+                </span>
+              </div>
+              <div className="text-xs text-slate-500 pt-1">
+                Direct Merchant Helpline: <span className="font-bold text-slate-900">7016430577</span> · officialdukaan.in
+              </div>
             </div>
-          </div>
-          
-          <p className="text-xs text-slate-500 mb-8 font-medium">The Operating System for Indian Retail.</p>
-          
-          <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 mb-8 text-sm font-semibold text-slate-600">
-            <Link to="/starter-plan" className="text-emerald-700 hover:text-emerald-800 transition-colors">Starter Plan (₹79)</Link>
-            <Link to="/business-plan" className="text-amber-800 hover:text-amber-900 transition-colors">Business Plan (₹119)</Link>
-            <Link to="/premium-plan" className="text-indigo-700 hover:text-indigo-800 transition-colors">Premium Plan (₹239)</Link>
-            <Link to="/pro-plan" className="text-blue-700 hover:text-blue-800 transition-colors">Dukaan Pro Plan (₹499)</Link>
-            <Link to="/pro-studio" className="text-purple-700 hover:text-purple-800 transition-colors">Dukaan Pro Studio</Link>
-            <a href="#features" className="hover:text-blue-600 transition-colors">Features</a>
-            <a href="#pricing" className="hover:text-blue-600 transition-colors">Pricing Plans</a>
-            <a href="#faq" className="hover:text-blue-600 transition-colors">FAQ</a>
-            <Link to="/careers" className="text-blue-600 font-bold hover:underline transition-colors">Careers (We're Hiring 🚀)</Link>
-            <Link to="/privacy-policy" className="hover:text-blue-600 transition-colors">Privacy Policy</Link>
-            <Link to="/refund-policy" className="hover:text-blue-600 transition-colors">Refund Policy</Link>
+
+            {/* Col 2: Retail Plans */}
+            <div>
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 mb-4">
+                Retail Plans
+              </h4>
+              <ul className="space-y-2.5 text-sm font-medium text-slate-600">
+                <li>
+                  <Link to="/starter-plan" className="hover:text-blue-600 transition-colors flex items-center justify-between">
+                    <span>Starter Plan</span>
+                    <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded">₹79</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/business-plan" className="hover:text-blue-600 transition-colors flex items-center justify-between">
+                    <span>Business Plan</span>
+                    <span className="text-[10px] font-bold bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded">₹119</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/premium-plan" className="hover:text-blue-600 transition-colors flex items-center justify-between">
+                    <span>Premium Plan</span>
+                    <span className="text-[10px] font-bold bg-indigo-100 text-indigo-900 px-1.5 py-0.2 rounded">₹239</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/pro-plan" className="hover:text-blue-600 transition-colors flex items-center justify-between font-bold text-blue-700">
+                    <span>Dukaan Pro (1+1 Free)</span>
+                    <span className="text-[10px] font-black bg-blue-600 text-white px-1.5 py-0.2 rounded">₹499</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/pro-studio" className="hover:text-purple-700 transition-colors flex items-center justify-between text-purple-700 font-bold">
+                    <span>Dukaan Pro Studio</span>
+                    <span className="text-[9px] font-black bg-purple-100 text-purple-800 px-1.5 py-0.2 rounded uppercase">Included</span>
+                  </Link>
+                </li>
+                <li className="pt-1">
+                  <a href="#pricing" className="text-xs font-bold text-blue-600 hover:underline">
+                    Compare All Plans →
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Col 3: Platform & Features */}
+            <div>
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 mb-4">
+                Platform
+              </h4>
+              <ul className="space-y-2.5 text-sm font-medium text-slate-600">
+                <li><a href="#features" className="hover:text-blue-600 transition-colors">Sub-2s Fast POS</a></li>
+                <li><a href="#features" className="hover:text-blue-600 transition-colors">Khata & WhatsApp Reminders</a></li>
+                <li><a href="#features" className="hover:text-blue-600 transition-colors">Multi-Shop HQ Central</a></li>
+                <li><a href="#features" className="hover:text-blue-600 transition-colors">Thermal Designer & Soundbox</a></li>
+                <li><a href="#features" className="hover:text-blue-600 transition-colors">CA Audit & GST Reports</a></li>
+                <li><a href="#faq" className="hover:text-blue-600 transition-colors">Frequently Asked Questions</a></li>
+              </ul>
+            </div>
+
+            {/* Col 4: Support & Legal */}
+            <div>
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 mb-4">
+                Company & Legal
+              </h4>
+              <ul className="space-y-2.5 text-sm font-medium text-slate-600">
+                <li>
+                  <Link to="/careers" className="hover:text-blue-600 transition-colors flex items-center gap-1 font-semibold text-blue-600">
+                    <span>Careers</span>
+                    <span className="text-[9px] font-bold bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded-full">Hiring 🚀</span>
+                  </Link>
+                </li>
+                <li><Link to="/privacy-policy" className="hover:text-blue-600 transition-colors">Privacy Policy</Link></li>
+                <li><Link to="/refund-policy" className="hover:text-blue-600 transition-colors">Refund Policy</Link></li>
+                <li><a href="#faq" className="hover:text-blue-600 transition-colors">Support & Help Desk</a></li>
+                <li><a href="mailto:support@officialdukaan.in" className="hover:text-blue-600 transition-colors">Email Support</a></li>
+              </ul>
+            </div>
+
           </div>
 
-          <div className="text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-center gap-2">
-            <span className="flex items-center gap-1">
-              <span>Made with</span>
+          {/* Bottom Copyright & Identity Bar */}
+          <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 font-medium">
+            <div className="flex items-center gap-2">
+              <span>© 2026 Dukaan · A Flagship Product by PEAN. All rights reserved.</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-slate-500">
+              <span>Crafted with</span>
               <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500 inline" />
-              <span>for Indian Retailers</span>
-            </span>
-            <span className="hidden sm:inline text-slate-300">·</span>
-            <span>© 2026 Dukaan · A Product by PEAN · All rights reserved</span>
+              <span>for Indian Retailers & Vyaparis</span>
+            </div>
           </div>
 
         </div>
