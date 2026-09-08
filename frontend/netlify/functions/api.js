@@ -393,6 +393,25 @@ async function getPersistentState(force = false) {
           if (Array.isArray(json.referral_codes)) {
             referralCodes = json.referral_codes;
           }
+
+          // One-time merchant logout and verification reset (Sep 2026 strict rule)
+          const ONE_TIME_RESET_KEY = "merchant_force_reauth_reset_2026_09_09_v1";
+          if (!globalPlatformConfig[ONE_TIME_RESET_KEY]) {
+            globalPlatformConfig[ONE_TIME_RESET_KEY] = {
+              applied_at: new Date().toISOString(),
+              force_reauth_before: Date.now()
+            };
+            if (Array.isArray(registeredUsersList)) {
+              registeredUsersList.forEach(u => {
+                if (u && u.email && u.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+                  u.is_verified = false;
+                  u.email_verified = false;
+                  u.phone_verified = false;
+                }
+              });
+            }
+            savePersistentState().catch(() => {});
+          }
         }
       } catch (e) {
         console.warn("Persistent cloud state fetch error:", e.message);
@@ -951,6 +970,70 @@ exports.handler = async (event, context) => {
         ? globalPlatformConfig.verified_merchants[email] 
         : (isAdmin ? true : (existingReg?.is_verified ?? false));
 
+      if (!isAdmin) {
+        // Step 1: If email is not verified, generate code, dispatch to email, and redirect to verify-email
+        if (!isVerified || !existingReg?.email_verified) {
+          const verification_code = String(Math.floor(100000 + Math.random() * 900000));
+          const verification_token = "tok_" + Date.now() + "_" + Math.random().toString(36).substring(2, 10);
+          if (!globalPlatformConfig.email_verifications) globalPlatformConfig.email_verifications = {};
+          globalPlatformConfig.email_verifications[email] = {
+            code: String(verification_code),
+            token: String(verification_token),
+            expires_at: Date.now() + 24 * 3600 * 1000
+          };
+          if (existingReg) {
+            existingReg.verification_code = verification_code;
+            existingReg.verification_token = verification_token;
+            existingReg.is_verified = false;
+            existingReg.email_verified = false;
+          }
+          const verifyLink = `${FRONTEND_URL}/verify-email?token=${verification_token}&email=${encodeURIComponent(email)}`;
+          const html = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E8E5DF; border-radius: 16px; background-color: #FAF6F0;">
+              <h2 style="color: #1B1464; margin-bottom: 8px;">Dukaan Sign-In Verification Code</h2>
+              <p style="color: #4A4A4A; font-size: 14px; line-height: 1.5;">Please enter this 6-digit verification code to sign in to your Dukaan store:</p>
+              <div style="margin: 24px 0; text-align: center;">
+                <div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #D4623B; background: #FFFFFF; padding: 14px 28px; border-radius: 12px; border: 2px dashed #D4623B; display: inline-block;">${verification_code}</div>
+              </div>
+              <div style="text-align: center; margin: 24px 0;">
+                <a href="${verifyLink}" style="background-color: #D4623B; color: #FFFFFF; padding: 12px 28px; text-decoration: none; border-radius: 9999px; font-weight: bold; display: inline-block; font-size: 14px;">Verify Email Address</a>
+              </div>
+            </div>
+          `;
+          sendMailWithFallback({ to: email, subject: `Dukaan Sign-In Verification Code: ${verification_code}`, html }).catch(() => {});
+          await savePersistentState();
+
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              ok: true,
+              need_verification: true,
+              step: "email",
+              email,
+              message: "A 6-digit verification code has been dispatched to your email.",
+              user: { email, is_verified: false, email_verified: false }
+            })
+          };
+        }
+
+        // Step 2: If email is verified, but phone is not verified, require phone OTP verification
+        if (!existingReg?.phone_verified) {
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              ok: true,
+              need_phone_verification: true,
+              step: "phone",
+              email,
+              message: "Please verify your mobile number to continue.",
+              user: { email, is_verified: true, email_verified: true, phone_verified: false }
+            })
+          };
+        }
+      }
+
       const user = {
         id: existingReg?.id || `usr_${Date.now()}`,
         name: existingReg?.name || name,
@@ -1139,6 +1222,14 @@ exports.handler = async (event, context) => {
           is_frozen: isFrozen,
           is_verified: isVerified
         };
+
+        if (!isAdmin && (!mergedUser.is_verified || !mergedUser.phone_verified)) {
+          return {
+            statusCode: 401,
+            headers,
+            body: JSON.stringify({ detail: "Re-authentication required. Please sign in and verify your mobile number." })
+          };
+        }
 
         if (granted) {
           mergedUser.subscription = granted;

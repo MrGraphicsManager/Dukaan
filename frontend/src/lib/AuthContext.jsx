@@ -104,6 +104,36 @@ export function savePersistentUpcomingSubscription(email, upcomingSub) {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
+      // One-time session flush for all existing merchants (Sep 2026 strict rule)
+      const FLUSH_KEY = "dukaan_merchant_flush_2026_09_09_v1";
+      if (!localStorage.getItem(FLUSH_KEY)) {
+        try {
+          const raw = localStorage.getItem("dukaan_user");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && !isAdminEmail(parsed.email) && !parsed.is_admin) {
+              localStorage.removeItem("dukaan_user");
+              localStorage.removeItem("dukaan_access_token");
+            }
+          }
+          const regRaw = localStorage.getItem("dukaan_registered_users");
+          if (regRaw) {
+            let regList = JSON.parse(regRaw);
+            if (Array.isArray(regList)) {
+              regList = regList.map(u => {
+                if (u && !isAdminEmail(u.email) && !u.is_admin) {
+                  return { ...u, is_verified: false, email_verified: false, phone_verified: false };
+                }
+                return u;
+              });
+              localStorage.setItem("dukaan_registered_users", JSON.stringify(regList));
+            }
+          }
+        } catch (_) {}
+        localStorage.setItem(FLUSH_KEY, "true");
+        return null;
+      }
+
       const stored = localStorage.getItem("dukaan_user");
       if (!stored) return null;
       const parsed = JSON.parse(stored);
@@ -411,13 +441,25 @@ export function AuthProvider({ children }) {
       if (!isUserAdmin && localFound.password && localFound.password !== password) {
         return { ok: false, error: "Incorrect password. Please try again." };
       }
-      if (localFound.is_verified === false && !isUserAdmin) {
-        return {
-          ok: false,
-          error: "Please verify your email address before signing in.",
-          needVerification: true,
-          email: cleanEmail
-        };
+      if (!isUserAdmin) {
+        if (localFound.is_verified === false || localFound.email_verified === false) {
+          return {
+            ok: false,
+            error: "Please verify your email address before signing in.",
+            needVerification: true,
+            step: "email",
+            email: cleanEmail
+          };
+        }
+        if (!localFound.phone_verified) {
+          return {
+            ok: false,
+            error: "Please verify your mobile number before signing in.",
+            needPhoneVerification: true,
+            step: "phone",
+            email: cleanEmail
+          };
+        }
       }
     }
 
@@ -427,6 +469,27 @@ export function AuthProvider({ children }) {
         password,
         name: localFound?.name || undefined 
       });
+
+      if (data?.need_verification || data?.step === "email") {
+        return {
+          ok: false,
+          needVerification: true,
+          step: "email",
+          email: cleanEmail,
+          error: data?.message || "Please verify your email address to continue."
+        };
+      }
+
+      if (data?.need_phone_verification || data?.step === "phone") {
+        return {
+          ok: false,
+          needPhoneVerification: true,
+          step: "phone",
+          email: cleanEmail,
+          error: data?.message || "Please verify your mobile number to continue."
+        };
+      }
+
       if (data?.access_token) {
         localStorage.setItem("dukaan_access_token", data.access_token);
       }

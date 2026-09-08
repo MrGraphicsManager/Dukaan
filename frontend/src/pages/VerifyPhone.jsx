@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useAuth } from "@/lib/AuthContext";
+import { useAuth, getPersistentSubscription } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -35,6 +35,17 @@ export default function VerifyPhone() {
   const [err, setErr] = useState("");
   const [demoOtp, setDemoOtp] = useState("");
   const [smsActive, setSmsActive] = useState(false);
+
+  const checkHasActiveSub = () => {
+    const s = user?.subscription || getPersistentSubscription(email);
+    if (!s) return false;
+    const st = (s.status || "").toLowerCase();
+    const active = st === "active" || st === "trial" || s.is_trial === true;
+    if (!active) return false;
+    if (!s.expires_at) return true;
+    const exp = new Date(s.expires_at).getTime();
+    return !isNaN(exp) && exp > Date.now();
+  };
 
   // Countdown timer for resend
   useEffect(() => {
@@ -103,10 +114,20 @@ export default function VerifyPhone() {
 
     if (res.ok) {
       setStep(3);
-      toast.success("Mobile number verified successfully! Please choose your subscription plan.");
-      setTimeout(() => {
-        nav("/subscribe");
-      }, 1500);
+      const verifiedUser = res.user || user;
+      const sub = verifiedUser?.subscription || getPersistentSubscription(email);
+      const hasSub = (sub && (sub.status === "active" || sub.status === "trial" || sub.is_trial === true) && (!sub.expires_at || new Date(sub.expires_at).getTime() > Date.now()));
+      if (hasSub) {
+        toast.success("Mobile number verified successfully! Accessing your store dashboard...");
+        setTimeout(() => {
+          nav("/app");
+        }, 1500);
+      } else {
+        toast.success("Mobile number verified successfully! Please choose your subscription plan.");
+        setTimeout(() => {
+          nav("/subscribe");
+        }, 1500);
+      }
     } else {
       setErr(res.error || "Invalid OTP. Please check the 6-digit code and try again.");
       toast.error(res.error || "Invalid OTP code.");
@@ -187,14 +208,17 @@ export default function VerifyPhone() {
                   Mobile Verified!
                 </h2>
                 <p className="text-xs text-slate-600 font-medium">
-                  Your phone number is confirmed. Redirecting you to choose your subscription plan...
+                  {checkHasActiveSub() 
+                    ? "Your phone number is confirmed. Redirecting you to your store dashboard..."
+                    : "Your phone number is confirmed. Redirecting you to choose your subscription plan..."
+                  }
                 </p>
                 <div className="pt-2">
                   <Button
-                    onClick={() => nav("/subscribe")}
+                    onClick={() => nav(checkHasActiveSub() ? "/app" : "/subscribe")}
                     className="w-full h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-500/25"
                   >
-                    Continue to Plans <ArrowRight className="w-4 h-4 ml-2" />
+                    {checkHasActiveSub() ? "Open Dashboard" : "Continue to Plans"} <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </div>
               </div>

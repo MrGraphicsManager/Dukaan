@@ -96,10 +96,18 @@ export default function Login() {
       toast.success("Welcome back to Dukaan!");
       setShowLoader(true);
     } else {
-      if (res.needVerification) {
+      if (res.needVerification || res.step === "email") {
         setNeedVerify(true);
         setErr(res.error || "Please verify your email address to continue.");
-        toast.warning("Please verify your email first.");
+        toast.info("A 6-digit verification code has been dispatched to your email.");
+        setTimeout(() => {
+          nav(`/verify-email?email=${encodeURIComponent(email)}`);
+        }, 1200);
+      } else if (res.needPhoneVerification || res.step === "phone") {
+        toast.info("Please verify your mobile number to continue.");
+        setTimeout(() => {
+          nav(`/verify-phone?email=${encodeURIComponent(email)}`);
+        }, 1200);
       } else {
         setErr(res.error || "Invalid email or password. Please try again.");
       }
