@@ -37,14 +37,9 @@ import { useAuth } from "@/lib/AuthContext";
 import InstallAppButton from "@/components/InstallAppButton";
 import Card3D from "@/components/Card3D";
 import ThreeDHeroKiosk from "@/components/ThreeDHeroKiosk";
-import ThreeDCounterModeShowcase from "@/components/ThreeDCounterModeShowcase";
 import ThreeDBackground from "@/components/ThreeDBackground";
 import LivePosDemoSimulator from "@/components/landing/LivePosDemoSimulator";
 import DukaanProShowcase from "@/components/landing/DukaanProShowcase";
-import EngineeringJourneyRoadmap from "@/components/landing/EngineeringJourneyRoadmap";
-import RoiCalculator from "@/components/landing/RoiCalculator";
-import ShopCategoryMatcher from "@/components/landing/ShopCategoryMatcher";
-import HardwareCompatibility from "@/components/landing/HardwareCompatibility";
 import useButterSmoothScroll from "@/lib/useButterSmoothScroll";
 
 const FEATURES = [
@@ -391,9 +386,8 @@ export default function Landing() {
               <span>Dukaan Pro</span>
             </a>
             <a href="#features" className="hover:text-brand-terracotta transition-colors whitespace-nowrap">Features</a>
-            <a href="#counter-mode" className="hover:text-brand-terracotta transition-colors whitespace-nowrap">Counter (F1-F6)</a>
-            <a href="#our-story" className="hover:text-brand-terracotta transition-colors whitespace-nowrap">Our Story</a>
             <a href="#pricing" className="hover:text-brand-terracotta transition-colors whitespace-nowrap">Pricing</a>
+            <a href="#faq" className="hover:text-brand-terracotta transition-colors whitespace-nowrap">FAQ</a>
             <Link to="/careers" className="text-blue-600 font-bold hover:text-blue-700 flex items-center gap-1.5 transition-colors whitespace-nowrap">
               <Briefcase className="w-3.5 h-3.5" />
               <span>Hiring</span>
@@ -543,32 +537,6 @@ export default function Landing() {
                     </div>
                   </a>
 
-                  <a
-                    href="#counter-mode"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="p-3 rounded-xl bg-brand-sand/50 hover:bg-brand-sand border border-brand-mitti/40 flex items-center gap-2.5 transition-colors"
-                  >
-                    <Monitor className="w-4 h-4 text-brand-terracotta shrink-0" />
-                    <div className="text-left">
-                      <div className="text-xs font-bold text-brand-indigo flex items-center gap-1">
-                        <span>Counter Mode</span>
-                        <span className="text-[9px] bg-brand-terracotta text-white font-bold px-1 rounded-sm">3D</span>
-                      </div>
-                      <div className="text-[10px] text-brand-indigo/60 font-medium">Fast POS (F1-F6)</div>
-                    </div>
-                  </a>
-
-                  <a
-                    href="#our-story"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="p-3 rounded-xl bg-brand-sand/50 hover:bg-brand-sand border border-brand-mitti/40 flex items-center gap-2.5 transition-colors"
-                  >
-                    <Rocket className="w-4 h-4 text-brand-indigo shrink-0" />
-                    <div className="text-left">
-                      <div className="text-xs font-bold text-brand-indigo">Our 7-Day Story</div>
-                      <div className="text-[10px] text-brand-indigo/60 font-medium">90+ Commits</div>
-                    </div>
-                  </a>
 
                   <a
                     href="#features"
@@ -818,89 +786,6 @@ export default function Landing() {
       </Reveal>
 
       {/* =========================================================
-          3D DEDICATED COUNTER MODE SHOWCASE
-      ========================================================= */}
-      <section id="counter-mode" className="relative z-10">
-        <ThreeDCounterModeShowcase />
-      </section>
-
-      {/* =========================================================
-          SHOP CATEGORY MATCHER (v3)
-      ========================================================= */}
-      <ShopCategoryMatcher />
-
-      {/* =========================================================
-          INTERACTIVE ROI & TIME-SAVINGS CALCULATOR (v3)
-      ========================================================= */}
-      <RoiCalculator />
-
-      {/* =========================================================
-          UNIVERSAL HARDWARE COMPATIBILITY (v3)
-      ========================================================= */}
-      <HardwareCompatibility />
-
-      {/* =========================================================
-          THE 7-DAY ENGINEERING JOURNEY ROADMAP (v3)
-      ========================================================= */}
-      <EngineeringJourneyRoadmap />
-
-      {/* =========================================================
-          HOW IT WORKS (3D STEPS)
-      ========================================================= */}
-      <Reveal className="relative z-10 mx-auto max-w-6xl px-5 py-24 border-t border-brand-mitti" id="how-it-works">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-mitti bg-white text-xs font-semibold uppercase tracking-widest text-brand-terracotta mb-4">
-            Easy Setup
-          </div>
-          <h2 className="font-display text-4xl sm:text-5xl text-brand-indigo">
-            How it works
-          </h2>
-          <p className="mt-4 text-base sm:text-lg text-brand-indigo/70">
-            Start managing your Dukaan in 3 easy steps. No technical skills needed.
-          </p>
-        </div>
-
-        <motion.div variants={stagger} className="grid md:grid-cols-3 gap-8">
-          {[
-            { 
-              step: "01", 
-              title: "Create your Dukaan", 
-              desc: "Enter your shop name, contact details, and optional GST settings. Ready in 30 seconds." 
-            },
-            { 
-              step: "02", 
-              title: "Add Products & Customers", 
-              desc: "Quickly enter your inventory with selling price and low-stock alerts, or add customer khata." 
-            },
-            { 
-              step: "03", 
-              title: "Start Managing Business", 
-              desc: "Bill customers via Cash or UPI, record Udhaar, track profits, and download PDF receipts." 
-            }
-          ].map((s) => (
-            <Card3D key={s.step} depth={15} glow={true} className="w-full">
-              <div className="bg-white rounded-3xl border-2 border-brand-mitti p-8 shadow-3d-card relative text-center preserve-3d h-full flex flex-col items-center justify-between">
-                <div>
-                  <div className="w-16 h-16 rounded-2xl bg-brand-indigo text-white font-display text-2xl font-bold flex items-center justify-center mx-auto mb-6 shadow-md translate-z-20">
-                    {s.step}
-                  </div>
-                  <h3 className="font-heading text-xl font-bold text-brand-indigo mb-3 translate-z-10">
-                    {s.title}
-                  </h3>
-                  <p className="text-sm text-brand-indigo/70 leading-relaxed">
-                    {s.desc}
-                  </p>
-                </div>
-                <div className="mt-6 flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Step {s.step} Verified
-                </div>
-              </div>
-            </Card3D>
-          ))}
-        </motion.div>
-      </Reveal>
-
-      {/* =========================================================
           PRICING SECTION (3D ELEVATED CARDS)
       ========================================================= */}
       <Reveal className="relative z-10 mx-auto max-w-7xl px-5 py-24 border-t border-brand-mitti" id="pricing">
@@ -1090,8 +975,8 @@ export default function Landing() {
           <a href="#live-demo" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Live Demo</a>
           <a href="#dukaan-pro" className="text-amber-800 font-bold hover:text-amber-600 transition-colors">Dukaan Pro</a>
           <a href="#features" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Features</a>
-          <a href="#our-story" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Our 7-Day Story</a>
           <a href="#pricing" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Pricing Plans</a>
+          <a href="#faq" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">FAQ</a>
           <Link to="/subscribe" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Buy Subscription</Link>
           <Link to="/careers" className="text-blue-600 font-bold hover:underline transition-colors">Careers (We're Hiring 🚀)</Link>
           <Link to="/privacy-policy" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Privacy Policy</Link>
