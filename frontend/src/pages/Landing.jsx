@@ -343,7 +343,7 @@ export default function Landing() {
   }
 
   return (
-    <div className="min-h-screen bg-brand-sand text-brand-indigo noise relative overflow-x-hidden">
+    <div className="min-h-screen bg-brand-sand text-brand-indigo noise relative overflow-x-clip">
       
       {/* 3D Ambient Depth Canvas Background */}
       <ThreeDBackground />
