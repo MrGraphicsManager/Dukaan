@@ -2533,8 +2533,8 @@ export default function AdminSubscriptions() {
                       <div className="space-y-3">
                         <div>
                           <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
-                            <span className="text-amber-300 flex items-center gap-1.5">
-                              <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Dukaan Pro VIP (₹4,999 / yr)
+                            <span className="text-purple-300 flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5 text-purple-400" /> Dukaan Pro (₹4,999 / yr)
                             </span>
                             <span className="font-mono text-slate-300">{proCount} Merchants ({proP}%)</span>
                           </div>
@@ -2757,7 +2757,7 @@ export default function AdminSubscriptions() {
                     { id: "all", label: "All Users" },
                     { id: "google", label: "Google Accounts" },
                     { id: "verified", label: "Verified Only" },
-                    { id: "pro", label: "Pro VIP" },
+                    { id: "pro", label: "Dukaan Pro" },
                     { id: "premium", label: "Premium" },
                     { id: "business", label: "Business" },
                     { id: "starter", label: "Starter" },
@@ -4946,7 +4946,7 @@ export default function AdminSubscriptions() {
                   <SelectItem value="starter">Starter Plan (POS & Basic Inventory)</SelectItem>
                   <SelectItem value="business">Business Plan (Stock, Reports & Khata)</SelectItem>
                   <SelectItem value="premium">Premium Plan (Full Multi-Shop, Soundbox & GST)</SelectItem>
-                  <SelectItem value="pro">Dukaan Pro Plan (VIP Full Customization & 24/7 Dedicated Support)</SelectItem>
+                  <SelectItem value="pro">Dukaan Pro Plan (Full Customization & 24/7 Dedicated Support)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -5291,7 +5291,7 @@ export default function AdminSubscriptions() {
                   <SelectItem value="starter">Starter Plan (Rank 1)</SelectItem>
                   <SelectItem value="business">Business Plan (Rank 2)</SelectItem>
                   <SelectItem value="premium">Premium Plan (Rank 3)</SelectItem>
-                  <SelectItem value="pro">Dukaan Pro Plan (Rank 4 VIP)</SelectItem>
+                  <SelectItem value="pro">Dukaan Pro Plan (Rank 4 Pro Flagship)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

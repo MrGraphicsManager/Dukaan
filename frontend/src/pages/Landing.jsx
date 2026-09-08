@@ -121,7 +121,7 @@ const PLANS = [
       "Multi-Shop Headquarter Support", 
       "Full FY Tax & Profit Audit", 
       "GST Invoicing & Verification",
-      "Priority VIP Support & Soundbox"
+      "Priority Support & Soundbox"
     ] 
   },
   {
@@ -131,7 +131,7 @@ const PLANS = [
     price: 499,
     originalPrice: null,
     offerBadge: "1+1 Month Free",
-    vip: true,
+    is_pro: true,
     perks: [
       "Everything in Premium",
       "Custom Billing & Invoices",
@@ -825,13 +825,13 @@ export default function Landing() {
           {PLANS.map((p) => (
             <Card3D 
               key={p.name} 
-              depth={p.vip ? 24 : p.featured ? 22 : 12} 
+              depth={p.is_pro ? 24 : p.featured ? 22 : 12} 
               glow={true} 
               className="w-full"
             >
               <div 
                 className={`rounded-3xl p-6 sm:p-7 border-2 shadow-3d-card relative flex flex-col justify-between h-full preserve-3d ${
-                  p.vip
+                  p.is_pro
                     ? "bg-slate-950 text-white border-2 border-amber-400 shadow-xl ring-2 ring-amber-400/20"
                     : p.featured 
                     ? "bg-white text-slate-900 border-2 border-brand-terracotta shadow-xl ring-2 ring-brand-terracotta/20" 
@@ -843,14 +843,14 @@ export default function Landing() {
                     <Sparkles className="w-3.5 h-3.5" /> Most Popular
                   </div>
                 )}
-                {p.vip && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 text-[11px] font-black uppercase tracking-widest py-1.5 px-4 rounded-full shadow-md translate-z-30 flex items-center gap-1 whitespace-nowrap">
-                    <Sparkles className="w-3.5 h-3.5" /> VIP Flagship
+                {p.is_pro && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-[11px] font-black uppercase tracking-widest py-1.5 px-4 rounded-full shadow-md translate-z-30 flex items-center gap-1 whitespace-nowrap">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Flagship Plan
                   </div>
                 )}
 
                 <div>
-                  <div className={`text-xs uppercase tracking-widest font-extrabold ${p.vip ? "text-amber-400" : "text-brand-terracotta"}`}>
+                  <div className={`text-xs uppercase tracking-widest font-extrabold ${p.is_pro ? "text-amber-400" : "text-brand-terracotta"}`}>
                     {p.name} PLAN
                   </div>
 
@@ -859,7 +859,7 @@ export default function Landing() {
                     {p.originalPrice && (
                       <span className="text-base line-through text-slate-400 font-semibold">₹{p.originalPrice}</span>
                     )}
-                    <span className={`text-xs font-semibold ${p.vip ? "text-slate-400" : p.featured ? "text-slate-500" : "text-brand-indigo/50"}`}>/month</span>
+                    <span className={`text-xs font-semibold ${p.is_pro ? "text-slate-400" : p.featured ? "text-slate-500" : "text-brand-indigo/50"}`}>/month</span>
                   </div>
 
                   <div className="mt-1 flex items-center gap-2 flex-wrap">
@@ -873,20 +873,20 @@ export default function Landing() {
                         {p.offerBadge}
                       </span>
                     )}
-                    <span className={`text-[11px] font-medium ${p.vip ? "text-slate-400" : p.featured ? "text-slate-500" : "text-brand-indigo/50"}`}>
+                    <span className={`text-[11px] font-medium ${p.is_pro ? "text-slate-400" : p.featured ? "text-slate-500" : "text-brand-indigo/50"}`}>
                       {p.setup > 0 ? `+ ₹${p.setup} setup` : "Zero setup fee"}
                     </span>
                   </div>
 
-                  <div className={`my-5 h-px w-full ${p.vip ? "bg-slate-800" : p.featured ? "bg-slate-200" : "bg-brand-mitti"}`} />
+                  <div className={`my-5 h-px w-full ${p.is_pro ? "bg-slate-800" : p.featured ? "bg-slate-200" : "bg-brand-mitti"}`} />
 
                   <ul className="space-y-3 mb-8">
                     {p.perks.map((x) => (
                       <li key={x} className="flex items-start gap-2.5">
-                        <div className={`mt-0.5 rounded-full p-0.5 shrink-0 ${p.vip ? "bg-amber-400/20 text-amber-400" : p.featured ? "bg-brand-leaf/15 text-brand-leaf" : "bg-brand-leaf/10 text-brand-leaf"}`}>
+                        <div className={`mt-0.5 rounded-full p-0.5 shrink-0 ${p.is_pro ? "bg-amber-400/20 text-amber-400" : p.featured ? "bg-brand-leaf/15 text-brand-leaf" : "bg-brand-leaf/10 text-brand-leaf"}`}>
                           <Check className="w-3.5 h-3.5" />
                         </div>
-                        <span className={`text-xs sm:text-sm font-medium ${p.vip ? "text-slate-300" : p.featured ? "text-slate-700" : "text-brand-indigo/80"}`}>{x}</span>
+                        <span className={`text-xs sm:text-sm font-medium ${p.is_pro ? "text-slate-300" : p.featured ? "text-slate-700" : "text-brand-indigo/80"}`}>{x}</span>
                       </li>
                     ))}
                   </ul>
@@ -897,7 +897,7 @@ export default function Landing() {
                     onClick={() => nav(`/subscribe?plan=${(p.id || p.name).toLowerCase()}`)} 
                     data-testid={`price-cta-${(p.id || p.name).toLowerCase()}`} 
                     className={`w-full h-12 rounded-full text-sm font-bold active:scale-95 transition-all shadow-md ${
-                      p.vip
+                      p.is_pro
                         ? "bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-black"
                         : p.featured 
                         ? "bg-brand-terracotta hover:bg-brand-terracotta/90 text-white" 

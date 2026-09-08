@@ -41,6 +41,7 @@ import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
 import { useAuth } from "@/lib/AuthContext";
 import { playVoiceSoundbox } from "@/lib/soundbox";
 import { findFMCGByBarcode } from "@/lib/fmcgMasterCatalog";
+import { getProBillingSettings } from "@/lib/proCustomizations";
 
 export default function POS() {
   const nav = useNavigate();
@@ -442,13 +443,24 @@ export default function POS() {
     toast.success("Opening WhatsApp...");
   };
 
-  // Feature 16 & Feature 25: Master Bill Thermal Receipt Printer with Branding Toggle
+  // Feature 16 & Dukaan Pro Custom Billing: Master Thermal & Custom Receipt Engine
   const handlePrintReceipt = (billToPrint) => {
     const b = billToPrint || completedBill;
     if (!b) return;
+    const proBilling = getProBillingSettings(currentShopId);
     const brandingEnabled = localStorage.getItem("dukaan_receipt_branding_enabled") !== "false";
     const shopName = shop?.name || activeShop?.name || "Apni Dukaan";
     const shopPhone = shop?.phone || activeShop?.phone || "";
+    const tagline = proBilling?.tagline || "";
+    const terms = proBilling?.terms_and_conditions || "";
+    const showUpi = proBilling?.show_upi_qr;
+    const isThermalCompact = proBilling?.template === "thermal_compact";
+    const isTaxInvoice = proBilling?.template === "gst_tax";
+    const isA4 = proBilling?.template === "modern_a4";
+
+    const cust = customers.find(c => (c.id && c.id === b.customer_id) || (c.phone && b.customer_phone && c.phone === b.customer_phone));
+    const prevUdhaar = cust ? Number(cust.total_pending || 0) : 0;
+
     const itemsHtml = (b.items || []).map(it => `
       <tr>
         <td style="padding: 3px 0; text-align: left;">${it.name} x${it.qty}</td>
@@ -456,11 +468,15 @@ export default function POS() {
       </tr>
     `).join("");
 
-    const printWin = window.open("", "_blank", "width=380,height=600");
+    const printWin = window.open("", "_blank", isA4 ? "width=800,height=900" : "width=380,height=600");
     if (!printWin) {
       toast.error("Please allow popups to print thermal receipts.");
       return;
     }
+
+    const printWidth = isA4 ? "210mm" : isThermalCompact ? "58mm" : "80mm";
+    const fontSize = isThermalCompact ? "11px" : isA4 ? "14px" : "12px";
+
     printWin.document.write(`
       <!DOCTYPE html>
       <html>
@@ -468,21 +484,23 @@ export default function POS() {
           <title>Receipt #${b.order_no}</title>
           <style>
             @media print {
-              body { margin: 0; padding: 10px; font-family: 'Courier New', Courier, monospace; font-size: 12px; color: #000; width: 58mm; }
+              body { margin: 0; padding: 10px; font-family: 'Courier New', Courier, monospace; font-size: ${fontSize}; color: #000; width: ${printWidth}; }
               .center { text-align: center; }
               .dashed { border-top: 1px dashed #000; margin: 8px 0; }
               .bold { font-weight: bold; }
             }
-            body { font-family: 'Courier New', Courier, monospace; font-size: 13px; margin: 0; padding: 14px; width: 58mm; max-width: 80mm; }
+            body { font-family: 'Courier New', Courier, monospace; font-size: ${fontSize}; margin: 0; padding: 14px; width: ${printWidth}; max-width: ${isA4 ? "100%" : "80mm"}; }
             .center { text-align: center; }
             .dashed { border-top: 1px dashed #000; margin: 8px 0; }
             .bold { font-weight: bold; }
-            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+            table { width: 100%; border-collapse: collapse; font-size: ${fontSize}; }
           </style>
         </head>
         <body onload="window.print(); window.close();">
-          <div class="center bold" style="font-size: 16px;">${shopName}</div>
+          <div class="center bold" style="font-size: ${isA4 ? '20px' : '16px'};">${shopName}</div>
+          ${tagline ? `<div class="center" style="font-size: 11px; font-style: italic; color: #444;">${tagline}</div>` : ""}
           <div class="center" style="font-size: 11px;">${shopPhone ? `Ph: ${shopPhone}` : ""}</div>
+          ${isTaxInvoice ? `<div class="center bold" style="font-size: 11px; margin-top: 2px;">TAX INVOICE · GSTIN: 24ABCDE1234F1Z5</div>` : ""}
           <div class="dashed"></div>
           <div>Bill No: #${b.order_no}</div>
           <div>Date: ${new Date().toLocaleDateString("en-IN")} ${new Date().toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit' })}</div>
@@ -510,9 +528,28 @@ export default function POS() {
               <td style="text-align: right; text-transform: uppercase;">${b.payment_method}</td>
             </tr>
             ${b.change > 0 ? `<tr><td>Change Returned:</td><td style="text-align: right;">₹${b.change}</td></tr>` : ""}
+            ${(proBilling?.show_customer_balance && prevUdhaar > 0) ? `
+              <tr>
+                <td style="color: #666;">Previous Khata Dues:</td>
+                <td style="text-align: right; font-weight: bold; color: #b45309;">₹${prevUdhaar}</td>
+              </tr>
+            ` : ""}
           </table>
+          ${showUpi ? `
+            <div class="dashed"></div>
+            <div class="center" style="font-size: 10px; margin: 4px 0;">
+              <b>Scan UPI to Pay</b><br/>
+              ${shop?.upi_id ? `<span style="font-family: monospace;">UPI: ${shop.upi_id}</span>` : ""}
+            </div>
+          ` : ""}
+          ${terms ? `
+            <div class="dashed"></div>
+            <div style="font-size: 9px; color: #444; white-space: pre-line; line-height: 1.3;">
+              ${terms}
+            </div>
+          ` : ""}
           <div class="dashed"></div>
-          <div class="center">Thank you for visiting! 🙏</div>
+          <div class="center">${proBilling?.custom_footer_note || "Thank you for visiting! 🙏"}</div>
           ${brandingEnabled ? `
             <div class="center" style="font-size: 9px; margin-top: 12px; color: #555;">
               *** Powered by Dukaan · A PEAN Product ***<br/>

@@ -63,7 +63,7 @@ const TIER_PLANS = [
       "Multi-Shop Headquarter Support",
       "Full FY Tax & Profit Audit",
       "GST Invoicing & Verification",
-      "Priority VIP Support & Soundbox"
+      "Priority Support & Soundbox"
     ]
   },
   {
@@ -73,8 +73,8 @@ const TIER_PLANS = [
     originalPrice: null,
     offerBadge: "1+1 Month Free",
     setup: 0,
-    vip: true,
-    badge: "VIP Flagship",
+    is_pro: true,
+    badge: "Flagship Plan",
     features: [
       "Everything in Premium",
       "Custom Billing & Invoices",
@@ -259,7 +259,7 @@ export default function Billing() {
               <div
                 key={plan.id}
                 className={`rounded-3xl p-6 sm:p-7 border-2 transition-all flex flex-col justify-between relative ${
-                  plan.vip
+                  plan.is_pro
                     ? "bg-slate-950 text-white border-amber-400 shadow-xl ring-2 ring-amber-400/20"
                     : plan.featured 
                     ? "bg-brand-indigo text-white border-brand-indigo shadow-xl" 
@@ -271,15 +271,15 @@ export default function Billing() {
                     {plan.badge}
                   </div>
                 )}
-                {plan.vip && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 text-[10px] font-black uppercase tracking-widest px-3.5 py-1 rounded-full shadow-sm flex items-center gap-1 whitespace-nowrap">
-                    <Sparkles className="w-3 h-3" /> VIP Flagship
+                {plan.is_pro && (
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-700 to-indigo-700 text-white text-[10px] font-black uppercase tracking-widest px-3.5 py-1 rounded-full shadow-sm flex items-center gap-1 whitespace-nowrap">
+                    <Sparkles className="w-3 h-3 text-amber-300" /> Flagship Plan
                   </div>
                 )}
 
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <span className={`text-xs font-bold uppercase tracking-wider ${plan.vip ? "text-amber-400" : "text-brand-terracotta"}`}>
+                    <span className={`text-xs font-bold uppercase tracking-wider ${plan.is_pro ? "text-amber-400" : "text-brand-terracotta"}`}>
                       {plan.name}
                     </span>
                     {isCurrent && (
@@ -294,7 +294,7 @@ export default function Billing() {
                     {plan.originalPrice && (
                       <span className="text-sm line-through text-slate-400 font-semibold">₹{plan.originalPrice}</span>
                     )}
-                    <span className={`text-xs font-medium ${plan.vip ? "text-slate-400" : plan.featured ? "text-white/60" : "text-brand-indigo/50"}`}>
+                    <span className={`text-xs font-medium ${plan.is_pro ? "text-slate-400" : plan.featured ? "text-white/60" : "text-brand-indigo/50"}`}>
                       /month
                     </span>
                   </div>
@@ -310,18 +310,18 @@ export default function Billing() {
                         {plan.offerBadge}
                       </span>
                     )}
-                    <span className={`text-[11px] font-medium ${plan.vip ? "text-slate-400" : plan.featured ? "text-white/60" : "text-brand-indigo/50"}`}>
+                    <span className={`text-[11px] font-medium ${plan.is_pro ? "text-slate-400" : plan.featured ? "text-white/60" : "text-brand-indigo/50"}`}>
                       {plan.setup > 0 ? `+ ₹${plan.setup} setup` : "Zero setup fee"}
                     </span>
                   </div>
 
-                  <div className={`h-px w-full my-4 ${plan.vip ? "bg-slate-800" : plan.featured ? "bg-white/15" : "bg-brand-mitti"}`} />
+                  <div className={`h-px w-full my-4 ${plan.is_pro ? "bg-slate-800" : plan.featured ? "bg-white/15" : "bg-brand-mitti"}`} />
 
                   <ul className="space-y-3 mb-8 text-xs font-medium">
                     {plan.features.map((feat, i) => (
                       <li key={i} className="flex items-start gap-2.5">
-                        <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${plan.vip ? "text-amber-400" : plan.featured ? "text-brand-terracotta" : "text-emerald-600"}`} />
-                        <span className={plan.vip ? "text-slate-300" : plan.featured ? "text-white/90" : "text-brand-indigo/80"}>{feat}</span>
+                        <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${plan.is_pro ? "text-amber-400" : plan.featured ? "text-brand-terracotta" : "text-emerald-600"}`} />
+                        <span className={plan.is_pro ? "text-slate-300" : plan.featured ? "text-white/90" : "text-brand-indigo/80"}>{feat}</span>
                       </li>
                     ))}
                   </ul>
@@ -330,7 +330,7 @@ export default function Billing() {
                 <Button
                   onClick={() => nav(`/subscribe?plan=${plan.id}`)}
                   className={`w-full h-12 rounded-2xl font-bold text-xs shadow-sm active:scale-95 transition-all ${
-                    plan.vip
+                    plan.is_pro
                       ? "bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-black"
                       : plan.featured 
                       ? "bg-brand-terracotta hover:bg-brand-terracotta/90 text-white" 

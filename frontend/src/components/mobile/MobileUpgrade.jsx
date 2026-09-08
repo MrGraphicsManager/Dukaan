@@ -28,9 +28,9 @@ export default function MobileUpgrade({ onBack }) {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-400 text-xs font-bold">
+          <div className="flex items-center gap-1.5 px-3 py-1 bg-purple-500/10 border border-purple-500/30 rounded-full text-purple-400 text-xs font-bold">
             <Crown className="w-3.5 h-3.5" />
-            <span>Dukaan Pro VIP</span>
+            <span>Dukaan Pro</span>
           </div>
           <div className="w-10" />
         </div>
@@ -70,7 +70,7 @@ export default function MobileUpgrade({ onBack }) {
         {/* Feature List */}
         <div className="bg-slate-800/50 backdrop-blur-xs rounded-2xl p-4 border border-slate-700/60 space-y-3 mb-6">
           <div className="text-[11px] font-black text-slate-400 uppercase tracking-wider">
-            Included in Dukaan Pro VIP
+            Included in Dukaan Pro
           </div>
           {perks.map((perk, idx) => (
             <div key={idx} className="flex items-center gap-2.5 text-xs">
@@ -87,9 +87,9 @@ export default function MobileUpgrade({ onBack }) {
       <div className="space-y-3">
         <button
           onClick={() => alert("Proceeding to Razorpay checkout for ₹" + (billingCycle === "yearly" ? "4,999" : "499"))}
-          className="w-full py-3.5 bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 active:scale-98 text-slate-950 font-black text-sm rounded-xl shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2 cursor-pointer transition-all"
+          className="w-full py-3.5 bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 active:scale-98 text-white font-black text-sm rounded-xl shadow-lg shadow-purple-500/30 flex items-center justify-center gap-2 cursor-pointer transition-all"
         >
-          <span>Upgrade to Dukaan Pro VIP</span>
+          <span>Upgrade to Dukaan Pro</span>
           <ArrowRight className="w-4 h-4" />
         </button>
 

@@ -36,7 +36,8 @@ import {
   Zap,
   Target,
   Moon,
-  Share2
+  Share2,
+  Sliders
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -50,6 +51,8 @@ import {
 import { toast } from "sonner";
 import { getStoredProducts } from "@/lib/defaultProducts";
 import { getExpiryStatus } from "@/pages/Products";
+import ProDashboardCustomizer from "@/components/ProDashboardCustomizer";
+import { getProDashboardWidgets } from "@/lib/proCustomizations";
 
 export default function Dashboard() {
   const nav = useNavigate();
@@ -73,6 +76,13 @@ export default function Dashboard() {
   const [dailyTarget, setDailyTarget] = useState(25000);
   const [soundboxPlaying, setSoundboxPlaying] = useState(false);
   const [eodOpen, setEodOpen] = useState(false);
+  const [customizerOpen, setCustomizerOpen] = useState(false);
+  const [proWidgets, setProWidgets] = useState(() => getProDashboardWidgets(user?.email));
+  const isPro = Boolean(user?.is_pro || user?.subscription?.plan === "pro" || sub?.plan === "pro" || user?.is_admin);
+
+  useEffect(() => {
+    setProWidgets(getProDashboardWidgets(user?.email));
+  }, [user?.email]);
 
   const handleShareEodWhatsApp = () => {
     const todayStr = new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
@@ -486,6 +496,14 @@ export default function Dashboard() {
                 <Moon className="w-3.5 h-3.5 text-amber-300" />
                 <span>🌙 Daily EOD Closing Hisab</span>
               </Button>
+              <Button
+                variant="outline"
+                onClick={() => setCustomizerOpen(true)}
+                className="w-full h-9 rounded-xl border-purple-400/50 text-purple-200 hover:bg-purple-900/40 bg-purple-950/30 text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-xs"
+              >
+                <Sliders className="w-3.5 h-3.5 text-amber-300" />
+                <span>⚙️ Customize Widgets {isPro && <span className="text-[10px] bg-purple-500/40 px-1.5 py-0.5 rounded text-white font-mono">PRO</span>}</span>
+              </Button>
             </div>
           </div>
         </div>
@@ -494,6 +512,7 @@ export default function Dashboard() {
       {/* =========================================================
           ELEMENT 2: 4 VIBRANT NEW KPI METRIC CARDS
       ========================================================= */}
+      {proWidgets.sales_kpi !== false && (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
         
         {/* Card 1: Today's Sales */}
@@ -590,10 +609,12 @@ export default function Dashboard() {
         </div>
 
       </div>
+      )}
 
       {/* =========================================================
           ELEMENT 3: QUICK ACTION COMMAND BAR DOCK
       ========================================================= */}
+      {proWidgets.quick_actions !== false && (
       <div className="bg-white p-3.5 rounded-3xl border-2 border-brand-mitti shadow-xs flex flex-wrap items-center gap-2.5">
         <span className="text-xs font-bold uppercase tracking-wider text-brand-indigo/50 px-3 py-1 flex items-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5 text-brand-terracotta" /> Quick Actions:
@@ -643,6 +664,7 @@ export default function Dashboard() {
           <span>{soundboxPlaying ? "Announcing..." : "Soundbox Test"}</span>
         </button>
       </div>
+      )}
 
       {/* =========================================================
           FEATURE #45: MEDICINE & PHARMACY EXPIRY DATE ALERT GUARD
@@ -775,6 +797,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* ELEMENT 4: Interactive Hourly Sales Chart */}
+        {proWidgets.hourly_sales_chart !== false && (
         <div className="lg:col-span-8 bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border-2 border-brand-mitti shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
             <div>
@@ -818,9 +841,10 @@ export default function Dashboard() {
             </ResponsiveContainer>
           </div>
         </div>
+        )}
 
         {/* ELEMENT 5: Cash Drawer & Digital Payment Split Card */}
-        <div className="lg:col-span-4 bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-sm flex flex-col justify-between">
+        <div className={`${proWidgets.hourly_sales_chart !== false ? "lg:col-span-4" : "lg:col-span-12"} bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-sm flex flex-col justify-between`}>
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -902,6 +926,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* ELEMENT 6: Low Stock Urgent Action Center with 1-Tap Restock */}
+        {proWidgets.low_stock_alerts !== false && (
         <div className="lg:col-span-6 bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -967,9 +992,10 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+        )}
 
         {/* ELEMENT 7: Recent Orders Feed with Instant Invoice Print */}
-        <div className="lg:col-span-6 bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-sm">
+        <div className={`${proWidgets.low_stock_alerts !== false ? "lg:col-span-6" : "lg:col-span-12"} bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-sm`}>
           <div className="flex items-center justify-between mb-4">
             <div>
               <div className="text-xs uppercase tracking-wider font-bold text-brand-indigo/60">Live Sales Log</div>
@@ -1243,6 +1269,16 @@ export default function Dashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Pro Dashboard Layout Customizer Modal */}
+      <ProDashboardCustomizer
+        isOpen={customizerOpen}
+        onClose={() => setCustomizerOpen(false)}
+        widgets={proWidgets}
+        setWidgets={setProWidgets}
+        userEmail={user?.email}
+        isPro={isPro}
+      />
 
     </div>
   );

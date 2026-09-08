@@ -40,7 +40,7 @@ const PLANS = [
     name: "Dukaan Pro",
     price: "₹ 499",
     period: "/ month",
-    sub: "VIP Customization + 1+1 Mo Free",
+    sub: "Full Customization + 1+1 Mo Free",
     recommended: false,
   },
 ];

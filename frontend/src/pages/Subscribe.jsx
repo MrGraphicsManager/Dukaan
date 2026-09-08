@@ -104,14 +104,14 @@ const PLANS = {
       "Multi-Shop Headquarter Support",
       "Full FY Tax & Profit Audit",
       "GST Invoicing & Verification",
-      "Priority VIP Support & Soundbox"
+      "Priority Support & Soundbox"
     ],
     limitations: []
   },
   pro: {
     id: "pro",
     name: "Dukaan Pro",
-    tagline: "VIP Flagship with Complete Customization & 24/7 Dedicated Support",
+    tagline: "Flagship Plan with Complete Customization & 24/7 Dedicated Support",
     setup: 0,
     monthly: 499,
     original_monthly: 499,
@@ -121,8 +121,8 @@ const PLANS = {
     monthly_offer: "1+1 Month Free",
     annual_offer: "12+6 Month Free (Save 16.5%)",
     trial_days: 14,
-    badge: "VIP Flagship",
-    vip: true,
+    badge: "Flagship Plan",
+    is_pro: true,
     features: [
       "Everything in Premium",
       "Custom Billing & Invoice Formats",
@@ -543,7 +543,7 @@ export default function Subscribe() {
         is_pro_upgrade: true,
         expires_at: newExpiry.toISOString() 
       });
-      toast.success(`🎉 14-Day Free Dukaan Pro VIP Upgrade Activated! Valid until ${newExpiry.toLocaleDateString("en-IN")}`);
+      toast.success(`🎉 14-Day Free Dukaan Pro Upgrade Activated! Valid until ${newExpiry.toLocaleDateString("en-IN")}`);
     } catch (e) {
       console.error(e);
       toast.error("Failed to activate upgrade. Please try again.");
@@ -1001,7 +1001,7 @@ export default function Subscribe() {
 
                 {key === "pro" && !isCurrentActivePlan && !isDowngrade && (
                   <span className="absolute -top-3.5 right-4 inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider bg-gradient-to-r from-purple-700 to-indigo-700 text-white shadow-md border border-purple-300">
-                    <Sparkles className="w-3 h-3 text-amber-300" /> VIP Flagship
+                    <Sparkles className="w-3 h-3 text-amber-300" /> Flagship Plan
                   </span>
                 )}
 
@@ -1075,7 +1075,7 @@ export default function Subscribe() {
                     <div className="p-3 rounded-2xl bg-purple-50 border border-purple-200 text-purple-900 mb-4 text-left">
                       <div className="font-heading font-extrabold text-xs flex items-center gap-1">
                         <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                        <span>14 Days FREE VIP Upgrade</span>
+                        <span>14 Days FREE Pro Upgrade</span>
                       </div>
                       <div className="text-[10px] text-purple-800/80 mt-0.5 font-semibold">
                         ₹0 Activation · No ₹1 Required for Existing Trial Users
@@ -1095,7 +1095,7 @@ export default function Subscribe() {
                     <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 mb-4 text-left">
                       <div className="font-heading font-extrabold text-xs flex items-center gap-1">
                         <Zap className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>{key === "pro" ? "14 Days FREE VIP Trial" : `${value.trial_days} Days FREE Trial`}</span>
+                        <span>{key === "pro" ? "14 Days FREE Pro Trial" : `${value.trial_days} Days FREE Trial`}</span>
                       </div>
                       <div className="text-[10px] text-emerald-800/80 mt-0.5 font-medium">
                         {key === "pro" ? "₹1 Autopay · Renews after 14d (1+1 Mo Free)" : `₹1 Autopay · Renews after ${value.trial_days}d.`}
@@ -1253,7 +1253,7 @@ export default function Subscribe() {
                   {isAnnual 
                     ? "Annual Plan · No Trial · Instant 1 Year Access" 
                     : isProFreeUpgradeEligible 
-                    ? "14-Day Free VIP Upgrade (No ₹1 Required)" 
+                    ? "14-Day Free Pro Upgrade (No ₹1 Required)" 
                     : hasUsedTrial
                     ? "Monthly Plan · Instant Paid Renewal"
                     : "Monthly Plan · Free Trial with ₹1 Autopay"}
@@ -1268,7 +1268,7 @@ export default function Subscribe() {
                 {isAnnual
                   ? `Pay once for 1 full year at ₹${plan.annual} (${selected === "pro" ? "12+6 Months Free · Save 16.5%" : "Save 20%"}). Full access starts immediately.`
                   : isProFreeUpgradeEligible
-                  ? "Claim 14 days of full Dukaan Pro VIP access completely free as an existing merchant upgrade with zero payment required today."
+                  ? "Claim 14 days of full Dukaan Pro access completely free as an existing merchant upgrade with zero payment required today."
                   : hasUsedTrial
                   ? `Your trial was previously used. Activate immediate 30-day ${plan.name} access for ₹${plan.monthly}/month.`
                   : `Start your ${selected === "pro" ? 14 : plan.trial_days}-Day Free Trial today with a ₹1 Razorpay Autopay mandate verification.`
@@ -1292,7 +1292,7 @@ export default function Subscribe() {
                     </span>
                   ) : isProFreeUpgradeEligible ? (
                     <span className="font-bold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-md border border-purple-200">
-                      14-Day Free VIP Upgrade (No ₹1 Required)
+                      14-Day Free Pro Upgrade (No ₹1 Required)
                     </span>
                   ) : hasUsedTrial ? (
                     <span className="font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded-md">
@@ -1380,10 +1380,10 @@ export default function Subscribe() {
 
                 <div className="text-[11px] text-brand-indigo/60 pt-1">
                   {isAnnual ? (
-                    <span>{selected === "pro" ? "Covers 12+6 = 18 months total VIP access. Renews annually. Cancel anytime from Billing." : "Covers full 12 months. Renews annually. Cancel anytime from Billing."}</span>
+                    <span>{selected === "pro" ? "Covers 12+6 = 18 months total Pro access. Renews annually. Cancel anytime from Billing." : "Covers full 12 months. Renews annually. Cancel anytime from Billing."}</span>
                   ) : isProFreeUpgradeEligible ? (
                     <span>
-                      <b>100% Free 14-day Dukaan Pro VIP Upgrade</b> for existing merchants. Zero charge today (no ₹1 required). After 14 days, renews at ₹499/month with 1+1 month free.
+                      <b>100% Free 14-day Dukaan Pro Upgrade</b> for existing merchants. Zero charge today (no ₹1 required). After 14 days, renews at ₹499/month with 1+1 month free.
                     </span>
                   ) : hasUsedTrial ? (
                     <span>
@@ -1573,7 +1573,7 @@ function PremiumLiveAnimation({ plan, done, onOpen }) {
 
         <div className="text-xs uppercase tracking-widest font-extrabold text-brand-terracotta mb-2">
           {isProUpgrade 
-            ? "🎉 14-Day Free VIP Upgrade Active (₹0 Charge)" 
+            ? "🎉 14-Day Free Pro Upgrade Active (₹0 Charge)" 
             : isTrial 
             ? `₹1 Autopay Verified · ${plan?.trial_days || 14}-Day Trial Live` 
             : "Subscription Active"}
@@ -1585,7 +1585,7 @@ function PremiumLiveAnimation({ plan, done, onOpen }) {
 
         <p className="text-sm text-brand-indigo/75 max-w-sm mb-8 leading-relaxed font-medium">
           {isProUpgrade ? (
-            <span>Your <b>Dukaan Pro VIP 14-Day Free Upgrade</b> is now active with <b>₹0 charge</b>. Enjoy custom billing, custom dashboard, and 24/7 dedicated support!</span>
+            <span>Your <b>Dukaan Pro 14-Day Free Upgrade</b> is now active with <b>₹0 charge</b>. Enjoy custom billing, custom dashboard, and 24/7 dedicated support!</span>
           ) : isTrial ? (
             <span>Your <b>₹1 Autopay Mandate</b> is verified. Your <b>{plan?.name || "Business"} Plan</b> {plan?.trial_days}-Day Free Trial is now active.</span>
           ) : (

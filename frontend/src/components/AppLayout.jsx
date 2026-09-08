@@ -537,9 +537,13 @@ export default function AppLayout() {
                 by PEAN
               </span>
               {isPro ? (
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-gradient-to-r from-purple-700 via-indigo-600 to-brand-terracotta text-white shadow-sm border border-purple-400 font-mono flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-amber-300" /> DUKAAN PRO VIP
-                </span>
+                <button
+                  onClick={() => nav("/app/settings?tab=pro")}
+                  title="Open Dukaan Pro Flagship Studio"
+                  className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-gradient-to-r from-purple-700 via-indigo-600 to-brand-terracotta text-white shadow-sm border border-purple-400 font-mono flex items-center gap-1 hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-300" /> DUKAAN PRO
+                </button>
               ) : isPremium ? (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 text-slate-900 shadow-xs border border-amber-300 font-mono">
                   PREMIUM MERCHANT
