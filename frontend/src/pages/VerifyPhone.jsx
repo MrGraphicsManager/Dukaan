@@ -34,6 +34,7 @@ export default function VerifyPhone() {
   const [cooldown, setCooldown] = useState(0);
   const [err, setErr] = useState("");
   const [demoOtp, setDemoOtp] = useState("");
+  const [smsActive, setSmsActive] = useState(false);
 
   // Countdown timer for resend
   useEffect(() => {
@@ -69,7 +70,12 @@ export default function VerifyPhone() {
       if (res.demo_otp) {
         setDemoOtp(res.demo_otp);
       }
-      toast.success(`6-digit OTP dispatched to +91 ${cleanPhone}`);
+      setSmsActive(Boolean(res.sms_gateway_active));
+      if (res.sms_gateway_active) {
+        toast.success(`6-digit OTP sent via SMS to +91 ${cleanPhone}`);
+      } else {
+        toast.info(`6-digit OTP generated and sent to ${email || 'your email'}`);
+      }
     } else {
       setErr(res.error || "Failed to dispatch OTP. Please try again.");
       toast.error(res.error || "Failed to dispatch OTP.");
@@ -102,7 +108,7 @@ export default function VerifyPhone() {
         nav("/subscribe");
       }, 1500);
     } else {
-      setErr(res.error || "Invalid OTP. Please check the code and try again.");
+      setErr(res.error || "Invalid OTP. Please check the 6-digit code and try again.");
       toast.error(res.error || "Invalid OTP code.");
     }
   };
@@ -123,7 +129,8 @@ export default function VerifyPhone() {
       if (res.demo_otp) {
         setDemoOtp(res.demo_otp);
       }
-      toast.success("A fresh OTP has been sent to your mobile number!");
+      setSmsActive(Boolean(res.sms_gateway_active));
+      toast.success("A fresh OTP has been generated!");
     } else {
       toast.error(res.error || "Failed to resend OTP.");
     }
@@ -299,10 +306,35 @@ export default function VerifyPhone() {
                 </div>
 
                 {demoOtp && (
-                  <div className="mb-4 p-3 rounded-xl bg-blue-50 border border-blue-200 text-center">
-                    <p className="text-[11px] font-medium text-blue-700">
-                      Verification OTP: <span className="font-mono font-bold tracking-widest text-sm text-blue-900">{demoOtp}</span>
-                    </p>
+                  <div className="mb-4 p-4 rounded-2xl bg-amber-50/90 border border-amber-200 text-left">
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900">
+                        {smsActive ? "SMS Dispatched" : "OTP Code"}
+                      </span>
+                      {email && (
+                        <span className="text-[10px] font-medium text-amber-700 truncate max-w-[180px]">
+                          Backup sent to {email}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between gap-3 bg-white p-2.5 rounded-xl border border-amber-200 shadow-xs">
+                      <span className="font-mono font-black text-xl tracking-[0.3em] text-blue-950 pl-2 select-all">
+                        {demoOtp}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => setOtp(demoOtp)}
+                        className="h-8 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shrink-0"
+                      >
+                        Auto-fill
+                      </Button>
+                    </div>
+                    {!smsActive && (
+                      <p className="text-[10px] text-amber-800 mt-2 leading-tight">
+                        Note: SMS gateway is in test mode. Code is delivered to your email and shown above. Click <b>Auto-fill</b> to verify instantly.
+                      </p>
+                    )}
                   </div>
                 )}
 

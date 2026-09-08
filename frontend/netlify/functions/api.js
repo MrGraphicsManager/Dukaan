@@ -902,7 +902,15 @@ exports.handler = async (event, context) => {
         phone_verified: false,
         email_verified: false,
         is_verified: false,
+        verification_code,
+        verification_token,
         subscription: null
+      };
+      if (!globalPlatformConfig.email_verifications) globalPlatformConfig.email_verifications = {};
+      globalPlatformConfig.email_verifications[email] = {
+        code: String(verification_code),
+        token: String(verification_token),
+        expires_at: Date.now() + 24 * 3600 * 1000
       };
       recordRegisteredUser(newRegUser);
       await savePersistentState();
@@ -1191,6 +1199,19 @@ exports.handler = async (event, context) => {
         console.error("Failed to send resend email:", err);
       }
 
+      if (!globalPlatformConfig.email_verifications) globalPlatformConfig.email_verifications = {};
+      globalPlatformConfig.email_verifications[email] = {
+        code: String(verification_code),
+        token: String(verification_token),
+        expires_at: Date.now() + 24 * 3600 * 1000
+      };
+      let regU = registeredUsersList.find(u => u.email && u.email.toLowerCase() === email);
+      if (regU) {
+        regU.verification_code = verification_code;
+        regU.verification_token = verification_token;
+      }
+      await savePersistentState();
+
       return {
         statusCode: 200,
         headers,
@@ -1250,20 +1271,51 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // 4. VERIFY EMAIL
+    // 4. VERIFY EMAIL (STRICT CODE VALIDATION)
     if (path === "/auth/verify-email" && event.httpMethod === "POST") {
       await getPersistentState();
       const email = (body.email || "").trim().toLowerCase();
+      const inputCode = String(body.code || body.token || "").trim();
+
+      if (!email) {
+        return { statusCode: 400, headers, body: JSON.stringify({ detail: "Email address is required." }) };
+      }
+      if (!inputCode) {
+        return { statusCode: 400, headers, body: JSON.stringify({ detail: "Please enter the 6-digit verification code." }) };
+      }
 
       let matchedUser = registeredUsersList.find(u => u.email && u.email.toLowerCase() === email);
+      const storedVerif = globalPlatformConfig.email_verifications?.[email];
+
+      const expectedCode = storedVerif?.code || matchedUser?.verification_code;
+      const expectedToken = storedVerif?.token || matchedUser?.verification_token;
+
+      const isMatch = Boolean(
+        (expectedCode && inputCode === String(expectedCode).trim()) || 
+        (expectedToken && inputCode === String(expectedToken).trim())
+      );
+
+      if (!isMatch) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({
+            ok: false,
+            detail: "Invalid verification code. Please check your email and enter the correct 6-digit code."
+          })
+        };
+      }
+
       if (matchedUser) {
         matchedUser.is_verified = true;
         matchedUser.email_verified = true;
       }
-      if (email) {
-        recordRegisteredUser({ email, is_verified: true, email_verified: true });
-        await savePersistentState();
+      recordRegisteredUser({ email, is_verified: true, email_verified: true });
+
+      if (globalPlatformConfig.email_verifications) {
+        delete globalPlatformConfig.email_verifications[email];
       }
+      await savePersistentState();
 
       return {
         statusCode: 200,
@@ -1281,7 +1333,7 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // 4B. SEND PHONE OTP
+    // 4B. SEND PHONE OTP (FAST2SMS / AUTHKEY / EMAIL NOTIFICATION FALLBACK)
     if (path === "/auth/phone/send-otp" && event.httpMethod === "POST") {
       await getPersistentState();
       const email = (body.email || "").trim().toLowerCase();
@@ -1292,7 +1344,7 @@ exports.handler = async (event, context) => {
         return { statusCode: 400, headers, body: JSON.stringify({ detail: "Please enter a valid 10-digit mobile number." }) };
       }
 
-      // Generate 6-digit OTP
+      // Generate 6-digit numeric OTP
       const otp = String(Math.floor(100000 + Math.random() * 900000));
       if (!globalPlatformConfig.phone_otps) globalPlatformConfig.phone_otps = {};
       globalPlatformConfig.phone_otps[cleanPhone] = {
@@ -1302,7 +1354,56 @@ exports.handler = async (event, context) => {
         created_at: new Date().toISOString()
       };
 
-      // Also send via email notification as backup if email is available
+      // 1. Attempt real SMS via Fast2SMS if API key is configured
+      let smsDispatched = false;
+      const fast2smsKey = process.env.FAST2SMS_API_KEY;
+      if (fast2smsKey) {
+        try {
+          const smsPayload = {
+            route: "otp",
+            variables_values: otp,
+            numbers: cleanPhone
+          };
+          const smsRes = await safeHttpPost(
+            "https://www.fast2sms.com/dev/bulkV2",
+            smsPayload,
+            {
+              "authorization": fast2smsKey,
+              "Content-Type": "application/json"
+            },
+            5000
+          );
+          if (smsRes.ok) smsDispatched = true;
+        } catch (e) {
+          console.warn("Fast2SMS API dispatch failed:", e);
+        }
+      }
+
+      // 2. Attempt SMS/WhatsApp via AuthKey if configured
+      const authkeyKey = process.env.AUTHKEY_API_KEY;
+      if (!smsDispatched && authkeyKey) {
+        try {
+          const akPayload = {
+            country_code: "91",
+            mobile: cleanPhone,
+            message: `Your Dukaan OTP verification code is ${otp}. Valid for 10 minutes.`
+          };
+          const akRes = await safeHttpPost(
+            "https://console.authkey.io/restapi/requestjson.php",
+            akPayload,
+            {
+              "Authorization": `Basic ${authkeyKey}`,
+              "Content-Type": "application/json"
+            },
+            5000
+          );
+          if (akRes.ok) smsDispatched = true;
+        } catch (e) {
+          console.warn("AuthKey SMS dispatch failed:", e);
+        }
+      }
+
+      // 3. Send via email notification as backup / direct delivery
       if (email) {
         const html = `
           <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border-radius: 16px; background: #FAF6F0; border: 1px solid #E8E5DF;">
@@ -1311,7 +1412,7 @@ exports.handler = async (event, context) => {
             <div style="margin: 20px 0; text-align: center;">
               <div style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1B1464; background: #FFFFFF; padding: 12px 24px; border-radius: 12px; border: 2px solid #1B1464; display: inline-block;">${otp}</div>
             </div>
-            <p style="color: #777; font-size: 12px; text-align: center;">Valid for 10 minutes. Enter this code to verify your phone number.</p>
+            <p style="color: #777; font-size: 12px; text-align: center;">Valid for 10 minutes. Enter this code to complete mobile verification.</p>
           </div>
         `;
         sendMailWithFallback({
@@ -1330,12 +1431,15 @@ exports.handler = async (event, context) => {
           ok: true,
           phone: cleanPhone,
           demo_otp: otp,
-          message: `6-digit OTP dispatched to +91 ${cleanPhone}`
+          sms_gateway_active: smsDispatched,
+          message: smsDispatched 
+            ? `6-digit OTP dispatched via SMS to +91 ${cleanPhone}` 
+            : `6-digit OTP dispatched to ${email || 'email'} and ready on screen.`
         })
       };
     }
 
-    // 4C. VERIFY PHONE OTP
+    // 4C. VERIFY PHONE OTP (STRICT OTP CHECK)
     if (path === "/auth/phone/verify-otp" && event.httpMethod === "POST") {
       await getPersistentState();
       const email = (body.email || "").trim().toLowerCase();
@@ -1347,15 +1451,21 @@ exports.handler = async (event, context) => {
         return { statusCode: 400, headers, body: JSON.stringify({ detail: "Please enter a valid 10-digit mobile number." }) };
       }
       if (!inputOtp || inputOtp.length < 6) {
-        return { statusCode: 400, headers, body: JSON.stringify({ detail: "Please enter the 6-digit OTP." }) };
+        return { statusCode: 400, headers, body: JSON.stringify({ detail: "Please enter the complete 6-digit OTP." }) };
       }
 
       const stored = globalPlatformConfig.phone_otps?.[cleanPhone];
-      const isMatch = stored && stored.otp === inputOtp && stored.expires_at > Date.now();
-      const isValid = isMatch || inputOtp === "123456" || (stored && stored.otp === inputOtp);
+      const isMatch = stored && String(stored.otp).trim() === inputOtp && stored.expires_at > Date.now();
 
-      if (!isValid) {
-        return { statusCode: 400, headers, body: JSON.stringify({ detail: "Invalid or expired OTP. Please try again." }) };
+      if (!isMatch) {
+        return { 
+          statusCode: 400, 
+          headers, 
+          body: JSON.stringify({ 
+            ok: false, 
+            detail: "Invalid or expired OTP. Please check the 6-digit code and try again." 
+          }) 
+        };
       }
 
       let matchedUser = registeredUsersList.find(u => (email && u.email.toLowerCase() === email) || (u.phone && u.phone.endsWith(cleanPhone)));

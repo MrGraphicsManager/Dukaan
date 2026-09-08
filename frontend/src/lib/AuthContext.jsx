@@ -608,7 +608,13 @@ export function AuthProvider({ children }) {
 
       return { ok: true, user: verifiedUser };
     } catch (err) {
-      // Local fallback verification
+      if (err.response?.status === 400) {
+        return { 
+          ok: false, 
+          error: formatApiError(err.response?.data?.detail) || "Invalid verification code. Please check your email and try again." 
+        };
+      }
+      // Local fallback verification (offline only)
       try {
         let regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
         const idx = regUsers.findIndex(ru => ru.email.toLowerCase() === cleanEmail);
@@ -674,6 +680,7 @@ export function AuthProvider({ children }) {
         ok: true,
         phone: cleanPhone,
         demo_otp: data?.demo_otp,
+        sms_gateway_active: data?.sms_gateway_active,
         message: data?.message || `6-digit OTP dispatched to +91 ${cleanPhone}`
       };
     } catch (err) {
@@ -688,6 +695,7 @@ export function AuthProvider({ children }) {
         ok: true,
         phone: cleanPhone,
         demo_otp: mockOtp,
+        sms_gateway_active: false,
         message: `6-digit OTP dispatched to +91 ${cleanPhone}`
       };
     }
@@ -750,11 +758,17 @@ export function AuthProvider({ children }) {
       await refresh();
       return { ok: true, user: verifiedUser };
     } catch (err) {
-      // Local fallback check
+      if (err.response?.status === 400) {
+        return {
+          ok: false,
+          error: formatApiError(err.response?.data?.detail) || "Invalid or expired OTP. Please enter the correct 6-digit code."
+        };
+      }
+      // Local fallback check (offline only)
       try {
         let phoneOtps = JSON.parse(localStorage.getItem("dukaan_phone_otps") || "{}");
         const stored = phoneOtps[cleanPhone];
-        const isValid = cleanOtp === "123456" || (stored && stored.otp === cleanOtp);
+        const isValid = stored && stored.otp === cleanOtp && stored.expires_at > Date.now();
         if (isValid) {
           const verifiedUser = {
             ...(user || {}),
