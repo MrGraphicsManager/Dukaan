@@ -601,19 +601,20 @@ export default function ProPlanPage() {
             <div className="pt-4 flex flex-wrap items-center justify-center gap-4">
               <Link
                 to="/pro-studio"
-                className="h-13 px-8 rounded-full bg-white text-blue-800 hover:bg-cyan-50 font-bold text-sm shadow-lg transition-all active:scale-95 flex items-center gap-2"
+                className="h-13 px-8 rounded-full bg-white text-blue-800 hover:bg-slate-50 font-extrabold text-sm shadow-lg transition-all active:scale-95 flex items-center gap-2"
               >
-                <Sliders className="w-4 h-4 text-blue-600" />
+                <Sparkles className="w-4 h-4 text-blue-600" />
                 <span>Explore Dukaan Pro Studio</span>
                 <ArrowRight className="w-4 h-4 text-blue-600" />
               </Link>
 
               <Link
                 to="/subscribe?plan=pro"
-                className="h-13 px-8 rounded-full bg-blue-500/30 hover:bg-blue-500/50 border border-white/30 text-white font-bold text-sm transition-all active:scale-95 flex items-center gap-2"
+                className="h-13 px-8 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-sm shadow-xl shadow-amber-400/25 transition-all active:scale-95 flex items-center gap-2"
               >
-                <Crown className="w-4 h-4 text-amber-300" />
+                <Crown className="w-4 h-4 text-slate-950" />
                 <span>Get Pro Plan (₹499/mo)</span>
+                <ArrowRight className="w-4 h-4 text-slate-950" />
               </Link>
             </div>
           </div>
@@ -622,7 +623,7 @@ export default function ProPlanPage() {
       </section>
 
       {/* =========================================================
-          COMPARISON TABLE (Starter vs Business vs Pro)
+          COMPARISON TABLE (Starter vs Business vs Premium vs Pro)
       ========================================================= */}
       <section className="py-20 bg-white border-t border-slate-200">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
@@ -631,39 +632,46 @@ export default function ProPlanPage() {
               Plan Comparison
             </div>
             <h2 className="font-sans font-black text-3xl sm:text-4xl text-slate-900">
-              Compare Dukaan Plans
+              Compare All 4 Dukaan Plans
             </h2>
+            <p className="mt-2 text-slate-600 text-sm">
+              From small single-counter shops to high-volume multi-staff supermarkets.
+            </p>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left text-xs sm:text-sm">
               <thead>
                 <tr className="border-b-2 border-slate-200">
-                  <th className="py-4 px-4 font-bold text-slate-500">FEATURE</th>
-                  <th className="py-4 px-4 font-bold text-slate-700 text-center">Starter (₹79)</th>
-                  <th className="py-4 px-4 font-bold text-slate-700 text-center">Business (₹119)</th>
-                  <th className="py-4 px-4 font-black text-blue-700 text-center bg-blue-50/70 rounded-t-2xl">
+                  <th className="py-4 px-3 sm:px-4 font-bold text-slate-500">FEATURE</th>
+                  <th className="py-4 px-3 sm:px-4 font-bold text-slate-700 text-center">Starter (₹79)</th>
+                  <th className="py-4 px-3 sm:px-4 font-bold text-slate-700 text-center">Business (₹119)</th>
+                  <th className="py-4 px-3 sm:px-4 font-bold text-slate-900 text-center bg-slate-50/80">Premium (₹239)</th>
+                  <th className="py-4 px-3 sm:px-4 font-black text-blue-700 text-center bg-blue-50/70 rounded-t-2xl">
                     Dukaan Pro (₹499)
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {[
-                  { name: "Fast POS Billing & Receipts", starter: "✓", business: "✓", pro: "✓ Unlimited" },
-                  { name: "Inventory & Stock Alerts", starter: "✓", business: "✓", pro: "✓ Live Sync" },
-                  { name: "Customer Khata & WhatsApp Reminders", starter: "Basic", business: "✓ Full", pro: "✓ Priority FIFO" },
-                  { name: "Cashier Mode & Master Owner PIN", starter: "—", business: "—", pro: "✓ Full Protection" },
-                  { name: "Shift Handover Reconciliation (F9)", starter: "—", business: "—", pro: "✓ Thermal & WhatsApp" },
-                  { name: "Built-in Voice Soundbox Audio", starter: "—", business: "—", pro: "✓ Multi-language" },
-                  { name: "AI Restock Velocity Predictor", starter: "—", business: "—", pro: "✓ Included" },
-                  { name: "Dukaan Pro Studio Access", starter: "—", business: "—", pro: "✓ Full Studio Suite" },
-                  { name: "24/7 Dedicated Founder Helpline", starter: "Standard", business: "Standard", pro: "✓ VIP Priority WhatsApp" }
+                  { name: "Fast POS Billing & Receipts", starter: "✓", business: "✓", premium: "✓ Full", pro: "✓ Unlimited" },
+                  { name: "Inventory & Low Stock Alerts", starter: "✓", business: "✓", premium: "✓", pro: "✓ Live Sync" },
+                  { name: "Customer Khata & WhatsApp Reminders", starter: "Basic", business: "✓ Full", premium: "✓ Priority", pro: "✓ Priority FIFO" },
+                  { name: "Multi-Shop Headquarter Support", starter: "—", business: "—", premium: "✓ Up to 3 Shops", pro: "✓ Unlimited Multi-branch" },
+                  { name: "FY Tax & Profit Audit Reports", starter: "—", business: "Basic", premium: "✓ Full FY Audit", pro: "✓ Full Audit & AI" },
+                  { name: "Cashier Mode & Master Owner PIN", starter: "—", business: "—", premium: "—", pro: "✓ Full Protection" },
+                  { name: "Shift Handover Reconciliation (F9)", starter: "—", business: "—", premium: "—", pro: "✓ Thermal & WhatsApp" },
+                  { name: "Built-in Voice Soundbox Audio", starter: "—", business: "—", premium: "Soundbox Alerts", pro: "✓ Multi-lingual Voice" },
+                  { name: "AI Restock Velocity Predictor", starter: "—", business: "—", premium: "—", pro: "✓ SmartKirana AI" },
+                  { name: "Dukaan Pro Studio Access", starter: "—", business: "—", premium: "—", pro: "✓ Full Studio Suite" },
+                  { name: "24/7 Dedicated Support", starter: "Standard", business: "Standard", premium: "Priority Email", pro: "✓ VIP Priority WhatsApp" }
                 ].map((r, i) => (
                   <tr key={i} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-3.5 px-4 font-bold text-slate-800">{r.name}</td>
-                    <td className="py-3.5 px-4 text-center text-slate-600">{r.starter}</td>
-                    <td className="py-3.5 px-4 text-center text-slate-600">{r.business}</td>
-                    <td className="py-3.5 px-4 text-center font-extrabold text-blue-700 bg-blue-50/50">
+                    <td className="py-3.5 px-3 sm:px-4 font-bold text-slate-800">{r.name}</td>
+                    <td className="py-3.5 px-3 sm:px-4 text-center text-slate-600">{r.starter}</td>
+                    <td className="py-3.5 px-3 sm:px-4 text-center text-slate-600">{r.business}</td>
+                    <td className="py-3.5 px-3 sm:px-4 text-center font-semibold text-slate-800 bg-slate-50/50">{r.premium}</td>
+                    <td className="py-3.5 px-3 sm:px-4 text-center font-extrabold text-blue-700 bg-blue-50/50">
                       {r.pro}
                     </td>
                   </tr>
