@@ -43,6 +43,8 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundPolicy from "./pages/RefundPolicy";
 import Info from "./pages/Info.jsx";
 import Careers from "./pages/Careers";
+import ProPlanPage from "./pages/ProPlanPage";
+import ProStudioPage from "./pages/ProStudioPage";
 
 /* =========================================================
    PROTECTED ROUTES
@@ -186,10 +188,21 @@ function LaunchController() {
         element={<Careers />}
       />
       <Route
-        path="/jobs"
-        element={<Careers />}
+        path="/pro-plan"
+        element={<ProPlanPage />}
       />
-
+      <Route
+        path="/pro"
+        element={<ProPlanPage />}
+      />
+      <Route
+        path="/pro-studio"
+        element={<ProStudioPage />}
+      />
+      <Route
+        path="/studio"
+        element={<ProStudioPage />}
+      />
 
       {/* ===================================================
           AUTH (Temporarily bypassed - redirect to /app)

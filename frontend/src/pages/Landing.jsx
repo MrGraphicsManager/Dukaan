@@ -378,11 +378,15 @@ export default function Landing() {
 
           {/* Desktop Navigation Links (Clean spacing, zero overlap) */}
           <nav className="hidden lg:flex items-center gap-3.5 xl:gap-5 text-xs xl:text-sm font-semibold text-brand-indigo/80 shrink-0">
-            <a href="#dukaan-pro" className="hover:text-blue-600 transition-colors flex items-center gap-1.5 whitespace-nowrap font-bold text-blue-700 bg-blue-50/90 hover:bg-blue-100 border border-blue-200/80 px-3 py-1 rounded-full shadow-2xs">
+            <Link to="/pro-plan" className="hover:text-blue-600 transition-colors flex items-center gap-1.5 whitespace-nowrap font-bold text-blue-700">
               <Crown className="w-3.5 h-3.5 text-blue-600" />
-              <span>Pro & Studio</span>
+              <span>Pro Plan</span>
+            </Link>
+            <Link to="/pro-studio" className="hover:text-blue-600 transition-colors flex items-center gap-1.5 whitespace-nowrap font-bold text-slate-800 bg-blue-50/80 px-2.5 py-1 rounded-full border border-blue-200">
+              <Sliders className="w-3.5 h-3.5 text-blue-600" />
+              <span>Pro Studio</span>
               <span className="bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase">New</span>
-            </a>
+            </Link>
             <a href="#features" className="hover:text-brand-terracotta transition-colors whitespace-nowrap">Features</a>
             <a href="#pricing" className="hover:text-brand-terracotta transition-colors whitespace-nowrap">Pricing</a>
             <a href="#faq" className="hover:text-brand-terracotta transition-colors whitespace-nowrap">FAQ</a>
@@ -505,20 +509,35 @@ export default function Landing() {
                 <div className="grid grid-cols-2 gap-2.5">
 
 
-                  <a
-                    href="#dukaan-pro"
+                  <Link
+                    to="/pro-plan"
                     onClick={() => setMobileMenuOpen(false)}
                     className="p-3 rounded-xl bg-blue-50 text-blue-900 hover:bg-blue-100 border border-blue-200 flex items-center gap-2.5 transition-colors"
                   >
                     <Crown className="w-4 h-4 text-blue-600 shrink-0" />
                     <div className="text-left">
                       <div className="text-xs font-bold text-blue-950 flex items-center gap-1">
-                        <span>Pro & Studio</span>
-                        <span className="text-[9px] bg-blue-600 text-white font-black px-1 rounded-sm">NEW</span>
+                        <span>Pro Plan</span>
+                        <span className="text-[9px] bg-blue-600 text-white font-black px-1 rounded-sm">₹499</span>
                       </div>
-                      <div className="text-[10px] text-blue-700/70 font-medium">Custom Invoices & PIN</div>
+                      <div className="text-[10px] text-blue-700/70 font-medium">PIN & Shift F9</div>
                     </div>
-                  </a>
+                  </Link>
+
+                  <Link
+                    to="/pro-studio"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="p-3 rounded-xl bg-indigo-50 text-indigo-950 hover:bg-indigo-100 border border-indigo-200 flex items-center gap-2.5 transition-colors"
+                  >
+                    <Sliders className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <div className="text-left">
+                      <div className="text-xs font-bold text-indigo-950 flex items-center gap-1">
+                        <span>Pro Studio</span>
+                        <span className="text-[9px] bg-indigo-600 text-white font-black px-1 rounded-sm">NEW</span>
+                      </div>
+                      <div className="text-[10px] text-indigo-700/70 font-medium">Receipt Customizer</div>
+                    </div>
+                  </Link>
 
 
                   <a
@@ -655,21 +674,22 @@ export default function Landing() {
           {/* Clean 2-Button CTA Row */}
           <div className="mt-7 flex flex-wrap gap-4 items-center">
             <Link 
-              to="/subscribe?plan=pro" 
+              to="/pro-plan" 
               className="h-14 px-8 text-base rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold active:scale-95 transition-all shadow-lg shadow-blue-500/25 flex items-center gap-2"
             >
               <Crown className="w-4 h-4 text-amber-300" />
-              <span>Get Dukaan Pro (₹499/mo)</span>
+              <span>Explore Pro Plan</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
 
-            <a 
-              href="#dukaan-pro"
+            <Link 
+              to="/pro-studio"
               className="h-14 px-7 text-base rounded-full border-2 border-slate-200 hover:border-blue-600 bg-white hover:bg-blue-50/50 text-slate-800 hover:text-blue-700 font-bold active:scale-95 transition-all shadow-xs flex items-center gap-2"
             >
               <Sliders className="w-4 h-4 text-blue-600" />
-              <span>Explore Pro Studio ↓</span>
-            </a>
+              <span>Explore Pro Studio</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
 
           {/* Trust Points */}
@@ -941,7 +961,8 @@ export default function Landing() {
         </div>
         <p className="text-xs text-brand-indigo/60 mb-6 font-medium">Run Your Dukaan. Smarter.</p>
         <div className="flex flex-wrap items-center justify-center gap-5 md:gap-7 mb-8 text-sm font-medium">
-          <a href="#dukaan-pro" className="text-blue-700 font-bold hover:text-blue-800 transition-colors">Dukaan Pro & Studio</a>
+          <Link to="/pro-plan" className="text-blue-700 font-bold hover:text-blue-800 transition-colors">Dukaan Pro Plan</Link>
+          <Link to="/pro-studio" className="text-blue-700 font-bold hover:text-blue-800 transition-colors">Dukaan Pro Studio</Link>
           <a href="#features" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Features</a>
           <a href="#pricing" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Pricing Plans</a>
           <a href="#faq" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">FAQ</a>
