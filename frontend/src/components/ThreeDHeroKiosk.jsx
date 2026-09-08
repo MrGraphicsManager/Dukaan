@@ -117,23 +117,23 @@ export default function ThreeDHeroKiosk() {
           </div>
 
           {/* =========================================================
-              LAYER 2 (POS Terminal Monitor - Elevated)
+              LAYER 2 (POS Terminal Monitor - Elevated Light Theme)
           ========================================================= */}
           <div
-            className="relative z-10 m-5 p-6 bg-brand-indigo text-white rounded-3xl border border-brand-indigo/40 shadow-xl overflow-hidden preserve-3d"
+            className="relative z-10 m-5 p-6 bg-white text-slate-900 rounded-3xl border-2 border-brand-mitti shadow-xl overflow-hidden preserve-3d"
             style={{ transform: "translateZ(45px)" }}
           >
             {/* Terminal Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-white/15">
+            <div className="flex items-center justify-between pb-4 border-b border-brand-mitti">
               <div className="flex items-center gap-2.5">
-                <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping" />
+                <span className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
                 <div>
-                  <div className="font-display font-bold text-lg tracking-tight leading-none text-white">Dukaan POS</div>
-                  <div className="text-[10px] text-white/60 font-mono tracking-wider">COUNTER TERMINAL #01</div>
+                  <div className="font-display font-bold text-lg tracking-tight leading-none text-brand-indigo">Dukaan POS</div>
+                  <div className="text-[10px] text-brand-indigo/50 font-mono tracking-wider">COUNTER TERMINAL #01</div>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full text-xs font-semibold text-emerald-300">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Ready to Bill
+              <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full text-xs font-semibold text-emerald-800">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Ready to Bill
               </div>
             </div>
 
@@ -142,29 +142,29 @@ export default function ThreeDHeroKiosk() {
               {liveItems.map((item, idx) => (
                 <div 
                   key={idx} 
-                  className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+                  className="flex items-center justify-between py-1.5 px-2.5 rounded-xl bg-brand-sand/60 border border-brand-mitti/50 hover:bg-brand-sand transition-colors"
                 >
-                  <span className="truncate max-w-[200px] text-white/90">{item.name}</span>
+                  <span className="truncate max-w-[200px] text-brand-indigo font-bold">{item.name}</span>
                   <div className="flex items-center gap-3">
-                    <span className="text-white/50">x{item.qty}</span>
-                    <span className="font-semibold text-white">₹{item.price}</span>
+                    <span className="text-brand-indigo/50">x{item.qty}</span>
+                    <span className="font-extrabold text-brand-terracotta">₹{item.price}</span>
                   </div>
                 </div>
               ))}
             </div>
 
             {/* Total Section */}
-            <div className="pt-3 border-t border-white/15 flex items-center justify-between">
+            <div className="pt-3 border-t border-brand-mitti flex items-center justify-between">
               <div>
-                <div className="text-[10px] uppercase font-bold text-white/50 tracking-wider">Bill Total (4 items)</div>
-                <div className="font-heading text-3xl font-extrabold text-white tracking-tight">₹{billTotal}</div>
+                <div className="text-[10px] uppercase font-bold text-brand-indigo/50 tracking-wider">Bill Total (4 items)</div>
+                <div className="font-heading text-3xl font-extrabold text-brand-indigo tracking-tight">₹{billTotal}</div>
               </div>
               <div className="flex items-center gap-2">
                 <span className="flex items-center gap-1 bg-brand-terracotta text-white px-3 py-1.5 rounded-xl font-bold text-xs shadow-md">
                   <Banknote className="w-3.5 h-3.5" /> Cash
                 </span>
-                <span className="flex items-center gap-1 bg-white text-brand-indigo px-3 py-1.5 rounded-xl font-bold text-xs shadow-md">
-                  <QrCode className="w-3.5 h-3.5 text-brand-terracotta" /> UPI
+                <span className="flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-xl font-bold text-xs shadow-xs">
+                  <QrCode className="w-3.5 h-3.5 text-blue-600" /> UPI
                 </span>
               </div>
             </div>

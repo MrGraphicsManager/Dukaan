@@ -15,6 +15,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Card3D from "@/components/Card3D";
 
 const DEMO_PRODUCTS = [
   { id: "p1", name: "Amul Butter 100g", price: 65, category: "Dairy", emoji: "🧈" },
@@ -81,18 +82,20 @@ export default function LivePosDemoSimulator() {
       {/* Header */}
       <div className="text-center max-w-2xl mx-auto mb-12">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-brand-mitti bg-white text-xs font-semibold uppercase tracking-widest text-brand-terracotta shadow-xs mb-3">
-          <Zap className="w-3.5 h-3.5" /> Interactive Sandbox
+          <Zap className="w-3.5 h-3.5 text-brand-terracotta" />
+          <span>Interactive 3D Sandbox</span>
         </div>
         <h2 className="font-display text-3xl sm:text-5xl font-bold tracking-tight text-brand-indigo">
           Try The POS Counter Live
         </h2>
         <p className="mt-3 text-sm sm:text-base text-brand-indigo/70 font-medium">
-          Tap items below, test payment modes, and experience how Dukaan generates bills in under 2 seconds.
+          Experience 3D counter physics, tap items, test payment modes, and watch Dukaan generate bills in under 2 seconds.
         </p>
       </div>
 
-      {/* Simulator Terminal Card */}
-      <div className="bg-white rounded-3xl border-2 border-brand-mitti shadow-xl overflow-hidden grid lg:grid-cols-12">
+      {/* Simulator 3D Terminal Card */}
+      <Card3D depth={10} glow={true} className="w-full">
+        <div className="bg-white rounded-3xl border-2 border-brand-mitti shadow-xl overflow-hidden grid lg:grid-cols-12 preserve-3d">
         
         {/* Left: Product Catalog Grid (7 cols) */}
         <div className="lg:col-span-7 p-6 sm:p-8 border-b lg:border-b-0 lg:border-r border-brand-mitti bg-brand-sand/30">
@@ -269,40 +272,41 @@ export default function LivePosDemoSimulator() {
             </Button>
           </div>
 
-          {/* Simulated Printed Thermal Slip Pop-up / Drawer */}
+          {/* Simulated Printed Thermal Slip Pop-up / Drawer (Pure Light Theme Thermal Paper) */}
           {printedSlip && (
-            <div className="absolute inset-x-4 top-12 bottom-4 bg-slate-900/95 backdrop-blur-md rounded-2xl p-5 text-white flex flex-col justify-between border-2 border-amber-400 shadow-2xl animate-in zoom-in-95 duration-200 z-20">
-              <div className="text-center pb-2 border-b border-dashed border-slate-700">
-                <div className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-800 mb-1">
-                  <CheckCircle2 className="w-3 h-3" /> Bill Generated in {billingSpeed}
+            <div className="absolute inset-x-3 sm:inset-x-6 top-6 bottom-6 bg-[#FCFBF7] rounded-2xl p-5 text-slate-800 flex flex-col justify-between border-2 border-brand-indigo/30 shadow-2xl animate-in zoom-in-95 duration-200 z-20 font-mono">
+              {/* Receipt Header */}
+              <div className="text-center pb-2.5 border-b-2 border-dashed border-slate-300">
+                <div className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 mb-1.5 font-sans">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-700" /> Bill Printed in {billingSpeed}
                 </div>
-                <div className="font-mono font-bold text-sm tracking-wider text-amber-300 uppercase">
+                <div className="font-bold text-base tracking-wider text-brand-indigo uppercase">
                   APNI DUKAAN KIRANA
                 </div>
-                <div className="text-[10px] text-slate-400 font-mono">Bill #OD-8842 · Paid via {paymentMethod.toUpperCase()}</div>
+                <div className="text-[10px] text-slate-500">Bill #OD-8842 · Paid via {paymentMethod.toUpperCase()} · 58mm POS</div>
               </div>
 
               {/* Thermal Receipt Lines */}
-              <div className="my-auto py-2 font-mono text-xs space-y-1">
+              <div className="my-auto py-3 text-xs space-y-1.5">
                 {cart.map(it => (
-                  <div key={it.id} className="flex justify-between text-slate-300 text-[11px]">
-                    <span>{it.name} x{it.qty}</span>
-                    <span>₹{it.price * it.qty}</span>
+                  <div key={it.id} className="flex justify-between text-slate-700 text-[11px]">
+                    <span className="font-medium">{it.name} x{it.qty}</span>
+                    <span className="font-bold">₹{it.price * it.qty}</span>
                   </div>
                 ))}
-                <div className="pt-2 border-t border-dashed border-slate-700 flex justify-between font-bold text-white text-sm">
+                <div className="pt-2.5 border-t-2 border-dashed border-slate-300 flex justify-between font-extrabold text-slate-900 text-sm">
                   <span>NET TOTAL:</span>
-                  <span>₹{subtotal}</span>
+                  <span className="text-brand-terracotta">₹{subtotal}</span>
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-slate-700 space-y-2">
-                <div className="text-center text-[10px] text-slate-400 font-mono">
-                  Thank you! Visit Again. (58mm/80mm Ready)
+              <div className="pt-2 border-t border-slate-200 space-y-2 font-sans">
+                <div className="text-center text-[10px] text-slate-500 font-mono">
+                  *** Thank you! Visit Again ***
                 </div>
                 <button
                   onClick={() => setPrintedSlip(false)}
-                  className="w-full py-2 rounded-xl bg-white text-slate-900 font-bold text-xs hover:bg-slate-100 transition-all flex items-center justify-center gap-1.5"
+                  className="w-full py-2.5 rounded-xl bg-brand-indigo hover:bg-brand-indigo/90 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-md active:scale-95"
                 >
                   <span>Close Receipt & Continue</span>
                   <ArrowRight className="w-3 h-3" />
@@ -313,7 +317,8 @@ export default function LivePosDemoSimulator() {
 
         </div>
 
-      </div>
+        </div>
+      </Card3D>
     </section>
   );
 }

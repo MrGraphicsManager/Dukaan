@@ -11,6 +11,7 @@ import {
   Zap,
   Server
 } from "lucide-react";
+import Card3D from "@/components/Card3D";
 
 const MILESTONES = [
   {
@@ -93,38 +94,39 @@ export default function EngineeringJourneyRoadmap() {
       {/* Horizontal / Grid Roadmap Stages */}
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 mb-14">
         {MILESTONES.map((m, idx) => (
-          <div 
-            key={m.days} 
-            className="p-6 rounded-3xl bg-white border-2 border-brand-mitti hover:border-brand-terracotta/40 hover:shadow-md transition-all flex flex-col justify-between relative group"
-          >
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <span className="font-mono font-extrabold text-xs text-brand-terracotta bg-brand-terracotta/10 px-2.5 py-1 rounded-full">
-                  {m.days}
-                </span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">
-                  STAGE 0{idx + 1}
-                </span>
+          <Card3D key={m.days} depth={14} glow={true} className="w-full">
+            <div 
+              className="p-6 rounded-3xl bg-white border-2 border-brand-mitti hover:border-brand-terracotta/40 transition-all flex flex-col justify-between h-full relative group preserve-3d"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-mono font-extrabold text-xs text-brand-terracotta bg-brand-terracotta/10 px-2.5 py-1 rounded-full">
+                    {m.days}
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">
+                    STAGE 0{idx + 1}
+                  </span>
+                </div>
+
+                <h3 className="font-heading text-lg font-bold text-brand-indigo mb-2">
+                  {m.title}
+                </h3>
+                <p className="text-xs text-brand-indigo/70 leading-relaxed">
+                  {m.desc}
+                </p>
               </div>
 
-              <h3 className="font-heading text-lg font-bold text-brand-indigo mb-2">
-                {m.title}
-              </h3>
-              <p className="text-xs text-brand-indigo/70 leading-relaxed">
-                {m.desc}
-              </p>
+              <div className="mt-5 pt-3 border-t border-brand-mitti/60 flex items-center justify-between text-[11px] font-bold text-emerald-700">
+                <span className="flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Verified</span>
+                </span>
+                <span className="text-brand-indigo/50 font-mono text-[10px] bg-brand-sand px-2 py-0.5 rounded">
+                  {m.badge}
+                </span>
+              </div>
             </div>
-
-            <div className="mt-5 pt-3 border-t border-brand-mitti/60 flex items-center justify-between text-[11px] font-bold text-emerald-700">
-              <span className="flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Verified</span>
-              </span>
-              <span className="text-brand-indigo/50 font-mono text-[10px] bg-brand-sand px-2 py-0.5 rounded">
-                {m.badge}
-              </span>
-            </div>
-          </div>
+          </Card3D>
         ))}
       </div>
 

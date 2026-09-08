@@ -9,6 +9,7 @@ import {
   Zap,
   Usb
 } from "lucide-react";
+import Card3D from "@/components/Card3D";
 
 const HARDWARE_ITEMS = [
   {
@@ -62,37 +63,36 @@ export default function HardwareCompatibility() {
         {HARDWARE_ITEMS.map((item) => {
           const Icon = item.icon;
           return (
-            <div 
-              key={item.title}
-              className="p-6 rounded-3xl bg-white border-2 border-brand-mitti shadow-xs hover:border-brand-indigo/30 hover:shadow-md transition-all flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 rounded-2xl bg-brand-sand border border-brand-mitti flex items-center justify-center text-brand-terracotta shadow-xs">
-                    <Icon className="w-6 h-6" />
+            <Card3D key={item.title} depth={14} glow={true} className="w-full">
+              <div className="p-6 rounded-3xl bg-white border-2 border-brand-mitti shadow-xs hover:border-brand-indigo/30 transition-all flex flex-col justify-between h-full preserve-3d">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 rounded-2xl bg-brand-sand border border-brand-mitti flex items-center justify-center text-brand-terracotta shadow-xs translate-z-10">
+                      <Icon className="w-6 h-6" />
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                      {item.tag}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                    {item.tag}
-                  </span>
+
+                  <h3 className="font-heading font-extrabold text-base text-brand-indigo translate-z-10">
+                    {item.title}
+                  </h3>
+                  <div className="text-[11px] font-bold text-brand-terracotta mt-0.5 font-mono">
+                    {item.sub}
+                  </div>
+
+                  <p className="text-xs text-brand-indigo/70 mt-2.5 leading-relaxed">
+                    {item.desc}
+                  </p>
                 </div>
 
-                <h3 className="font-heading font-extrabold text-base text-brand-indigo">
-                  {item.title}
-                </h3>
-                <div className="text-[11px] font-bold text-brand-terracotta mt-0.5 font-mono">
-                  {item.sub}
+                <div className="mt-5 pt-3 border-t border-brand-mitti/60 flex items-center gap-1.5 text-[11px] font-bold text-brand-indigo/70">
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>100% Tested & Certified</span>
                 </div>
-
-                <p className="text-xs text-brand-indigo/70 mt-2.5 leading-relaxed">
-                  {item.desc}
-                </p>
               </div>
-
-              <div className="mt-5 pt-3 border-t border-brand-mitti/60 flex items-center gap-1.5 text-[11px] font-bold text-brand-indigo/70">
-                <Check className="w-3.5 h-3.5 text-emerald-600" />
-                <span>100% Tested & Certified</span>
-              </div>
-            </div>
+            </Card3D>
           );
         })}
       </div>

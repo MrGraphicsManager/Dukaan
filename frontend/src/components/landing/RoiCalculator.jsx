@@ -9,6 +9,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import Card3D from "@/components/Card3D";
 
 export default function RoiCalculator() {
   const [dailyCustomers, setDailyCustomers] = useState(120);
@@ -39,7 +40,8 @@ export default function RoiCalculator() {
         </p>
       </div>
 
-      <div className="bg-white rounded-3xl border-2 border-brand-mitti p-7 sm:p-10 shadow-xl max-w-4xl mx-auto">
+      <Card3D depth={12} glow={true} className="max-w-4xl mx-auto w-full">
+        <div className="bg-white rounded-3xl border-2 border-brand-mitti p-7 sm:p-10 shadow-xl preserve-3d">
         
         {/* Slider Controls */}
         <div className="space-y-4 pb-8 border-b border-brand-mitti">
@@ -145,6 +147,7 @@ export default function RoiCalculator() {
         </div>
 
       </div>
+      </Card3D>
 
     </section>
   );

@@ -10,6 +10,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import Card3D from "@/components/Card3D";
 
 const CATEGORIES = [
   {
@@ -113,7 +114,8 @@ export default function ShopCategoryMatcher() {
       </div>
 
       {/* Active Category Feature Showcase Card */}
-      <div className="bg-white rounded-3xl border-2 border-brand-mitti p-7 sm:p-10 shadow-xl grid lg:grid-cols-12 gap-8 items-center">
+      <Card3D depth={12} glow={true} className="w-full">
+        <div className="bg-white rounded-3xl border-2 border-brand-mitti p-7 sm:p-10 shadow-xl grid lg:grid-cols-12 gap-8 items-center preserve-3d">
         
         <div className="lg:col-span-7 space-y-4">
           <div className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-terracotta bg-brand-terracotta/10 px-3 py-1 rounded-full">
@@ -165,7 +167,8 @@ export default function ShopCategoryMatcher() {
           </div>
         </div>
 
-      </div>
+        </div>
+      </Card3D>
 
     </section>
   );
