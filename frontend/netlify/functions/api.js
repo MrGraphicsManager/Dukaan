@@ -446,11 +446,18 @@ async function savePersistentState(extraConfig = {}) {
 
 function recordRegisteredUser(userObj) {
   if (!userObj || !userObj.email) return;
-  const email = userObj.email.toLowerCase();
+  const email = userObj.email.toLowerCase().trim();
   const existing = registeredUsersList.find(u => u.email.toLowerCase() === email);
   if (existing) {
     if (userObj.name) existing.name = userObj.name;
-    if (userObj.subscription) existing.subscription = userObj.subscription;
+    if (userObj.subscription) {
+      const exExp = existing.subscription?.expires_at ? new Date(existing.subscription.expires_at).getTime() : 0;
+      const newExp = userObj.subscription?.expires_at ? new Date(userObj.subscription.expires_at).getTime() : 0;
+      if (newExp >= exExp || !existing.subscription) {
+        existing.subscription = userObj.subscription;
+      }
+    }
+    if (userObj.upcoming_subscription !== undefined) existing.upcoming_subscription = userObj.upcoming_subscription;
     if (userObj.is_verified !== undefined) existing.is_verified = userObj.is_verified;
     if (userObj.is_frozen !== undefined) existing.is_frozen = userObj.is_frozen;
     if (userObj.provider) existing.provider = userObj.provider;
@@ -464,8 +471,19 @@ function recordRegisteredUser(userObj) {
       is_verified: userObj.is_verified !== undefined ? userObj.is_verified : true,
       is_frozen: userObj.is_frozen || false,
       subscription: userObj.subscription || { plan: "starter", status: "active" },
+      upcoming_subscription: userObj.upcoming_subscription || null,
       created_at: new Date().toISOString()
     });
+  }
+
+  if (userObj.subscription?.expires_at) {
+    if (!globalPlatformConfig.granted_subscriptions) globalPlatformConfig.granted_subscriptions = {};
+    const curG = globalPlatformConfig.granted_subscriptions[email];
+    const curGExp = curG?.expires_at ? new Date(curG.expires_at).getTime() : 0;
+    const newExp = new Date(userObj.subscription.expires_at).getTime();
+    if (newExp >= curGExp) {
+      globalPlatformConfig.granted_subscriptions[email] = userObj.subscription;
+    }
   }
 }
 
@@ -923,7 +941,7 @@ exports.handler = async (event, context) => {
       };
 
       recordRegisteredUser(user);
-      savePersistentState().catch(() => {});
+      await savePersistentState();
 
       const token = makeToken(user);
       return {
@@ -1004,7 +1022,7 @@ exports.handler = async (event, context) => {
       };
 
       recordRegisteredUser(user);
-      savePersistentState().catch(() => {});
+      await savePersistentState();
 
       const token = makeToken(user);
       return {
@@ -1258,7 +1276,7 @@ exports.handler = async (event, context) => {
       };
 
       recordRegisteredUser(user);
-      savePersistentState().catch(() => {});
+      await savePersistentState();
 
       const token = makeToken(user);
 
@@ -1342,7 +1360,7 @@ exports.handler = async (event, context) => {
         if (!globalPlatformConfig.granted_subscriptions) globalPlatformConfig.granted_subscriptions = {};
         globalPlatformConfig.granted_subscriptions[email] = subscription;
         recordRegisteredUser({ email, subscription, is_verified: true });
-        savePersistentState().catch(() => {});
+        await savePersistentState();
       }
       user.subscription = subscription;
       if (plan === "premium" || plan === "pro") user.is_premium = true;
@@ -1388,7 +1406,36 @@ exports.handler = async (event, context) => {
       if (isCurrentlyActive && !body.instant_activate) {
         subscription = currentActive;
 
-        if (!upcomingSub) {
+        const existingQueued = globalPlatformConfig.queued_subscriptions?.[email];
+        let totalDurationDays = durationDays;
+        let totalAmountPaid = Number(body.amount) || (plan === "pro" ? 499 : plan === "premium" ? 239 : plan === "business" ? 119 : 79);
+        let cycleCount = 1;
+
+        if (body.upcoming_subscription) {
+          upcomingSub = body.upcoming_subscription;
+        } else if (existingQueued && existingQueued.plan === plan) {
+          totalDurationDays = (Number(existingQueued.duration_days) || (existingQueued.plan === "pro" ? 60 : 30)) + durationDays;
+          totalAmountPaid = (Number(existingQueued.amount_paid) || 0) + totalAmountPaid;
+          cycleCount = (Number(existingQueued.cycle_count) || 1) + 1;
+
+          const startsAt = currentActive.expires_at;
+          const expiresAt = new Date(curExp + totalDurationDays * 86400000).toISOString();
+
+          upcomingSub = {
+            plan,
+            plan_name: body.plan_name || (plan.charAt(0).toUpperCase() + plan.slice(1)),
+            status: "scheduled",
+            is_annual: isAnnual,
+            starts_at: startsAt,
+            expires_at: expiresAt,
+            duration_days: totalDurationDays,
+            cycle_count: cycleCount,
+            amount_paid: totalAmountPaid,
+            paid_at: new Date().toISOString(),
+            razorpay_order_id: body.razorpay_order_id || null,
+            razorpay_payment_id: body.razorpay_payment_id || `pay_rzp_${Date.now()}`
+          };
+        } else {
           upcomingSub = {
             plan,
             plan_name: body.plan_name || (plan.charAt(0).toUpperCase() + plan.slice(1)),
@@ -1397,12 +1444,14 @@ exports.handler = async (event, context) => {
             starts_at: currentActive.expires_at,
             expires_at: new Date(curExp + durationDays * 86400000).toISOString(),
             duration_days: durationDays,
-            amount_paid: body.amount || (plan === "pro" ? 499 : plan === "premium" ? 239 : plan === "business" ? 119 : 79),
+            cycle_count: 1,
+            amount_paid: totalAmountPaid,
             paid_at: new Date().toISOString(),
             razorpay_order_id: body.razorpay_order_id || null,
             razorpay_payment_id: body.razorpay_payment_id || `pay_rzp_${Date.now()}`
           };
         }
+
         if (email) {
           globalPlatformConfig.queued_subscriptions[email] = upcomingSub;
         }
@@ -1438,7 +1487,7 @@ exports.handler = async (event, context) => {
         user.email = email;
         recordRegisteredUser({ email, subscription, upcoming_subscription: upcomingSub, is_verified: true });
       }
-      savePersistentState().catch(() => {});
+      await savePersistentState();
 
       user.subscription = subscription;
       user.upcoming_subscription = upcomingSub;
@@ -1493,6 +1542,23 @@ exports.handler = async (event, context) => {
       if (!activeSub) activeSub = user?.subscription || null;
       if (!queued) queued = user?.upcoming_subscription || null;
 
+      // Dynamic synchronization: Ensure queued subscription starts_at matches activeSub.expires_at
+      if (activeSub?.expires_at && queued) {
+        const activeExpMs = new Date(activeSub.expires_at).getTime();
+        const queuedStartMs = queued.starts_at ? new Date(queued.starts_at).getTime() : 0;
+        if (activeExpMs > queuedStartMs) {
+          const durationDays = Number(queued.duration_days) || (queued.plan === "pro" ? 60 : 30);
+          queued = {
+            ...queued,
+            starts_at: activeSub.expires_at,
+            expires_at: new Date(activeExpMs + durationDays * 86400000).toISOString()
+          };
+          if (email && globalPlatformConfig.queued_subscriptions) {
+            globalPlatformConfig.queued_subscriptions[email] = queued;
+          }
+        }
+      }
+
       // Auto-activation: If current activeSub has expired and queued sub is waiting
       if (activeSub?.expires_at && new Date(activeSub.expires_at).getTime() <= Date.now() && queued) {
         activeSub = {
@@ -1507,7 +1573,7 @@ exports.handler = async (event, context) => {
           globalPlatformConfig.granted_subscriptions[email] = activeSub;
           if (globalPlatformConfig.queued_subscriptions) delete globalPlatformConfig.queued_subscriptions[email];
           recordRegisteredUser({ email, subscription: activeSub, upcoming_subscription: null, is_verified: true });
-          savePersistentState().catch(() => {});
+          await savePersistentState();
         }
         queued = null;
       }
@@ -1550,9 +1616,9 @@ exports.handler = async (event, context) => {
 
       const curSub = globalPlatformConfig.granted_subscriptions[email];
       const curExp = curSub?.expires_at ? new Date(curSub.expires_at).getTime() : 0;
-      const remainingMs = Math.max(0, curExp - Date.now());
-      const durationMs = (queued.duration_days || (queued.plan === "pro" ? 60 : 30)) * 86400000;
-      const newExpiry = new Date(Date.now() + durationMs + remainingMs).toISOString();
+      const baseMs = Math.max(Date.now(), curExp);
+      const durationMs = (Number(queued.duration_days) || (queued.plan === "pro" ? 60 : 30)) * 86400000;
+      const newExpiry = new Date(baseMs + durationMs).toISOString();
 
       const newActive = {
         plan: queued.plan,
@@ -1567,7 +1633,7 @@ exports.handler = async (event, context) => {
       globalPlatformConfig.granted_subscriptions[email] = newActive;
       delete globalPlatformConfig.queued_subscriptions[email];
       recordRegisteredUser({ email, subscription: newActive, upcoming_subscription: null, is_verified: true });
-      savePersistentState().catch(() => {});
+      await savePersistentState();
 
       const updatedUser = {
         ...(user || {}),
@@ -1702,22 +1768,59 @@ exports.handler = async (event, context) => {
         }
       ];
 
+      const seenEmails = new Set([ADMIN_EMAIL.toLowerCase()]);
+
       if (globalPlatformConfig.granted_subscriptions) {
-        for (const [em, gSub] of Object.entries(globalPlatformConfig.granted_subscriptions)) {
-          if (em.toLowerCase() === ADMIN_EMAIL.toLowerCase()) continue;
+        for (const [rawEm, gSub] of Object.entries(globalPlatformConfig.granted_subscriptions)) {
+          const em = (rawEm || "").toLowerCase().trim();
+          if (!em || seenEmails.has(em)) continue;
+          seenEmails.add(em);
           subs.push({
             id: `sub_grant_${em.replace(/[^a-z0-9]/gi, "_")}`,
             user_email: em,
-            payer_name: em.split("@")[0],
-            phone: "919979314819",
+            payer_name: gSub.payer_name || em.split("@")[0],
+            phone: gSub.phone || "919979314819",
             plan: gSub.plan || "premium",
             status: gSub.status || "active",
-            amount: gSub.plan === "premium" ? 2990 : gSub.plan === "business" ? 1490 : 990,
-            source: "admin_grant",
+            amount: gSub.plan === "pro" ? 4999 : gSub.plan === "premium" ? 2990 : gSub.plan === "business" ? 1490 : 990,
+            source: gSub.source || "admin_grant",
             review_note: gSub.note,
-            created_at: gSub.granted_at || new Date().toISOString(),
+            created_at: gSub.granted_at || gSub.activated_at || new Date().toISOString(),
             expires_at: gSub.expires_at
           });
+        }
+      }
+
+      if (Array.isArray(registeredUsersList)) {
+        for (const u of registeredUsersList) {
+          if (!u || !u.email) continue;
+          const em = u.email.toLowerCase().trim();
+          if (seenEmails.has(em)) {
+            const existing = subs.find(s => s.user_email && s.user_email.toLowerCase() === em);
+            if (existing && u.subscription?.expires_at) {
+              const exExp = existing.expires_at ? new Date(existing.expires_at).getTime() : 0;
+              const uExp = new Date(u.subscription.expires_at).getTime();
+              if (uExp > exExp) {
+                existing.expires_at = u.subscription.expires_at;
+                existing.plan = u.subscription.plan || existing.plan;
+                existing.status = u.subscription.status || existing.status;
+              }
+            }
+          } else if (u.subscription && u.subscription.expires_at) {
+            seenEmails.add(em);
+            subs.push({
+              id: `sub_reg_${em.replace(/[^a-z0-9]/gi, "_")}`,
+              user_email: em,
+              payer_name: u.name || em.split("@")[0],
+              phone: u.phone || "919979314819",
+              plan: u.subscription.plan || "starter",
+              status: u.subscription.status || "active",
+              amount: u.subscription.plan === "pro" ? 4999 : u.subscription.plan === "premium" ? 2990 : 990,
+              source: "user_registration",
+              created_at: u.created_at || new Date().toISOString(),
+              expires_at: u.subscription.expires_at
+            });
+          }
         }
       }
 
@@ -1767,38 +1870,57 @@ exports.handler = async (event, context) => {
       // Registered users
       for (const u of registeredUsersList) {
         if (!u || !u.email) continue;
-        const em = u.email.toLowerCase();
+        const em = u.email.toLowerCase().trim();
         const granted = globalPlatformConfig.granted_subscriptions?.[em];
+        const queued = globalPlatformConfig.queued_subscriptions?.[em] || u.upcoming_subscription || null;
         const isFrozen = !!globalPlatformConfig.frozen_merchants?.[em];
         const isVerified = globalPlatformConfig.verified_merchants?.[em] !== undefined 
           ? globalPlatformConfig.verified_merchants[em] 
           : (u.is_verified ?? true);
+
+        // Pick best subscription (the one with the latest expiry date)
+        let bestSub = granted || u.subscription || { plan: "starter", status: "active" };
+        if (granted && u.subscription?.expires_at) {
+          const gExp = granted.expires_at ? new Date(granted.expires_at).getTime() : 0;
+          const uExp = new Date(u.subscription.expires_at).getTime();
+          if (uExp > gExp) {
+            bestSub = { ...granted, ...u.subscription };
+          }
+        }
 
         usersMap.set(em, {
           ...u,
           is_admin: em === ADMIN_EMAIL.toLowerCase(),
           is_frozen: isFrozen,
           is_verified: isVerified,
-          subscription: granted || u.subscription || { plan: "starter", status: "active" }
+          subscription: bestSub,
+          upcoming_subscription: queued
         });
       }
 
       // Any granted subscriptions not in usersMap yet
       if (globalPlatformConfig.granted_subscriptions) {
-        for (const [em, sub] of Object.entries(globalPlatformConfig.granted_subscriptions)) {
-          const lower = em.toLowerCase();
+        for (const [rawEm, sub] of Object.entries(globalPlatformConfig.granted_subscriptions)) {
+          const lower = (rawEm || "").toLowerCase().trim();
+          if (!lower) continue;
           if (!usersMap.has(lower)) {
             usersMap.set(lower, {
               id: `usr_${lower.replace(/[^a-z0-9]/gi, "_")}`,
-              name: lower.split("@")[0],
+              name: sub.payer_name || lower.split("@")[0],
               email: lower,
               is_admin: lower === ADMIN_EMAIL.toLowerCase(),
               is_verified: true,
               subscription: sub,
+              upcoming_subscription: globalPlatformConfig.queued_subscriptions?.[lower] || null,
               created_at: sub.granted_at || new Date().toISOString()
             });
           } else {
-            usersMap.get(lower).subscription = sub;
+            const existingUser = usersMap.get(lower);
+            const exExp = existingUser.subscription?.expires_at ? new Date(existingUser.subscription.expires_at).getTime() : 0;
+            const subExp = sub.expires_at ? new Date(sub.expires_at).getTime() : 0;
+            if (subExp >= exExp) {
+              existingUser.subscription = sub;
+            }
           }
         }
       }

@@ -597,9 +597,13 @@ export default function AdminSubscriptions() {
           const s = allSubMap[em];
           const existing = allSubs.find(x => (x.user_email || "").toLowerCase() === em.toLowerCase());
           if (existing) {
-            if (s.expires_at) existing.expires_at = s.expires_at;
-            if (s.plan) existing.plan = s.plan;
-            if (s.status) existing.status = s.status;
+            const exExp = existing.expires_at ? new Date(existing.expires_at).getTime() : 0;
+            const sExp = s.expires_at ? new Date(s.expires_at).getTime() : 0;
+            if (sExp > exExp) {
+              existing.expires_at = s.expires_at;
+              if (s.plan) existing.plan = s.plan;
+              if (s.status) existing.status = s.status;
+            }
           } else {
             allSubs.push({
               id: `sub_${em}`,
@@ -652,16 +656,44 @@ export default function AdminSubscriptions() {
         localUsers.forEach(lu => {
           const idx = mergedUsers.findIndex(mu => mu.email && mu.email.toLowerCase() === lu.email.toLowerCase());
           if (idx >= 0) {
-            mergedUsers[idx] = { ...mergedUsers[idx], ...lu };
+            const serverExp = mergedUsers[idx].subscription?.expires_at ? new Date(mergedUsers[idx].subscription.expires_at).getTime() : 0;
+            const localExp = lu.subscription?.expires_at ? new Date(lu.subscription.expires_at).getTime() : 0;
+            const bestSub = localExp > serverExp ? lu.subscription : mergedUsers[idx].subscription;
+            mergedUsers[idx] = {
+              ...lu,
+              ...mergedUsers[idx],
+              subscription: bestSub
+            };
           } else {
             mergedUsers.push(lu);
             needCloudSync = true;
           }
         });
-        if (needCloudSync || localUsers.length > 0) {
+        if (needCloudSync) {
           api.post("/admin/users/sync", { users: mergedUsers }).catch(() => {});
         }
       } catch {}
+
+      // Cross-synchronize: Ensure usersList has the freshest subscription from allSubs, and vice versa!
+      mergedUsers = mergedUsers.map(u => {
+        const matchingSub = allSubs.find(s => s.user_email && s.user_email.toLowerCase() === u.email?.toLowerCase());
+        if (matchingSub) {
+          const uExp = u.subscription?.expires_at ? new Date(u.subscription.expires_at).getTime() : 0;
+          const sExp = matchingSub.expires_at ? new Date(matchingSub.expires_at).getTime() : 0;
+          if (sExp > uExp) {
+            return {
+              ...u,
+              subscription: {
+                ...(u.subscription || {}),
+                plan: matchingSub.plan || u.subscription?.plan || "starter",
+                status: matchingSub.status || "active",
+                expires_at: matchingSub.expires_at
+              }
+            };
+          }
+        }
+        return u;
+      });
 
       // Synchronize cloud landing maintenance and announcement
       try {
@@ -1387,6 +1419,7 @@ export default function AdminSubscriptions() {
     const email = expiryModal.email.toLowerCase().trim();
     const newIsoDate = new Date(expiryModal.newExpiry + "T23:59:59.000Z").toISOString();
     const plan = expiryModal.plan || "premium";
+    const days = Math.max(1, Math.ceil((new Date(newIsoDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
 
     try {
       // 1. Update dukaan_all_subscriptions

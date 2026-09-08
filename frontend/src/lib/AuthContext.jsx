@@ -299,6 +299,20 @@ export function AuthProvider({ children }) {
 
         let upcomingSub = serverUpcoming || persistentUpcoming || localUpcomingSub || null;
 
+        // Dynamic synchronization: Upcoming plan starts_at must never be before finalSub.expires_at
+        if (finalSub?.expires_at && upcomingSub) {
+          const finalExpMs = new Date(finalSub.expires_at).getTime();
+          const upcomingStartMs = upcomingSub.starts_at ? new Date(upcomingSub.starts_at).getTime() : 0;
+          if (finalExpMs > upcomingStartMs) {
+            const durationDays = Number(upcomingSub.duration_days) || (upcomingSub.plan === "pro" ? 60 : 30);
+            upcomingSub = {
+              ...upcomingSub,
+              starts_at: finalSub.expires_at,
+              expires_at: new Date(finalExpMs + durationDays * 86400000).toISOString()
+            };
+          }
+        }
+
         // Auto-promote if current active subscription has expired
         if (finalSub?.expires_at && new Date(finalSub.expires_at).getTime() <= Date.now() && upcomingSub) {
           finalSub = {

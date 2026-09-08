@@ -216,11 +216,13 @@ export default function Billing() {
   const handleActivateNow = async (skipConfirm = false) => {
     if (!upcomingSub) return;
     const planName = upcomingSub.plan_name || upcomingSub.plan?.toUpperCase() || "New";
+    const durationDays = Number(upcomingSub.duration_days) || (upcomingSub.plan === "pro" ? 60 : 30);
+    const cycles = upcomingSub.cycle_count || Math.max(1, Math.round(durationDays / (upcomingSub.plan === "pro" ? 60 : 30)));
 
     if (!skipConfirm) {
       const ok = window.confirm(
         `Activate ${planName} Plan right now?\n\n` +
-        `Your new plan benefits will begin immediately, and any remaining time from your current plan will roll over so you lose zero days!`
+        `Your new plan benefits will begin immediately, and ALL remaining time (${durationDays} days${cycles > 1 ? ` across ${cycles} queued cycles` : ""}) will roll over into your active subscription so you lose zero days!`
       );
       if (!ok) return;
     }
@@ -228,9 +230,8 @@ export default function Billing() {
     setActivating(true);
     try {
       const curExp = sub?.expires_at ? new Date(sub.expires_at).getTime() : 0;
-      const remainingMs = Math.max(0, curExp - Date.now());
-      const durationDays = upcomingSub.duration_days || (upcomingSub.plan === "pro" ? 60 : 30);
-      const newExpiry = new Date(Date.now() + durationDays * 86400000 + remainingMs).toISOString();
+      const baseMs = Math.max(Date.now(), curExp);
+      const newExpiry = new Date(baseMs + durationDays * 86400000).toISOString();
 
       const newActive = {
         plan: upcomingSub.plan,
@@ -287,7 +288,7 @@ export default function Billing() {
 
       window.dispatchEvent(new CustomEvent("dukaan_subscription_updated"));
       if (refresh) refresh();
-      toast.success(`🎉 ${planName} Plan Activated Immediately!`);
+      toast.success(`🎉 ${planName} Plan Activated! Valid until ${newExpiry.slice(0, 10)} (${durationDays} days rolled over).`);
     } catch (e) {
       toast.error("Failed to activate plan instantly. Please try again.");
     } finally {
@@ -462,26 +463,38 @@ export default function Billing() {
                   </div>
                 </div>
 
-                <div className="mt-6 pt-5 border-t border-amber-300/60 grid grid-cols-2 sm:grid-cols-3 gap-4 text-left">
-                  <div>
-                    <div className="text-[10px] uppercase font-bold text-brand-indigo/60">Starts On</div>
-                    <div className="font-heading font-extrabold text-base text-brand-indigo mt-0.5">
-                      {(upcomingSub.starts_at || sub?.expires_at || "").slice(0, 10) || "At Expiry"}
+                {(() => {
+                  const upcomingDays = Number(upcomingSub.duration_days) || (upcomingSub.plan === "pro" ? 60 : 30);
+                  const curExpMs = sub?.expires_at ? new Date(sub.expires_at).getTime() : Date.now();
+                  const rawStartMs = upcomingSub.starts_at ? new Date(upcomingSub.starts_at).getTime() : 0;
+                  const effectiveStartMs = Math.max(curExpMs, rawStartMs);
+                  const effectiveStartsOn = new Date(effectiveStartMs).toISOString().slice(0, 10);
+                  const effectiveValidUntil = new Date(effectiveStartMs + upcomingDays * 86400000).toISOString().slice(0, 10);
+                  const cycles = upcomingSub.cycle_count || Math.max(1, Math.round(upcomingDays / (upcomingSub.plan === "pro" ? 60 : 30)));
+
+                  return (
+                    <div className="mt-6 pt-5 border-t border-amber-300/60 grid grid-cols-2 sm:grid-cols-3 gap-4 text-left">
+                      <div>
+                        <div className="text-[10px] uppercase font-bold text-brand-indigo/60">Starts On</div>
+                        <div className="font-heading font-extrabold text-base text-brand-indigo mt-0.5">
+                          {effectiveStartsOn}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase font-bold text-brand-indigo/60">Valid Until</div>
+                        <div className="font-heading font-extrabold text-base text-emerald-800 mt-0.5">
+                          {effectiveValidUntil}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase font-bold text-brand-indigo/60">Duration</div>
+                        <div className="font-heading font-extrabold text-base text-brand-indigo mt-0.5">
+                          {cycles > 1 ? `${upcomingDays} Days (${cycles} Cycles Stacked)` : `${upcomingDays} Days`}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] uppercase font-bold text-brand-indigo/60">Valid Until</div>
-                    <div className="font-heading font-extrabold text-base text-emerald-800 mt-0.5">
-                      {(upcomingSub.expires_at || "").slice(0, 10) || "Next Cycle"}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] uppercase font-bold text-brand-indigo/60">Duration</div>
-                    <div className="font-heading font-extrabold text-base text-brand-indigo mt-0.5">
-                      {upcomingSub.duration_days ? `${upcomingSub.duration_days} Days` : upcomingSub.plan === "pro" ? "60 Days (1+1 Free)" : "30 Days"}
-                    </div>
-                  </div>
-                </div>
+                  );
+                })()}
               </div>
 
               {/* Instant Activation Button */}

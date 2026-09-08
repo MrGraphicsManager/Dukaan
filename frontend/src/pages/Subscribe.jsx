@@ -745,15 +745,39 @@ export default function Subscribe() {
 
           if (isCurrentlyActive) {
             newSub = curSub;
+
+            // Check for existing queued / upcoming subscription to stack cycles
+            let existingUpcoming = parsed.upcoming_subscription;
+            if (!existingUpcoming && userEmail) {
+              try {
+                const allQueued = JSON.parse(localStorage.getItem("dukaan_upcoming_subscriptions") || "{}");
+                existingUpcoming = allQueued[userEmail] || null;
+              } catch {}
+            }
+
+            let stackedDuration = durationDays;
+            let stackedAmount = amountToCharge;
+            let cycleCount = 1;
+
+            if (existingUpcoming && existingUpcoming.plan === selected) {
+              stackedDuration = (Number(existingUpcoming.duration_days) || durationDays) + durationDays;
+              stackedAmount = (Number(existingUpcoming.amount_paid) || 0) + amountToCharge;
+              cycleCount = (Number(existingUpcoming.cycle_count) || 1) + 1;
+            }
+
+            const startsAt = curSub.expires_at;
+            const expiresAt = new Date(curExp + (stackedDuration * 86400000)).toISOString();
+
             upcomingSub = {
               plan: selected,
               plan_name: plan.name,
               status: "scheduled",
               is_annual: isAnnual,
-              starts_at: curSub.expires_at,
-              expires_at: new Date(curExp + (durationDays * 86400000)).toISOString(),
-              duration_days: durationDays,
-              amount_paid: amountToCharge,
+              starts_at: startsAt,
+              expires_at: expiresAt,
+              duration_days: stackedDuration,
+              cycle_count: cycleCount,
+              amount_paid: stackedAmount,
               paid_at: new Date().toISOString(),
               payment_method: "razorpay",
               razorpay_order_id: value.razorpay_order_id || null,
