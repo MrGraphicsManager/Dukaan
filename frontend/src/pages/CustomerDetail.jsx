@@ -133,13 +133,12 @@ export default function CustomerDetail() {
     return `https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`;
   };
 
-  const handleUpdateCustomer = async (e) => {
+  const handleUpdateCustomer = (e) => {
     e.preventDefault();
     if (!editForm.name.trim()) {
       toast.error("Customer name is required");
       return;
     }
-    setBusy(true);
     const updatedCustomer = {
       ...c,
       name: editForm.name.trim(),
@@ -148,13 +147,7 @@ export default function CustomerDetail() {
       updated_at: new Date().toISOString()
     };
 
-    try {
-      if (!c.id?.startsWith("c_")) {
-        await api.put(`/customers/${c.id}`, updatedCustomer);
-      }
-    } catch (_) {}
-
-    // Update in local storage
+    // ⚡ STEP 1: INSTANT LOCAL SAVE (0.001 SEC)
     const all = getStoredCustomers();
     const idx = all.findIndex(x => x.id === c.id || (x.phone && x.phone === c.phone));
     let nextList;
@@ -168,8 +161,12 @@ export default function CustomerDetail() {
 
     setC(updatedCustomer);
     setEditOpen(false);
-    setBusy(false);
-    toast.success(`Customer "${updatedCustomer.name}" details updated!`);
+    toast.success(`⚡ Customer "${updatedCustomer.name}" details updated!`);
+
+    // ⚡ STEP 2: ASYNC SERVER SYNC
+    if (!c.id?.startsWith("c_")) {
+      api.put(`/customers/${c.id}`, updatedCustomer).catch(() => {});
+    }
   };
 
   return (

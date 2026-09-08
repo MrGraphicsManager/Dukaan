@@ -61,7 +61,7 @@ export default function Udhaar() {
 
     // First populate from local customers that have pending udhaar
     localCustomers.forEach(c => {
-      const pending = Number(c.total_pending || 0);
+      const pending = Number(c.total_pending || c.udhaar || 0);
       if (pending > 0) {
         debtorMap[c.id] = {
           customer_id: c.id,
@@ -76,9 +76,9 @@ export default function Udhaar() {
 
     // Also check orders for any udhaar orders
     localOrders.forEach(o => {
-      if (o.payment_method === "udhaar" || o.status === "udhaar") {
-        const cName = o.customer_name || "Walk-in Customer";
-        const cPhone = o.customer_phone || "";
+      if (o.payment_method === "udhaar" || o.status === "udhaar" || o.payment === "Udhaar" || o.payment === "udhaar") {
+        const cName = o.customer_name || o.customer || "Walk-in Customer";
+        const cPhone = o.customer_phone || o.customerPhone || "";
         const cId = o.customer_id || `cust_${cPhone || cName.replace(/\s+/g, "_")}`;
         const pendingAmount = Number(o.pending_amount || o.total || 0);
 
@@ -89,16 +89,22 @@ export default function Udhaar() {
             customer_phone: cPhone,
             pending: pendingAmount,
             count: 1,
-            last_order_at: o.created_at || new Date().toISOString()
+            last_order_at: o.created_at || o.date || new Date().toISOString()
           };
         }
       }
     });
 
-    // Try fetching from server
+    // ⚡ CRITICAL FIX: Set rows from local immediately (0.001 sec synchronous!)
+    const initialRows = Object.values(debtorMap).filter(r => r.pending > 0);
+    initialRows.sort((a, b) => b.pending - a.pending);
+    setRows(initialRows);
+
+    // Try fetching from server in background
     api.get("/udhaar")
       .then(r => {
         const serverRows = Array.isArray(r.data) ? r.data : [];
+        if (serverRows.length === 0) return;
         serverRows.forEach(sr => {
           if (sr.customer_id) {
             debtorMap[sr.customer_id] = {
@@ -115,22 +121,28 @@ export default function Udhaar() {
         finalRows.sort((a, b) => b.pending - a.pending);
         setRows(finalRows);
       })
-      .catch(() => {
-        const finalRows = Object.values(debtorMap).filter(r => r.pending > 0);
-        finalRows.sort((a, b) => b.pending - a.pending);
-        setRows(finalRows);
-      });
+      .catch(() => {});
   }, []);
 
   useEffect(() => { 
     load(); 
   }, [load]);
 
-  // Record payment / settlement
-  const submit = async () => {
+  useEffect(() => {
+    const handleUpdate = () => load();
+    window.addEventListener("dukaan_customers_updated", handleUpdate);
+    window.addEventListener("dukaan_orders_updated", handleUpdate);
+    return () => {
+      window.removeEventListener("dukaan_customers_updated", handleUpdate);
+      window.removeEventListener("dukaan_orders_updated", handleUpdate);
+    };
+  }, [load]);
+
+
+  // Record payment / settlement (0.001s instant save)
+  const submit = () => {
     const amt = Number(pay.amount || 0);
     if (!amt || amt <= 0) return toast.error("Enter a valid payment amount");
-    setBusy(true);
 
     const targetCId = pay.row.customer_id;
 
@@ -139,9 +151,11 @@ export default function Udhaar() {
     const cIdx = localCusts.findIndex(c => c.id === targetCId || (c.phone && c.phone === pay.row.customer_phone));
     if (cIdx >= 0) {
       const current = localCusts[cIdx];
+      const newPending = Math.max(0, Number(current.total_pending || current.udhaar || 0) - amt);
       const updated = {
         ...current,
-        total_pending: Math.max(0, Number(current.total_pending || 0) - amt),
+        total_pending: newPending,
+        udhaar: newPending,
         total_paid: Number(current.total_paid || 0) + amt,
         updated_at: new Date().toISOString()
       };
@@ -171,25 +185,25 @@ export default function Udhaar() {
         return o;
       });
       localStorage.setItem("dukaan_orders", JSON.stringify(orders));
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("dukaan_orders_updated", { detail: orders }));
+      }
     } catch {}
 
-    // 3. Sync to API if online
-    try {
-      await api.post("/udhaar/pay", { 
-        customer_id: targetCId, 
-        amount: amt,
-        note: pay.note 
-      });
-    } catch (_) {}
-
-    toast.success(`Payment of ${money(amt)} received from ${pay.row.customer_name}!`);
+    toast.success(`⚡ Payment of ${money(amt)} received from ${pay.row.customer_name}!`);
     setPay({ open: false, row: null, amount: "", note: "" });
-    setBusy(false);
     load();
+
+    // 3. Sync to API in background (fire-and-forget)
+    api.post("/udhaar/pay", { 
+      customer_id: targetCId, 
+      amount: amt,
+      note: pay.note 
+    }).catch(() => {});
   };
 
-  // Add new Udhaar credit entry directly
-  const handleAddUdhaar = async (e) => {
+  // Add new Udhaar credit entry directly (0.001s instant save)
+  const handleAddUdhaar = (e) => {
     e.preventDefault();
     const amt = Number(addModal.amount || 0);
     if (!amt || amt <= 0) {
@@ -206,13 +220,15 @@ export default function Udhaar() {
         return;
       }
       targetCust = {
-        id: `c_${Date.now()}`,
+        id: `c_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
         name: addModal.newName.trim(),
         phone: addModal.newPhone.trim(),
         notes: "Created from Udhaar Book",
         total_purchases: 0,
+        totalSpent: 0,
         total_paid: 0,
         total_pending: 0,
+        udhaar: 0,
         created_at: new Date().toISOString()
       };
     }
@@ -222,17 +238,17 @@ export default function Udhaar() {
       return;
     }
 
-    setBusy(true);
-
-    // 1. Update customer in local storage
+    // 1. Update customer in local storage immediately
     const localCusts = getStoredCustomers();
     const idx = localCusts.findIndex(c => c.id === targetCust.id || (targetCust.phone && c.phone === targetCust.phone));
     let updatedCust;
     if (idx >= 0) {
       updatedCust = {
         ...localCusts[idx],
-        total_purchases: Number(localCusts[idx].total_purchases || 0) + amt,
-        total_pending: Number(localCusts[idx].total_pending || 0) + amt,
+        total_purchases: Number(localCusts[idx].total_purchases || localCusts[idx].totalSpent || 0) + amt,
+        totalSpent: Number(localCusts[idx].total_purchases || localCusts[idx].totalSpent || 0) + amt,
+        total_pending: Number(localCusts[idx].total_pending || localCusts[idx].udhaar || 0) + amt,
+        udhaar: Number(localCusts[idx].total_pending || localCusts[idx].udhaar || 0) + amt,
         updated_at: new Date().toISOString()
       };
       localCusts[idx] = updatedCust;
@@ -240,14 +256,16 @@ export default function Udhaar() {
       updatedCust = {
         ...targetCust,
         total_purchases: amt,
+        totalSpent: amt,
         total_pending: amt,
+        udhaar: amt,
         updated_at: new Date().toISOString()
       };
       localCusts.unshift(updatedCust);
     }
     saveStoredCustomers(localCusts);
 
-    // 2. Add an Udhaar Order in localStorage
+    // 2. Add an Udhaar Order in localStorage immediately
     const newOrder = {
       id: `ord_udh_${Date.now()}`,
       order_no: `UDH-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -266,24 +284,25 @@ export default function Udhaar() {
 
     try {
       const orders = JSON.parse(localStorage.getItem("dukaan_orders") || "[]");
-      localStorage.setItem("dukaan_orders", JSON.stringify([newOrder, ...orders]));
+      const updatedOrders = [newOrder, ...orders];
+      localStorage.setItem("dukaan_orders", JSON.stringify(updatedOrders));
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("dukaan_orders_updated", { detail: updatedOrders }));
+      }
     } catch {}
 
-    // 3. Try posting to server
-    try {
-      await api.post("/orders", {
-        items: newOrder.items,
-        discount: 0,
-        customer_id: updatedCust.id,
-        payment_method: "udhaar",
-        note: addModal.note || "Direct Udhaar"
-      });
-    } catch (_) {}
-
-    toast.success(`Udhaar of ${money(amt)} recorded for ${updatedCust.name}!`);
+    toast.success(`⚡ Udhaar of ${money(amt)} recorded for ${updatedCust.name}!`);
     setAddModal({ open: false, customerId: "", newName: "", newPhone: "", amount: "", note: "" });
-    setBusy(false);
     load();
+
+    // 3. Fire-and-forget sync to server
+    api.post("/orders", {
+      items: newOrder.items,
+      discount: 0,
+      customer_id: updatedCust.id,
+      payment_method: "udhaar",
+      note: addModal.note || "Direct Udhaar"
+    }).catch(() => {});
   };
 
   const waLink = (row) => {

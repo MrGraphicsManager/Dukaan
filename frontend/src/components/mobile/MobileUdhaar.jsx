@@ -27,22 +27,26 @@ export default function MobileUdhaar({ onBack, onTabChange }) {
 
   useEffect(() => {
     loadCustomers();
+    const handleUpdated = () => loadCustomers();
+    window.addEventListener("dukaan_customers_updated", handleUpdated);
+    return () => window.removeEventListener("dukaan_customers_updated", handleUpdated);
   }, []);
 
-  const pendingTotal = customers.reduce((sum, c) => sum + (c.udhaar || 0), 0);
+  const pendingTotal = customers.reduce((sum, c) => sum + Number(c.udhaar !== undefined ? c.udhaar : (c.total_pending || 0)), 0);
 
   const filtered = customers.filter((c) => {
-    const u = c.udhaar || 0;
+    const u = Number(c.udhaar !== undefined ? c.udhaar : (c.total_pending || 0));
     if (tab === "pending") return u > 0;
     if (tab === "cleared") return u === 0;
     return true;
   }).filter((c) => (c.name || "").toLowerCase().includes(search.toLowerCase()) || (c.phone || "").includes(search));
 
   const handleSendReminder = (c) => {
+    const u = Number(c.udhaar !== undefined ? c.udhaar : (c.total_pending || 0));
     const text = encodeURIComponent(
       `🙏 *Namaste ${c.name} ji*\n\n` +
-      `This is a gentle payment reminder from *ABC General Store*.\n` +
-      `Your outstanding udhaar balance is *₹${c.udhaar}*.\n\n` +
+      `This is a gentle payment reminder from *Dukaan*.\n` +
+      `Your outstanding udhaar balance is *₹${u}*.\n\n` +
       `Kindly pay via UPI or at the shop counter at your convenience.\n` +
       `Thank you for your continued support!`
     );
@@ -52,12 +56,21 @@ export default function MobileUdhaar({ onBack, onTabChange }) {
 
   const handleConfirmSettlement = () => {
     if (!settleModalCust) return;
-    const amountToSettle = parseFloat(settleAmount) || settleModalCust.udhaar || 0;
+    const curBalance = Number(settleModalCust.udhaar !== undefined ? settleModalCust.udhaar : (settleModalCust.total_pending || 0));
+    const amountToSettle = parseFloat(settleAmount) || curBalance || 0;
     if (amountToSettle <= 0) return;
 
     const updated = customers.map((c) => {
       if (c.id === settleModalCust.id) {
-        return { ...c, udhaar: Math.max(0, (c.udhaar || 0) - amountToSettle) };
+        const curU = Number(c.udhaar !== undefined ? c.udhaar : (c.total_pending || 0));
+        const newU = Math.max(0, curU - amountToSettle);
+        return { 
+          ...c, 
+          udhaar: newU, 
+          total_pending: newU,
+          total_paid: Number(c.total_paid || 0) + amountToSettle,
+          updated_at: new Date().toISOString()
+        };
       }
       return c;
     });
@@ -65,13 +78,16 @@ export default function MobileUdhaar({ onBack, onTabChange }) {
     setCustomers(updated);
     try {
       localStorage.setItem("dukaan_customers", JSON.stringify(updated));
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("dukaan_customers_updated", { detail: updated }));
+      }
     } catch {}
 
     try {
       playVoiceSoundbox(amountToSettle, "cash", "en");
     } catch {}
 
-    toast.success(`Payment of ₹${amountToSettle} received & settled for ${settleModalCust.name}!`);
+    toast.success(`⚡ Payment of ₹${amountToSettle} received & settled for ${settleModalCust.name}!`);
     setSettleModalCust(null);
     setSettleAmount("");
   };

@@ -3,6 +3,7 @@ import { ArrowLeft, Search, Plus, Package, Edit, MoreVertical, Filter, Tag, Perc
 import { toast } from "sonner";
 import MobileBottomNav from "./MobileBottomNav";
 import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
+import { api } from "@/lib/api";
 
 export default function MobileProducts({ onBack, onTabChange }) {
   const [search, setSearch] = useState("");
@@ -18,7 +19,13 @@ export default function MobileProducts({ onBack, onTabChange }) {
 
   useEffect(() => {
     setItems(getStoredProducts());
+    const handleProductsUpdated = () => {
+      setItems(getStoredProducts());
+    };
+    window.addEventListener("dukaan_products_updated", handleProductsUpdated);
+    return () => window.removeEventListener("dukaan_products_updated", handleProductsUpdated);
   }, []);
+
 
   const categories = ["All", "Kirana & Grains", "Dairy & Eggs", "Biscuits & Snacks", "Beverages & Tea", "Spices & Masala", "Household & Soaps"];
 
@@ -65,6 +72,8 @@ export default function MobileProducts({ onBack, onTabChange }) {
     setNewProductCost("");
     setNewProductStock("");
     toast.success(`${newItem.name} saved to inventory!`);
+
+    api.post("/products", newItem).catch(() => {});
   };
 
   const handleSaveEdit = (e) => {
@@ -87,8 +96,13 @@ export default function MobileProducts({ onBack, onTabChange }) {
 
     setItems(updated);
     saveStoredProducts(updated);
+    const updatedProd = updated.find(it => it.id === editProduct.id);
     setEditProduct(null);
     toast.success("Product updated successfully!");
+
+    if (updatedProd) {
+      api.put(`/products/${editProduct.id}`, updatedProd).catch(() => {});
+    }
   };
 
   const handleDeleteProduct = (id) => {
@@ -97,6 +111,8 @@ export default function MobileProducts({ onBack, onTabChange }) {
     saveStoredProducts(updated);
     setEditProduct(null);
     toast.success("Product removed from inventory.");
+
+    api.delete(`/products/${id}`).catch(() => {});
   };
 
   return (

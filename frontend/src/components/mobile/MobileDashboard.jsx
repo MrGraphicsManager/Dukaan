@@ -75,27 +75,37 @@ export default function MobileDashboard({ onNavigate, merchantData }) {
 
   // Load live stock and bills
   useEffect(() => {
-    setRecentBills(getStoredDashboardBills());
+    const refreshLive = () => {
+      setRecentBills(getStoredDashboardBills());
 
-    try {
-      const products = getStoredProducts();
-      const low = products
-        .filter((p) => {
-          const s = p.stock !== undefined ? p.stock : 0;
-          const min = p.min_stock !== undefined ? p.min_stock : 5;
-          return s <= min;
-        })
-        .slice(0, 4)
-        .map((p) => ({
-          id: p.id,
-          name: p.name,
-          left: p.stock !== undefined ? p.stock : 0,
-          unit: p.unit || "packs",
-          color: p.stock === 0 ? "text-rose-600 bg-rose-50 font-bold" : "text-amber-600 bg-amber-50",
-          type: (p.name || "P").charAt(0).toUpperCase(),
-        }));
-      setLowStock(low);
-    } catch {}
+      try {
+        const products = getStoredProducts();
+        const low = products
+          .filter((p) => {
+            const s = p.stock !== undefined ? p.stock : 0;
+            const min = p.min_stock !== undefined ? p.min_stock : 5;
+            return s <= min;
+          })
+          .slice(0, 4)
+          .map((p) => ({
+            id: p.id,
+            name: p.name,
+            left: p.stock !== undefined ? p.stock : 0,
+            unit: p.unit || "packs",
+            color: p.stock === 0 ? "text-rose-600 bg-rose-50 font-bold" : "text-amber-600 bg-amber-50",
+            type: (p.name || "P").charAt(0).toUpperCase(),
+          }));
+        setLowStock(low);
+      } catch {}
+    };
+
+    refreshLive();
+    window.addEventListener("dukaan_orders_updated", refreshLive);
+    window.addEventListener("dukaan_products_updated", refreshLive);
+    return () => {
+      window.removeEventListener("dukaan_orders_updated", refreshLive);
+      window.removeEventListener("dukaan_products_updated", refreshLive);
+    };
   }, []);
 
   // Listen for PWA installation prompt

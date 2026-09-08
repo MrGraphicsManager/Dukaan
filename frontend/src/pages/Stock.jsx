@@ -35,22 +35,36 @@ export default function Stock() {
   const [busy, setBusy] = useState(false);
 
   const load = () => {
+    const local = getStoredProducts();
     api.get("/products", { params: { q: q || undefined } })
       .then(r => {
-        if (Array.isArray(r.data) && r.data.length > 0) {
-          setItems(r.data);
-          saveStoredProducts(r.data);
-        } else {
-          setItems(getStoredProducts());
+        const server = Array.isArray(r.data) ? r.data : [];
+        if (server.length === 0 && local.length > 0) {
+          setItems(local);
+          return;
         }
+        const merged = [...server];
+        local.forEach(lp => {
+          if (!merged.some(m => m.id === lp.id || (m.name && lp.name && m.name.toLowerCase().trim() === lp.name.toLowerCase().trim()))) {
+            merged.push(lp);
+          }
+        });
+        saveStoredProducts(merged);
+        setItems(merged);
       })
-      .catch(() => setItems(getStoredProducts()));
+      .catch(() => setItems(local));
   };
 
   useEffect(() => {
     load();
     /* eslint-disable-next-line */
   }, [q]);
+
+  useEffect(() => {
+    const handleUpdated = () => setItems(getStoredProducts());
+    window.addEventListener("dukaan_products_updated", handleUpdated);
+    return () => window.removeEventListener("dukaan_products_updated", handleUpdated);
+  }, []);
 
   const categories = useMemo(() => {
     const set = new Set();
@@ -86,39 +100,28 @@ export default function Stock() {
     });
   }, [items, filter, category]);
 
-  // Fast inline 1-tap restock
-  const quickRestock = async (product, amount) => {
-    try {
-      await api.post(`/products/${product.id}/stock`, { qty: amount, reason: "Quick inline restock" });
-    } catch (_) {}
-    setItems(prev => {
-      const updated = prev.map(p => p.id === product.id ? { ...p, stock: p.stock + amount } : p);
-      saveStoredProducts(updated);
-      return updated;
-    });
-    toast.success(`Added +${amount} to ${product.name}`);
+  // Fast inline 1-tap restock (0.001s instant save)
+  const quickRestock = (product, amount) => {
+    const currentStored = getStoredProducts();
+    const updated = currentStored.map(p => p.id === product.id ? { ...p, stock: (p.stock || 0) + amount } : p);
+    saveStoredProducts(updated);
+    setItems(updated);
+    toast.success(`⚡ Added +${amount} to ${product.name}`);
+    api.post(`/products/${product.id}/stock`, { qty: amount, reason: "Quick inline restock" }).catch(() => {});
   };
 
-  const submitAdjust = async () => {
+  const submitAdjust = () => {
     const n = Number(adjust.qty || 0);
     if (!n) return toast.error("Enter a valid quantity adjustment");
-    setBusy(true);
-    try {
-      try {
-        await api.post(`/products/${adjust.product.id}/stock`, { qty: n, reason: adjust.reason });
-      } catch (_) {}
-      setItems(prev => {
-        const updated = prev.map(p => p.id === adjust.product.id ? { ...p, stock: Math.max(0, p.stock + n) } : p);
-        saveStoredProducts(updated);
-        return updated;
-      });
-      toast.success(`Stock adjusted by ${n > 0 ? `+${n}` : n} for ${adjust.product.name}`);
-      setAdjust({ open: false, product: null, qty: "", reason: "Supplier Restock" });
-    } catch (e) {
-      toast.error(e.response?.data?.detail || "Failed to update stock");
-    } finally {
-      setBusy(false);
-    }
+
+    const currentStored = getStoredProducts();
+    const updated = currentStored.map(p => p.id === adjust.product.id ? { ...p, stock: Math.max(0, (p.stock || 0) + n) } : p);
+    saveStoredProducts(updated);
+    setItems(updated);
+    toast.success(`⚡ Stock adjusted by ${n > 0 ? `+${n}` : n} for ${adjust.product.name}`);
+    setAdjust({ open: false, product: null, qty: "", reason: "Supplier Restock" });
+
+    api.post(`/products/${adjust.product.id}/stock`, { qty: n, reason: adjust.reason }).catch(() => {});
   };
 
   return (

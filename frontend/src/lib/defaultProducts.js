@@ -119,6 +119,43 @@ export const saveStoredProducts = (products) => {
   try {
     if (Array.isArray(products)) {
       localStorage.setItem("dukaan_products", JSON.stringify(products));
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("dukaan_products_updated", { detail: products }));
+      }
     }
   } catch {}
 };
+
+export const addStoredProduct = (product) => {
+  try {
+    const list = getStoredProducts();
+    const updated = [product, ...list.filter(p => p.id !== product.id)];
+    saveStoredProducts(updated);
+    return updated;
+  } catch {
+    return [];
+  }
+};
+
+export const updateStoredProduct = (id, changes) => {
+  try {
+    const list = getStoredProducts();
+    const updated = list.map(p => (p.id === id ? { ...p, ...changes } : p));
+    saveStoredProducts(updated);
+    return updated;
+  } catch {
+    return [];
+  }
+};
+
+export const deleteStoredProduct = (id) => {
+  try {
+    const list = getStoredProducts();
+    const updated = list.filter(p => p.id !== id);
+    saveStoredProducts(updated);
+    return updated;
+  } catch {
+    return [];
+  }
+};
+

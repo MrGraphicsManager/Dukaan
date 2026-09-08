@@ -45,6 +45,7 @@ import {
   Clock
 } from "lucide-react";
 import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
+import { getStoredCustomers, saveStoredCustomers } from "@/pages/Customers";
 import { useAuth } from "@/lib/AuthContext";
 import { playVoiceSoundbox } from "@/lib/soundbox";
 import { findFMCGByBarcode } from "@/lib/fmcgMasterCatalog";
@@ -74,7 +75,7 @@ export default function POS() {
   const [discount, setDiscount] = useState(0);
   const [discountType, setDiscountType] = useState("flat"); // "flat" or "percent"
   const [customerId, setCustomerId] = useState("");
-  const [customers, setCustomers] = useState([]);
+  const [customers, setCustomers] = useState(() => getStoredCustomers());
   const [shop, setShop] = useState(null);
 
   // Feature #45: Gating for Medical Store on Premium Plan
@@ -380,6 +381,15 @@ export default function POS() {
       const list = Array.isArray(r.data) ? r.data : [];
       setShop(list.find(s => s.id === shopId) || list[0]);
     });
+
+    const handleProds = () => setProducts(getStoredProducts());
+    const handleCusts = () => setCustomers(getStoredCustomers());
+    window.addEventListener("dukaan_products_updated", handleProds);
+    window.addEventListener("dukaan_customers_updated", handleCusts);
+    return () => {
+      window.removeEventListener("dukaan_products_updated", handleProds);
+      window.removeEventListener("dukaan_customers_updated", handleCusts);
+    };
   }, []);
 
   // Compute categories
@@ -495,38 +505,49 @@ export default function POS() {
     setCustomerId("");
   };
 
-  const createCustomer = async () => {
+  const createCustomer = () => {
     if (!newCustomer.name.trim()) {
       toast.error("Customer name is required");
       return;
     }
     const newC = {
-      id: `c_${Date.now()}`,
+      id: `c_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       name: newCustomer.name.trim(),
       phone: newCustomer.phone.trim(),
       notes: "Added from POS",
       total_purchases: 0,
+      totalSpent: 0,
       total_paid: 0,
       total_pending: 0,
+      udhaar: 0,
       created_at: new Date().toISOString()
     };
-
-    try {
-      const res = await api.post("/customers", newC);
-      if (res?.data?.id) newC.id = res.data.id;
-    } catch (_) {}
 
     let stored = [];
     try {
       stored = JSON.parse(localStorage.getItem("dukaan_customers") || "[]");
     } catch {}
     const updated = [newC, ...stored];
-    localStorage.setItem("dukaan_customers", JSON.stringify(updated));
+    saveStoredCustomers(updated);
 
     setCustomers(prev => [newC, ...prev]);
     setCustomerId(newC.id);
     setNewCustomer({ open: false, name: "", phone: "" });
-    toast.success(`Customer "${newC.name}" added and selected!`);
+    toast.success(`⚡ Customer "${newC.name}" added and selected!`);
+
+    api.post("/customers", newC).then(res => {
+      if (res?.data?.id) {
+        newC.id = res.data.id;
+        try {
+          const cur = JSON.parse(localStorage.getItem("dukaan_customers") || "[]");
+          const idx = cur.findIndex(c => c.phone === newC.phone || c.id === newC.id);
+          if (idx !== -1) {
+            cur[idx].id = res.data.id;
+            saveStoredCustomers(cur);
+          }
+        } catch {}
+      }
+    }).catch(() => {});
   };
 
   // Pricing math
@@ -562,22 +583,26 @@ export default function POS() {
         if (c.id === cId || (orderData.customer_phone && c.phone === orderData.customer_phone)) {
           const tot = Number(orderData.total || 0);
           const isUdhaar = orderData.payment_method === "udhaar";
+          const newPending = Number(c.total_pending || c.udhaar || 0) + (isUdhaar ? tot : 0);
+          const newPurchases = Number(c.total_purchases || c.totalSpent || 0) + tot;
           return {
             ...c,
-            total_purchases: Number(c.total_purchases || 0) + tot,
+            total_purchases: newPurchases,
+            totalSpent: newPurchases,
             total_paid: Number(c.total_paid || 0) + (isUdhaar ? 0 : tot),
-            total_pending: Number(c.total_pending || 0) + (isUdhaar ? tot : 0),
+            total_pending: newPending,
+            udhaar: newPending,
             updated_at: new Date().toISOString()
           };
         }
         return c;
       });
-      localStorage.setItem("dukaan_customers", JSON.stringify(updated));
+      saveStoredCustomers(updated);
     } catch {}
   };
 
-  // Bill submission
-  const handleCompleteBill = async () => {
+  // Bill submission (0.001s instant save)
+  const handleCompleteBill = () => {
     if (cart.length === 0) {
       toast.error("Cart is empty");
       return;
@@ -587,102 +612,95 @@ export default function POS() {
       return;
     }
 
-    setBusy(true);
-    try {
-      const payload = {
-        items: cart,
-        discount: Number(discountAmount || 0),
-        customer_id: customerId || null,
-        payment_method: method,
-        amount_received: method === "cash" ? Number(amountReceived || total) : null,
-      };
+    const orderId = `ord_${Date.now()}`;
+    const orderNo = `OD-${Date.now().toString().slice(-4)}`;
+    const now = new Date();
 
-      const res = await api.post("/orders", payload);
-      const order = res.data;
+    const order = {
+      id: orderId,
+      order_no: orderNo,
+      total,
+      subtotal,
+      discount: discountAmount,
+      payment_method: method,
+      status: method === "udhaar" ? "udhaar" : "paid",
+      pending_amount: method === "udhaar" ? total : 0,
+      paid_amount: method === "udhaar" ? 0 : total,
+      customer_id: customerId || null,
+      customer_name: selectedCustomerObj?.name || "Walk-in Customer",
+      customer_phone: selectedCustomerObj?.phone || "",
+      created_at: now.toISOString(),
+      items: cart,
+      change: method === "cash" && Number(amountReceived) > total ? Number(amountReceived) - total : 0,
+      billed_by: activeCashierName
+    };
 
-      const billData = {
-        order_no: order.order_no || `OD-${Date.now().toString().slice(-4)}`,
-        id: order.id,
-        total,
-        payment_method: method,
-        items: cart,
-        customer_name: selectedCustomerObj?.name || "Walk-in Customer",
-        customer_phone: selectedCustomerObj?.phone || "",
-        change: method === "cash" && Number(amountReceived) > total ? Number(amountReceived) - total : 0,
-        billed_by: activeCashierName
-      };
+    const billData = {
+      order_no: orderNo,
+      id: orderId,
+      total,
+      payment_method: method,
+      items: cart,
+      customer_name: selectedCustomerObj?.name || "Walk-in Customer",
+      customer_phone: selectedCustomerObj?.phone || "",
+      change: order.change,
+      billed_by: activeCashierName
+    };
 
-      order.billed_by = activeCashierName;
-
-      setPayOpen(false);
-      setCompletedBill(billData);
-      setWaPhone(selectedCustomerObj?.phone || "");
-
-      const savedOrders = JSON.parse(localStorage.getItem("dukaan_orders") || "[]");
-      localStorage.setItem("dukaan_orders", JSON.stringify([order, ...savedOrders]));
-
-      // Deduct purchased items from stock immediately
-      deductStockAndSync(cart);
-      // Update customer ledger immediately
-      updateCustomerLedger(order);
-
-      toast.success(`Bill #${order.order_no} created successfully!`);
-
-      // Soundbox voice announcement (Premium only)
-      const isChimeMuted = localStorage.getItem("dukaan_payment_alert_chime") === "false";
-      if (soundboxEnabled && isPremium && !isChimeMuted) {
-        playVoiceSoundbox(total, method, lang);
-      }
-
-      // Auto-reset after 6 seconds for next customer
-      const timer = setTimeout(() => {
-        setCompletedBill(null);
-        clearCart();
-      }, 6000);
-      setAutoResetTimer(timer);
-
-    } catch (e) {
-      // Offline / fallback order creation
-      const mockOrder = {
-        id: `ord_${Date.now()}`,
-        order_no: `OD-${Math.floor(1000 + Math.random() * 9000)}`,
-        total,
-        payment_method: method,
-        status: method === "udhaar" ? "udhaar" : "paid",
-        customer_name: selectedCustomerObj?.name || "Walk-in Customer",
-        customer_phone: selectedCustomerObj?.phone || "",
-        created_at: new Date().toISOString(),
-        items: cart,
-        change: method === "cash" && Number(amountReceived) > total ? Number(amountReceived) - total : 0,
-        billed_by: activeCashierName
-      };
-
-      const savedOrders = JSON.parse(localStorage.getItem("dukaan_orders") || "[]");
-      localStorage.setItem("dukaan_orders", JSON.stringify([mockOrder, ...savedOrders]));
-
-      // Deduct purchased items from stock immediately
-      deductStockAndSync(cart);
-      // Update customer ledger immediately
-      updateCustomerLedger(mockOrder);
-
-      setPayOpen(false);
-      setCompletedBill(mockOrder);
-      setWaPhone(selectedCustomerObj?.phone || "");
-      toast.success(`Bill #${mockOrder.order_no} created!`);
-
-      // Soundbox voice announcement (Premium only)
-      if (soundboxEnabled && isPremium && !isChimeMuted) {
-        playVoiceSoundbox(mockOrder.total, method, lang);
-      }
-
-      const timer = setTimeout(() => {
-        setCompletedBill(null);
-        clearCart();
-      }, 6000);
-      setAutoResetTimer(timer);
-    } finally {
-      setBusy(false);
+    // ⚡ STEP 1: INSTANT LOCAL SAVE IN 0.001 SEC
+    const savedOrders = JSON.parse(localStorage.getItem("dukaan_orders") || "[]");
+    const updatedOrders = [order, ...savedOrders];
+    localStorage.setItem("dukaan_orders", JSON.stringify(updatedOrders));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("dukaan_orders_updated", { detail: updatedOrders }));
     }
+
+    // Deduct purchased items from stock immediately
+    deductStockAndSync(cart);
+    // Update customer ledger immediately
+    updateCustomerLedger(order);
+
+    setPayOpen(false);
+    setCompletedBill(billData);
+    setWaPhone(selectedCustomerObj?.phone || "");
+
+    toast.success(`⚡ Bill #${orderNo} created successfully!`);
+
+    // Soundbox voice announcement (Premium only)
+    const isChimeMuted = localStorage.getItem("dukaan_payment_alert_chime") === "false";
+    if (soundboxEnabled && isPremium && !isChimeMuted) {
+      playVoiceSoundbox(total, method, lang);
+    }
+
+    // Auto-reset after 6 seconds for next customer
+    const timer = setTimeout(() => {
+      setCompletedBill(null);
+      clearCart();
+    }, 6000);
+    setAutoResetTimer(timer);
+
+    // ⚡ STEP 2: ASYNC SERVER SYNC (FIRE-AND-FORGET)
+    const payload = {
+      items: cart,
+      discount: Number(discountAmount || 0),
+      customer_id: customerId || null,
+      payment_method: method,
+      amount_received: method === "cash" ? Number(amountReceived || total) : null,
+    };
+
+    api.post("/orders", payload).then(res => {
+      if (res?.data?.id) {
+        try {
+          const list = JSON.parse(localStorage.getItem("dukaan_orders") || "[]");
+          const idx = list.findIndex(o => o.id === orderId);
+          if (idx !== -1) {
+            list[idx].id = res.data.id;
+            if (res.data.order_no) list[idx].order_no = res.data.order_no;
+            localStorage.setItem("dukaan_orders", JSON.stringify(list));
+          }
+        } catch {}
+      }
+    }).catch(() => {});
   };
 
   const handleSendWhatsAppBill = (billToShare) => {

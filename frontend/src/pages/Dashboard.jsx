@@ -331,6 +331,20 @@ export default function Dashboard() {
     loadDashboard();
   }, [currentShopId, loadDashboard]);
 
+  useEffect(() => {
+    const handleLiveUpdate = () => {
+      loadDashboard({ silent: true });
+    };
+    window.addEventListener("dukaan_orders_updated", handleLiveUpdate);
+    window.addEventListener("dukaan_products_updated", handleLiveUpdate);
+    window.addEventListener("dukaan_customers_updated", handleLiveUpdate);
+    return () => {
+      window.removeEventListener("dukaan_orders_updated", handleLiveUpdate);
+      window.removeEventListener("dukaan_products_updated", handleLiveUpdate);
+      window.removeEventListener("dukaan_customers_updated", handleLiveUpdate);
+    };
+  }, [loadDashboard]);
+
   // Restock action right from dashboard
   const handleQuickRestock = async (product, qty) => {
     try {

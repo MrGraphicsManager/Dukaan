@@ -30,12 +30,20 @@ export default function MobileCustomers({ onBack, onTabChange }) {
 
   useEffect(() => {
     setCustomers(getStoredCustomers());
+    const handleUpdated = () => {
+      setCustomers(getStoredCustomers());
+    };
+    window.addEventListener("dukaan_customers_updated", handleUpdated);
+    return () => window.removeEventListener("dukaan_customers_updated", handleUpdated);
   }, []);
 
   const saveCustomers = (list) => {
     setCustomers(list);
     try {
       localStorage.setItem("dukaan_customers", JSON.stringify(list));
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("dukaan_customers_updated", { detail: list }));
+      }
     } catch {}
   };
 
@@ -57,8 +65,12 @@ export default function MobileCustomers({ onBack, onTabChange }) {
       phone: newPhone.trim(),
       bills: 0,
       totalSpent: 0,
+      total_purchases: 0,
       udhaar: 0,
+      total_pending: 0,
+      total_paid: 0,
       address: newAddress.trim() || "Navsari",
+      created_at: new Date().toISOString()
     };
     const updated = [newCust, ...customers];
     saveCustomers(updated);
@@ -66,7 +78,7 @@ export default function MobileCustomers({ onBack, onTabChange }) {
     setNewName("");
     setNewPhone("");
     setNewAddress("");
-    toast.success(`Customer ${newCust.name} added!`);
+    toast.success(`⚡ Customer ${newCust.name} added!`);
   };
 
   const handleWhatsAppCustomer = (c) => {

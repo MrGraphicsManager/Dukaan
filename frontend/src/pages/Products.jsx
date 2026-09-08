@@ -217,24 +217,34 @@ export default function Products() {
       hsn: fmcgItem.hsn,
       gst_rate: fmcgItem.gst_rate
     };
-    const updated = [newProd, ...items];
+    const currentStored = getStoredProducts();
+    const updated = [newProd, ...currentStored];
     saveStoredProducts(updated);
     setItems(updated);
     toast.success(`⚡ Added "${fmcgItem.name}" to inventory!`);
+    api.post("/products", newProd).catch(() => {});
   };
 
   const load = () => {
+    const local = getStoredProducts();
     api.get("/products", { params: { q: q || undefined, category } })
       .then(r => {
-        if (Array.isArray(r.data) && r.data.length > 0) {
-          setItems(r.data);
-          saveStoredProducts(r.data);
-        } else {
-          setItems(getStoredProducts());
+        const server = Array.isArray(r.data) ? r.data : [];
+        if (server.length === 0 && local.length > 0) {
+          setItems(local);
+          return;
         }
+        const merged = [...server];
+        local.forEach(lp => {
+          if (!merged.some(m => m.id === lp.id || (m.name && lp.name && m.name.toLowerCase().trim() === lp.name.toLowerCase().trim()))) {
+            merged.push(lp);
+          }
+        });
+        saveStoredProducts(merged);
+        setItems(merged);
       })
       .catch(() => {
-        setItems(getStoredProducts());
+        setItems(local);
       });
   };
 
@@ -242,6 +252,14 @@ export default function Products() {
     load();
     /* eslint-disable-next-line */
   }, [q, category]);
+
+  useEffect(() => {
+    const handleProductsUpdated = () => {
+      setItems(getStoredProducts());
+    };
+    window.addEventListener("dukaan_products_updated", handleProductsUpdated);
+    return () => window.removeEventListener("dukaan_products_updated", handleProductsUpdated);
+  }, []);
 
   const allCategories = useMemo(() => {
     const set = new Set(DEFAULT_CATEGORIES);
@@ -287,7 +305,7 @@ export default function Products() {
     });
   }, [items, statusFilter]);
 
-  const submit = async () => {
+  const submit = () => {
     const data = {
       ...form.data,
       selling_price: Number(form.data.selling_price || 0),
@@ -301,48 +319,47 @@ export default function Products() {
     if (!data.name.trim()) return toast.error("Product name is required");
     if (data.selling_price <= 0) return toast.error("Please enter a valid selling price");
 
-    setBusy(true);
-    try {
-      if (form.mode === "create") {
-        try {
-          const res = await api.post("/products", data);
-          if (res?.data?.id) data.id = res.data.id;
-        } catch (_) {}
-        if (!data.id) data.id = `prod_${Date.now()}`;
-        const currentStored = getStoredProducts();
-        const updated = [data, ...currentStored];
-        saveStoredProducts(updated);
-        setItems(updated);
-        toast.success(`Product "${data.name}" added to inventory!`);
-      } else {
-        try {
-          await api.put(`/products/${form.data.id}`, data);
-        } catch (_) {}
-        const currentStored = getStoredProducts();
-        const updated = currentStored.map(p => (p.id === form.data.id ? { ...p, ...data } : p));
-        saveStoredProducts(updated);
-        setItems(updated);
-        toast.success(`Product "${data.name}" updated!`);
-      }
+    // ⚡ 0.001s Instant Local Save
+    if (form.mode === "create") {
+      data.id = data.id || `prod_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+      const currentStored = getStoredProducts();
+      const updated = [data, ...currentStored.filter(p => p.id !== data.id)];
+      saveStoredProducts(updated);
+      setItems(updated);
       setForm({ open: false, mode: "create", data: EMPTY });
-    } catch (e) {
-      toast.error(e.response?.data?.detail || "Failed to save product");
-    } finally {
-      setBusy(false);
+      toast.success(`⚡ Product "${data.name}" added to inventory!`);
+
+      // Fire-and-forget server sync in background
+      api.post("/products", data).then(res => {
+        if (res?.data?.id && res.data.id !== data.id) {
+          const prods = getStoredProducts();
+          const idx = prods.findIndex(p => p.id === data.id);
+          if (idx !== -1) {
+            prods[idx].id = res.data.id;
+            saveStoredProducts(prods);
+            setItems([...prods]);
+          }
+        }
+      }).catch(() => {});
+    } else {
+      const currentStored = getStoredProducts();
+      const updated = currentStored.map(p => (p.id === form.data.id ? { ...p, ...data } : p));
+      saveStoredProducts(updated);
+      setItems(updated);
+      setForm({ open: false, mode: "create", data: EMPTY });
+      toast.success(`⚡ Product "${data.name}" updated!`);
+
+      api.put(`/products/${form.data.id}`, data).catch(() => {});
     }
   };
 
-  const performDeleteProduct = async (p) => {
-    try {
-      try { await api.delete(`/products/${p.id}`); } catch (_) {}
-      const currentStored = getStoredProducts();
-      const updated = currentStored.filter(item => item.id !== p.id);
-      saveStoredProducts(updated);
-      setItems(updated);
-      toast.success(`Deleted ${p.name}`);
-    } catch {
-      toast.error("Failed to delete product");
-    }
+  const performDeleteProduct = (p) => {
+    const currentStored = getStoredProducts();
+    const updated = currentStored.filter(item => item.id !== p.id);
+    saveStoredProducts(updated);
+    setItems(updated);
+    toast.success(`Deleted ${p.name}`);
+    api.delete(`/products/${p.id}`).catch(() => {});
   };
 
   const del = async (p) => {
