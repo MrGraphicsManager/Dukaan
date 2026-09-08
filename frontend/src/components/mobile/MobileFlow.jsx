@@ -86,17 +86,17 @@ export default function MobileFlow() {
   );
 
   const [direction, setDirection] = useState(1);
-  const [registeredPhone, setRegisteredPhone] = useState("9876543210");
+  const [registeredPhone, setRegisteredPhone] = useState("");
 
   // Merchant state initialized from active user and shop
   const [merchantData, setMerchantData] = useState(() => {
-    let name = "Priyen Naik";
-    let phone = "9876543210";
-    let email = "priyen@dukaan.app";
-    let businessName = "ABC General Store";
-    let businessType = "Grocery Store";
-    let address = "Navsari, Gujarat";
-    let plan = "free";
+    let name = "";
+    let phone = "";
+    let email = "";
+    let businessName = "";
+    let businessType = "Kirana & General Store";
+    let address = "";
+    let plan = "starter";
 
     try {
       const storedUser = JSON.parse(localStorage.getItem("dukaan_user") || "{}");

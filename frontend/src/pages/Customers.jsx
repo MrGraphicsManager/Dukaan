@@ -26,12 +26,7 @@ export const getStoredCustomers = () => {
   try {
     const raw = localStorage.getItem("dukaan_customers");
     if (!raw) {
-      const initial = [
-        { id: "c_1", name: "Ramesh Patel", phone: "9825100000", notes: "Regular buyer, Block B-204", total_purchases: 450, total_paid: 450, total_pending: 0 },
-        { id: "c_2", name: "Suresh Sharma", phone: "9876543210", notes: "Temple Road", total_purchases: 1450, total_paid: 0, total_pending: 1450 }
-      ];
-      localStorage.setItem("dukaan_customers", JSON.stringify(initial));
-      return initial;
+      return [];
     }
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];

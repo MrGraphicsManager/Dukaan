@@ -37,23 +37,18 @@ export default function OrderDetail() {
     api.get(`/orders/${id}`)
       .then(r => setO(r.data))
       .catch(() => {
-        // Demo fallback invoice for robust local testing
-        setO({
-          id: id,
-          order_no: "8821",
-          created_at: new Date().toISOString(),
-          customer_name: "Ramesh Bhai Patel",
-          customer_phone: "9825100000",
-          payment_method: "cash",
-          status: "paid",
-          subtotal: 450,
-          discount: 0,
-          total: 450,
-          items: [
-            { name: "Aashirvaad Shudh Chakki Atta 5kg", qty: 1, price: 320 },
-            { name: "Amul Butter Pasteurized 100g", qty: 2, price: 65 },
-          ]
-        });
+        try {
+          const raw = localStorage.getItem("dukaan_orders");
+          if (raw) {
+            const list = JSON.parse(raw);
+            const found = list.find(x => String(x.id) === String(id) || String(x.order_no) === String(id));
+            if (found) {
+              setO(found);
+              return;
+            }
+          }
+        } catch {}
+        setO(null);
       })
       .finally(() => setLoading(false));
   }, [id]);

@@ -3,28 +3,19 @@ import { ArrowLeft, Search, Plus, Phone, Users, Wallet, ArrowUpRight, MessageSqu
 import { toast } from "sonner";
 import MobileBottomNav from "./MobileBottomNav";
 
-const DEFAULT_CUSTOMERS = [
-  { id: "cust_1", name: "Ramesh Sharma", phone: "9825123456", bills: 14, totalSpent: 8450, udhaar: 450, address: "Station Road" },
-  { id: "cust_2", name: "Amit Kumar Patel", phone: "9898011223", bills: 8, totalSpent: 4120, udhaar: 0, address: "Gandhi Chowk" },
-  { id: "cust_3", name: "Manish Bhai Cloth", phone: "9712398451", bills: 22, totalSpent: 16200, udhaar: 1200, address: "Tower Road" },
-  { id: "cust_4", name: "Pooja Ben Joshi", phone: "9426788912", bills: 5, totalSpent: 2190, udhaar: 0, address: "Lunsikui" },
-  { id: "cust_5", name: "Kishore Bhai Dairy", phone: "9909988112", bills: 19, totalSpent: 11400, udhaar: 650, address: "Chhapra Road" },
-  { id: "cust_6", name: "Suresh Chauhan", phone: "9879055443", bills: 3, totalSpent: 980, udhaar: 220, address: "Jalalpur" },
-];
+const DEFAULT_CUSTOMERS = [];
 
 function getStoredCustomers() {
   try {
     const raw = localStorage.getItem("dukaan_customers");
     if (!raw) {
-      localStorage.setItem("dukaan_customers", JSON.stringify(DEFAULT_CUSTOMERS));
-      return DEFAULT_CUSTOMERS;
+      return [];
     }
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    localStorage.setItem("dukaan_customers", JSON.stringify(DEFAULT_CUSTOMERS));
-    return DEFAULT_CUSTOMERS;
+    if (Array.isArray(parsed)) return parsed;
+    return [];
   } catch {
-    return DEFAULT_CUSTOMERS;
+    return [];
   }
 }
 

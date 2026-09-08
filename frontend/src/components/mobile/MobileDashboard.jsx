@@ -28,51 +28,7 @@ import MobileThermalReceiptModal from "./MobileThermalReceiptModal";
 import MobileStoreQrModal from "./MobileStoreQrModal";
 import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
 
-const DEFAULT_RECENT_BILLS = [
-  { 
-    id: "#B1028", 
-    customer: "Ramesh Sharma", 
-    customerPhone: "9825123456", 
-    payment: "Cash", 
-    items: 2, 
-    amount: "₹ 240", 
-    time: "2 mins ago", 
-    type: "C",
-    itemsList: [
-      { name: "Maggi 2-Minute Noodles 70g", qty: 2, rate: 14, total: 28 },
-      { name: "Fortune Sunlite Oil 1L", qty: 1, rate: 165, total: 165 },
-      { name: "Amul Butter 100g", qty: 1, rate: 47, total: 47 },
-    ]
-  },
-  { 
-    id: "#B1027", 
-    customer: "Pooja Ben Joshi", 
-    customerPhone: "9426788912", 
-    payment: "UPI", 
-    items: 5, 
-    amount: "₹ 1,200", 
-    time: "12 mins ago", 
-    type: "U",
-    itemsList: [
-      { name: "Aashirvaad Atta 5kg", qty: 2, rate: 245, total: 490 },
-      { name: "Tata Salt 1kg", qty: 3, rate: 28, total: 84 },
-      { name: "Grocery Essentials Pack", qty: 1, rate: 626, total: 626 },
-    ]
-  },
-  { 
-    id: "#B1026", 
-    customer: "Amit Kumar Patel", 
-    customerPhone: "9898011223", 
-    payment: "Cash", 
-    items: 1, 
-    amount: "₹ 680", 
-    time: "30 mins ago", 
-    type: "C",
-    itemsList: [
-      { name: "Tide Plus Detergent 5kg Pack", qty: 1, rate: 680, total: 680 }
-    ]
-  },
-];
+const DEFAULT_RECENT_BILLS = [];
 
 function getStoredDashboardBills() {
   try {
@@ -81,21 +37,21 @@ function getStoredDashboardBills() {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
         const mapped = parsed.slice(0, 5).map((o) => ({
-          id: o.id.startsWith("#") ? o.id : `#${o.id}`,
-          customer: o.customer || "Customer",
-          customerPhone: o.customerPhone || "9825123456",
-          payment: o.payment || "Cash",
-          items: o.items_count || (o.itemsList && o.itemsList.length) || 1,
+          id: String(o.id || o.order_no || "").startsWith("#") ? String(o.id || o.order_no) : `#${o.id || o.order_no}`,
+          customer: o.customer || o.customer_name || "Customer",
+          customerPhone: o.customerPhone || o.customer_phone || "",
+          payment: o.payment || o.payment_method || "Cash",
+          items: o.items_count || (o.itemsList && o.itemsList.length) || (o.items && o.items.length) || 1,
           amount: `₹ ${o.total || 0}`,
-          time: o.date || "Just now",
-          type: (o.payment || "C").charAt(0).toUpperCase(),
-          itemsList: o.itemsList || [{ name: "Groceries", qty: 1, rate: o.total || 0, total: o.total || 0 }],
+          time: o.date || (o.created_at ? o.created_at.slice(11, 16) : "Just now"),
+          type: (o.payment || o.payment_method || "C").charAt(0).toUpperCase(),
+          itemsList: o.itemsList || o.items || [{ name: "Groceries", qty: 1, rate: o.total || 0, total: o.total || 0 }],
         }));
         return mapped;
       }
     }
   } catch {}
-  return DEFAULT_RECENT_BILLS;
+  return [];
 }
 
 export default function MobileDashboard({ onNavigate, merchantData }) {
@@ -112,9 +68,9 @@ export default function MobileDashboard({ onNavigate, merchantData }) {
   const [recentBills, setRecentBills] = useState(() => getStoredDashboardBills());
   const [lowStock, setLowStock] = useState([]);
 
-  const name = merchantData?.fullName || "Priyen Naik";
-  const businessName = merchantData?.businessName || "ABC General Store";
-  const address = merchantData?.address || "Navsari, Gujarat";
+  const name = merchantData?.fullName || merchantData?.name || "Merchant";
+  const businessName = merchantData?.businessName || merchantData?.shopName || "Apni Dukaan";
+  const address = merchantData?.address || "";
   const initial = name.charAt(0).toUpperCase();
 
   // Load live stock and bills
@@ -125,7 +81,7 @@ export default function MobileDashboard({ onNavigate, merchantData }) {
       const products = getStoredProducts();
       const low = products
         .filter((p) => {
-          const s = p.stock !== undefined ? p.stock : 10;
+          const s = p.stock !== undefined ? p.stock : 0;
           const min = p.min_stock !== undefined ? p.min_stock : 5;
           return s <= min;
         })
@@ -184,14 +140,14 @@ export default function MobileDashboard({ onNavigate, merchantData }) {
 
   const periodMetrics = {
     today: {
-      sales: (12450 + savedOrdersSum).toLocaleString("en-IN"),
-      bills: 28 + savedOrdersCount,
-      customers: 56 + Math.min(savedOrdersCount, 12),
-      growth: "+14.8%",
+      sales: savedOrdersSum.toLocaleString("en-IN"),
+      bills: savedOrdersCount,
+      customers: savedOrdersCount > 0 ? Math.min(savedOrdersCount, 12) : 0,
+      growth: savedOrdersCount > 0 ? "+100%" : "0%",
     },
-    yesterday: { sales: "11,120", bills: 26, customers: 51, growth: "+8%" },
-    week: { sales: (90650 + savedOrdersSum).toLocaleString("en-IN"), bills: 184 + savedOrdersCount, customers: 320, growth: "+18.4%" },
-    month: { sales: (345200 + savedOrdersSum).toLocaleString("en-IN"), bills: 680 + savedOrdersCount, customers: 1150, growth: "+24.2%" },
+    yesterday: { sales: "0", bills: 0, customers: 0, growth: "0%" },
+    week: { sales: savedOrdersSum.toLocaleString("en-IN"), bills: savedOrdersCount, customers: savedOrdersCount, growth: savedOrdersCount > 0 ? "+100%" : "0%" },
+    month: { sales: savedOrdersSum.toLocaleString("en-IN"), bills: savedOrdersCount, customers: savedOrdersCount, growth: savedOrdersCount > 0 ? "+100%" : "0%" },
   };
 
   const currentM = periodMetrics[selectedPeriod] || periodMetrics.today;

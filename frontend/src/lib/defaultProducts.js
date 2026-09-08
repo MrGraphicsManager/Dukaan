@@ -105,15 +105,13 @@ export const getStoredProducts = () => {
   try {
     const raw = localStorage.getItem("dukaan_products");
     if (!raw) {
-      localStorage.setItem("dukaan_products", JSON.stringify(DEFAULT_PRODUCTS));
-      return DEFAULT_PRODUCTS;
+      return [];
     }
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    localStorage.setItem("dukaan_products", JSON.stringify(DEFAULT_PRODUCTS));
-    return DEFAULT_PRODUCTS;
+    if (Array.isArray(parsed)) return parsed;
+    return [];
   } catch {
-    return DEFAULT_PRODUCTS;
+    return [];
   }
 };
 

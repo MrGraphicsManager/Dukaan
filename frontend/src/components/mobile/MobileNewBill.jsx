@@ -31,8 +31,8 @@ export default function MobileNewBill({ onBack, onTabChange, merchantData }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCat, setSelectedCat] = useState("All");
   const [cart, setCart] = useState({});
-  const [customerName, setCustomerName] = useState("Ramesh Sharma");
-  const [customerPhone, setCustomerPhone] = useState("9825123456");
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const [paymentMode, setPaymentMode] = useState("Cash");
   const [discountAmount, setDiscountAmount] = useState(0);
   const [cashTendered, setCashTendered] = useState("");

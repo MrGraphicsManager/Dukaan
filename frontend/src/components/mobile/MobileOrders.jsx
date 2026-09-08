@@ -4,14 +4,7 @@ import MobileBottomNav from "./MobileBottomNav";
 import MobileThermalReceiptModal from "./MobileThermalReceiptModal";
 import { toast } from "sonner";
 
-const DEFAULT_ORDERS = [
-  { id: "#B1028", customer: "Ramesh Sharma", time: "12:30 PM Today", items: 3, total: 450, payment: "Cash", status: "completed" },
-  { id: "#B1027", customer: "Pooja Ben Joshi", time: "11:15 AM Today", items: 5, total: 1280, payment: "UPI", status: "completed" },
-  { id: "#B1026", customer: "Amit Kumar Patel", time: "10:05 AM Today", items: 2, total: 320, payment: "UPI", status: "completed" },
-  { id: "#B1025", customer: "Kishore Bhai Dairy", time: "09:40 AM Today", items: 6, total: 890, payment: "Udhaar", status: "pending" },
-  { id: "#B1024", customer: "Walk-in Guest", time: "09:10 AM Today", items: 1, total: 40, payment: "Cash", status: "completed" },
-  { id: "#B1023", customer: "Manish Bhai Cloth", time: "Yesterday", items: 8, total: 2450, payment: "UPI", status: "completed" },
-];
+const DEFAULT_ORDERS = [];
 
 function getStoredOrders() {
   try {
@@ -21,7 +14,7 @@ function getStoredOrders() {
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed.map((o) => ({
           ...o,
-          id: o.id.startsWith("#") ? o.id : `#${o.id}`,
+          id: String(o.id || o.order_no || "").startsWith("#") ? String(o.id || o.order_no) : `#${o.id || o.order_no}`,
           customer: o.customer || o.customer_name || "Customer",
           time: o.date || o.created_at || "Recent",
           items: o.items_count || (o.itemsList && o.itemsList.length) || (o.items && o.items.length) || 1,
@@ -32,7 +25,7 @@ function getStoredOrders() {
       }
     }
   } catch {}
-  return DEFAULT_ORDERS;
+  return [];
 }
 
 export default function MobileOrders({ onBack, onTabChange }) {
