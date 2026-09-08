@@ -31,14 +31,15 @@ import {
   HelpCircle,
   LogIn,
   UserPlus,
-  Rocket
+  Rocket,
+  Crown,
+  Sliders
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import InstallAppButton from "@/components/InstallAppButton";
 import Card3D from "@/components/Card3D";
-import ThreeDHeroKiosk from "@/components/ThreeDHeroKiosk";
 import ThreeDBackground from "@/components/ThreeDBackground";
-import LivePosDemoSimulator from "@/components/landing/LivePosDemoSimulator";
+import DukaanProInstagramCards from "@/components/landing/DukaanProInstagramCards";
 import DukaanProShowcase from "@/components/landing/DukaanProShowcase";
 import useButterSmoothScroll from "@/lib/useButterSmoothScroll";
 
@@ -377,13 +378,10 @@ export default function Landing() {
 
           {/* Desktop Navigation Links (Clean spacing, zero overlap) */}
           <nav className="hidden lg:flex items-center gap-3.5 xl:gap-5 text-xs xl:text-sm font-semibold text-brand-indigo/80 shrink-0">
-            <a href="#live-demo" className="hover:text-brand-terracotta transition-colors flex items-center gap-1 whitespace-nowrap">
-              <span>Try Demo</span>
-              <span className="bg-amber-400/20 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full">Live</span>
-            </a>
-            <a href="#dukaan-pro" className="hover:text-amber-600 transition-colors flex items-center gap-1 whitespace-nowrap font-bold text-amber-800">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Dukaan Pro</span>
+            <a href="#dukaan-pro" className="hover:text-blue-600 transition-colors flex items-center gap-1.5 whitespace-nowrap font-bold text-blue-700 bg-blue-50/90 hover:bg-blue-100 border border-blue-200/80 px-3 py-1 rounded-full shadow-2xs">
+              <Crown className="w-3.5 h-3.5 text-blue-600" />
+              <span>Pro & Studio</span>
+              <span className="bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase">New</span>
             </a>
             <a href="#features" className="hover:text-brand-terracotta transition-colors whitespace-nowrap">Features</a>
             <a href="#pricing" className="hover:text-brand-terracotta transition-colors whitespace-nowrap">Pricing</a>
@@ -508,32 +506,17 @@ export default function Landing() {
 
 
                   <a
-                    href="#live-demo"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="p-3 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 flex items-center gap-2.5 transition-colors"
-                  >
-                    <Zap className="w-4 h-4 text-amber-600 shrink-0" />
-                    <div className="text-left">
-                      <div className="text-xs font-bold text-amber-900 flex items-center gap-1">
-                        <span>Try Live Demo</span>
-                        <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1 rounded-sm">Free</span>
-                      </div>
-                      <div className="text-[10px] text-amber-800/70 font-medium">Interactive POS</div>
-                    </div>
-                  </a>
-
-                  <a
                     href="#dukaan-pro"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="p-3 rounded-xl bg-amber-50/90 text-brand-indigo hover:bg-amber-100 border border-amber-300 flex items-center gap-2.5 transition-colors"
+                    className="p-3 rounded-xl bg-blue-50 text-blue-900 hover:bg-blue-100 border border-blue-200 flex items-center gap-2.5 transition-colors"
                   >
-                    <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                    <Crown className="w-4 h-4 text-blue-600 shrink-0" />
                     <div className="text-left">
-                      <div className="text-xs font-bold text-brand-indigo flex items-center gap-1">
-                        <span>Dukaan Pro</span>
-                        <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1 rounded-sm">PRO</span>
+                      <div className="text-xs font-bold text-blue-950 flex items-center gap-1">
+                        <span>Pro & Studio</span>
+                        <span className="text-[9px] bg-blue-600 text-white font-black px-1 rounded-sm">NEW</span>
                       </div>
-                      <div className="text-[10px] text-amber-900/70 font-medium">Custom Invoices & PIN</div>
+                      <div className="text-[10px] text-blue-700/70 font-medium">Custom Invoices & PIN</div>
                     </div>
                   </a>
 
@@ -634,105 +617,104 @@ export default function Landing() {
       {/* =========================================================
           HERO SECTION (3D Interactive Kiosk)
       ========================================================= */}
-      <section className="relative z-10 mx-auto max-w-6xl px-5 pt-12 md:pt-20 pb-16 grid lg:grid-cols-12 gap-12 items-center">
+      <section className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 pt-10 md:pt-16 pb-14 grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
         
-        {/* Left: Value Proposition */}
+        {/* Left: Value Proposition matching Instagram Campaign */}
         <motion.div 
           initial={{ opacity: 0, x: -35 }} 
           animate={{ opacity: 1, x: 0 }} 
           transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }} 
           className="lg:col-span-6"
         >
-          {/* Badges */}
+          {/* Badges from Instagram Poster */}
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-brand-mitti bg-white/80 backdrop-blur-md text-xs font-semibold uppercase tracking-widest text-brand-terracotta shadow-xs">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-600 text-white text-xs font-black uppercase tracking-widest shadow-sm">
               <Sparkles className="w-3.5 h-3.5" />
-              Made for Indian Local Shops & Kiranas
+              <span>Now Available</span>
             </div>
-            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/80 border border-brand-mitti text-brand-indigo text-xs font-bold shadow-2xs backdrop-blur-md">
-              <Monitor className="w-3.5 h-3.5 text-brand-terracotta" />
-              <span>PC Counter & Laptop POS</span>
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-blue-200 text-blue-900 text-xs font-extrabold uppercase tracking-wider shadow-2xs backdrop-blur-md">
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+              <span>Trusted by Small Businesses Across India</span>
             </div>
           </div>
 
-          {/* Headline */}
-          <h1 className="mt-6 font-display text-5xl sm:text-6xl lg:text-[4.75rem] leading-[1.04] tracking-tight text-brand-indigo">
-            Run Your <br />
-            <span className="text-brand-terracotta relative">
-              Dukaan.
-              <span className="absolute left-0 bottom-1 w-full h-2 bg-brand-terracotta/20 rounded-full -z-10" />
-            </span> <br />
-            Smarter.
+          {/* Big Headline */}
+          <h1 className="mt-5 font-display text-4xl sm:text-5xl lg:text-[4.25rem] leading-[1.06] tracking-tight text-slate-900">
+            Take Your Business <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 relative inline-block">
+              Further.
+              <span className="absolute left-0 bottom-1 w-full h-3 bg-blue-200/50 rounded-full -z-10" />
+            </span>
           </h1>
 
           {/* Supporting Text */}
-          <p className="mt-6 text-lg sm:text-xl text-brand-indigo/75 max-w-lg leading-relaxed font-normal">
-            Billing, inventory, stock alerts, customers, udhaar ledger and business insights — all in one simple platform.
-          </p>
+          <div className="mt-4 max-w-lg leading-relaxed">
+            <div className="text-blue-700 font-extrabold text-lg sm:text-xl tracking-tight mb-1.5">
+              More Power. More Possibilities.
+            </div>
+            <p className="text-base text-slate-600 font-normal">
+              Effortless billing, stock, and khata ledger — now turbocharged with the all-new <strong>Dukaan Pro Plan</strong> and <strong>Dukaan Pro Studio</strong> for custom branded receipts, cashier Master PIN protection, and live voice soundbox.
+            </p>
+          </div>
 
-          {/* CTA Buttons */}
-          <div className="mt-8 flex flex-wrap gap-4 items-center">
-            <Button 
-              size="lg" 
-              onClick={() => nav("/register")} 
-              className="h-14 px-8 text-lg rounded-full bg-brand-terracotta text-white hover:bg-brand-terracotta/90 active:scale-95 transition-all shadow-glow flex items-center gap-2"
-            >
-              <span>Start Free Now</span>
-              <ArrowRight className="w-5 h-5" />
-            </Button>
-
+          {/* Action CTAs */}
+          <div className="mt-7 flex flex-wrap gap-3.5 items-center">
             <Link 
-              to="/app"
-              className="h-14 px-7 text-base rounded-full border-2 border-brand-mitti hover:border-brand-indigo bg-white text-brand-indigo font-bold active:scale-95 transition-all shadow-sm flex items-center gap-2"
+              to="/subscribe?plan=pro" 
+              className="h-13 sm:h-14 px-7 sm:px-8 text-sm sm:text-base rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold active:scale-95 transition-all shadow-glow flex items-center gap-2"
             >
-              <Store className="w-4 h-4 text-brand-terracotta" />
-              <span>Open Billing Counter</span>
+              <Crown className="w-4 h-4 text-amber-300" />
+              <span>Get Dukaan Pro (₹499)</span>
+              <ArrowRight className="w-4 h-4" />
             </Link>
 
             <a 
-              href="#live-demo"
-              className="h-14 px-6 text-sm rounded-full border-2 border-brand-mitti hover:border-amber-500 bg-amber-50/80 hover:bg-amber-100 text-amber-900 font-extrabold active:scale-95 transition-all shadow-xs flex items-center gap-2"
+              href="#dukaan-pro"
+              className="h-13 sm:h-14 px-6 sm:px-7 text-sm sm:text-base rounded-full border-2 border-blue-200 hover:border-blue-600 bg-white hover:bg-blue-50/50 text-blue-700 font-bold active:scale-95 transition-all shadow-sm flex items-center gap-2"
             >
-              <Zap className="w-4 h-4 text-amber-600" />
-              <span>Try Live Demo ↓</span>
+              <Sliders className="w-4 h-4 text-blue-600" />
+              <span>Dukaan Pro Studio ↓</span>
             </a>
+
+            <Link 
+              to="/app"
+              className="h-13 sm:h-14 px-5 text-xs sm:text-sm rounded-full border border-slate-200 hover:border-slate-300 bg-slate-50 text-slate-700 font-bold active:scale-95 transition-all flex items-center gap-1.5"
+            >
+              <Store className="w-3.5 h-3.5 text-slate-500" />
+              <span>Launch Store</span>
+            </Link>
           </div>
 
-          {/* Trust points */}
-          <div className="mt-8 flex items-center gap-4 sm:gap-6 text-xs text-brand-indigo/65 font-semibold flex-wrap">
-            <span className="flex items-center gap-1.5">
-              <Laptop className="w-4 h-4 text-brand-terracotta" /> Desktop & Laptop Counter
+          {/* Trust Points */}
+          <div className="mt-7 flex items-center gap-3 sm:gap-4 text-xs font-semibold flex-wrap">
+            <span className="flex items-center gap-1.5 text-blue-800">
+              <Crown className="w-3.5 h-3.5 text-blue-600" /> Pro Plan (1+1 Month Free)
             </span>
-            <span>·</span>
-            <span className="flex items-center gap-1.5">
-              <Zap className="w-4 h-4 text-brand-terracotta" /> Fast 1-Tap Counter Billing
+            <span className="text-slate-300">·</span>
+            <span className="flex items-center gap-1.5 text-slate-700">
+              <Sliders className="w-3.5 h-3.5 text-blue-600" /> Dukaan Pro Studio Included
             </span>
-            <span>·</span>
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-brand-terracotta" /> 100% Private & Secure
+            <span className="text-slate-300">·</span>
+            <span className="flex items-center gap-1.5 text-emerald-700">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Zero Setup Fee
             </span>
           </div>
         </motion.div>
 
-        {/* Right: Interactive 3D Dukaan POS Kiosk */}
+        {/* Right: Instagram 3D Stage Cards (Dukaan Pro Plan & Dukaan Pro Studio) */}
         <motion.div 
-          initial={{ opacity: 0, x: 35, scale: 0.95 }} 
-          animate={{ opacity: 1, x: 0, scale: 1 }} 
-          transition={{ duration: 0.8, delay: 0.1, ease: [0.22, 1, 0.36, 1] }} 
-          className="lg:col-span-6"
+          initial={{ opacity: 0, scale: 0.95, y: 25 }} 
+          animate={{ opacity: 1, scale: 1, y: 0 }} 
+          transition={{ duration: 0.85, delay: 0.1, ease: [0.22, 1, 0.36, 1] }} 
+          className="lg:col-span-6 flex justify-center"
         >
-          <ThreeDHeroKiosk />
+          <DukaanProInstagramCards />
         </motion.div>
 
       </section>
 
       {/* =========================================================
-          INTERACTIVE LIVE POS DEMO SIMULATOR (v3)
-      ========================================================= */}
-      <LivePosDemoSimulator />
-
-      {/* =========================================================
-          DUKAAN PRO FLAGSHIP SHOWCASE & LIVE RECEIPT ENGINE (v3)
+          DUKAAN PRO & DUKAAN PRO STUDIO FLAGSHIP SHOWCASE
       ========================================================= */}
       <DukaanProShowcase />
 
@@ -972,8 +954,7 @@ export default function Landing() {
         </div>
         <p className="text-xs text-brand-indigo/60 mb-6 font-medium">Run Your Dukaan. Smarter.</p>
         <div className="flex flex-wrap items-center justify-center gap-5 md:gap-7 mb-8 text-sm font-medium">
-          <a href="#live-demo" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Live Demo</a>
-          <a href="#dukaan-pro" className="text-amber-800 font-bold hover:text-amber-600 transition-colors">Dukaan Pro</a>
+          <a href="#dukaan-pro" className="text-blue-700 font-bold hover:text-blue-800 transition-colors">Dukaan Pro & Studio</a>
           <a href="#features" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Features</a>
           <a href="#pricing" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Pricing Plans</a>
           <a href="#faq" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">FAQ</a>
