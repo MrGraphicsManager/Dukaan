@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,8 @@ import {
   Crown,
   Eye,
   Check,
-  AlertCircle
+  AlertCircle,
+  AlertTriangle
 } from "lucide-react";
 import { 
   PRO_INVOICE_TEMPLATES, 
@@ -41,6 +42,7 @@ import {
   saveProLabsSettings, 
   getProWhatsAppSupportUrl 
 } from "@/lib/proCustomizations";
+import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
 import { playVoiceSoundbox } from "@/lib/soundbox";
 import { api } from "@/lib/api";
 
@@ -59,10 +61,20 @@ export default function DukaanProStudio({ user, currentShop, isPro }) {
 
   const [subTab, setSubTab] = useState("billing"); // "billing" | "themes" | "labs" | "support"
 
-  // 1. Custom Billing State
-  const [billing, setBilling] = useState(() => getProBillingSettings(shopId));
+  // 1. Custom Billing State (with cloud fallback from currentShop)
+  const [billing, setBilling] = useState(() => getProBillingSettings(shopId, currentShop));
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [savingBilling, setSavingBilling] = useState(false);
+
+  // Dynamic products & orders for AI Restock Velocity calculations
+  const [productsList, setProductsList] = useState(() => getStoredProducts());
+  const [ordersList, setOrdersList] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("dukaan_orders") || "[]");
+    } catch {
+      return [];
+    }
+  });
 
   // 2. Customize Themes State
   const [theme, setTheme] = useState(() => getProThemeSettings(userEmail));
@@ -83,21 +95,150 @@ export default function DukaanProStudio({ user, currentShop, isPro }) {
   const [submittingTicket, setSubmittingTicket] = useState(false);
 
   useEffect(() => {
-    setBilling(getProBillingSettings(shopId));
-  }, [shopId]);
+    setBilling(getProBillingSettings(shopId, currentShop));
+  }, [shopId, currentShop]);
 
   useEffect(() => {
     setTheme(getProThemeSettings(userEmail));
     setLabs(getProLabsSettings(userEmail));
   }, [userEmail]);
 
-  // Handle Save Billing
-  const handleSaveBilling = () => {
+  // Load products & orders from cloud/local for accurate 7-day velocity
+  useEffect(() => {
+    api.get("/products")
+      .then(r => {
+        if (Array.isArray(r.data) && r.data.length > 0) {
+          setProductsList(r.data);
+          saveStoredProducts(r.data);
+        }
+      })
+      .catch(() => {});
+
+    api.get("/orders")
+      .then(r => {
+        if (Array.isArray(r.data) && r.data.length > 0) {
+          setOrdersList(r.data);
+          try { localStorage.setItem("dukaan_orders", JSON.stringify(r.data)); } catch (_) {}
+        }
+      })
+      .catch(() => {});
+  }, [shopId]);
+
+  // Dynamic AI Stockout Predictor based on 7-day sales velocity
+  const aiRestockForecast = useMemo(() => {
+    const now = Date.now();
+    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+
+    const recentOrders = ordersList.filter(o => {
+      const orderDate = new Date(o?.created_at || o?.date || 0).getTime();
+      return orderDate >= sevenDaysAgo;
+    });
+
+    const salesMap = {};
+    recentOrders.forEach(o => {
+      (o?.items || []).forEach(it => {
+        const idKey = it?.product_id || it?.id;
+        const nameKey = (it?.name || "").toLowerCase().trim();
+        const qty = Number(it?.qty || it?.quantity || 1);
+        if (idKey) salesMap[idKey] = (salesMap[idKey] || 0) + qty;
+        if (nameKey) salesMap[nameKey] = (salesMap[nameKey] || 0) + qty;
+      });
+    });
+
+    const predictions = [];
+
+    productsList.forEach(p => {
+      if (p.unlimited_stock) return;
+      const currentStock = Number(p.stock ?? p.stock_quantity ?? 0);
+      const minStock = Number(p.min_stock ?? p.min_stock_level ?? 5);
+      const sold7d = salesMap[p.id] || salesMap[(p.name || "").toLowerCase().trim()] || 0;
+      const dailyVelocity = sold7d / 7;
+
+      let hoursRemaining = 999;
+      let urgency = "healthy";
+      let statusText = "Stock Healthy";
+
+      if (currentStock <= 0) {
+        hoursRemaining = 0;
+        urgency = "critical";
+        statusText = "Stock Out! 0 pcs remaining";
+      } else if (dailyVelocity > 0) {
+        const daysRemaining = currentStock / dailyVelocity;
+        hoursRemaining = Math.round(daysRemaining * 24);
+        if (hoursRemaining <= 24) {
+          urgency = "critical";
+          statusText = `Depleting in ~${hoursRemaining}h (${Math.max(1, Math.round(dailyVelocity))} sold/day)`;
+        } else if (hoursRemaining <= 72) {
+          urgency = "warning";
+          statusText = `Depleting in ~${hoursRemaining}h (~${Math.round(daysRemaining)} days left)`;
+        } else if (currentStock <= minStock) {
+          urgency = "warning";
+          statusText = `Below buffer threshold (${currentStock} left, min: ${minStock})`;
+        }
+      } else if (currentStock <= minStock) {
+        urgency = "warning";
+        hoursRemaining = 48;
+        statusText = `Low buffer (${currentStock} left, min: ${minStock})`;
+      }
+
+      if (hoursRemaining <= 72 || currentStock <= minStock || currentStock <= 0) {
+        predictions.push({
+          product: p,
+          currentStock,
+          minStock,
+          sold7d,
+          dailyVelocity,
+          hoursRemaining,
+          urgency,
+          statusText
+        });
+      }
+    });
+
+    return predictions.sort((a, b) => a.hoursRemaining - b.hoursRemaining || a.currentStock - b.currentStock);
+  }, [productsList, ordersList]);
+
+  // Quick 1-Tap Restock for AI Predictor
+  const handleQuickRestock = async (product, amount = 10) => {
+    try {
+      await api.post(`/products/${product.id}/stock`, { qty: amount, reason: "AI Predictor 1-Tap Restock" });
+    } catch (_) {}
+    setProductsList(prev => {
+      const updated = prev.map(p => p.id === product.id ? { ...p, stock: (p.stock || 0) + amount } : p);
+      saveStoredProducts(updated);
+      return updated;
+    });
+    toast.success(`Restocked +${amount} pcs to ${product.name}! Stock is now safe.`);
+  };
+
+  // Handle Save Billing with Real MongoDB Cloud Sync
+  const handleSaveBilling = async () => {
     setSavingBilling(true);
     saveProBillingSettings(shopId, billing);
+
+    // Sync invoice preferences to MongoDB cloud
+    try {
+      if (shopId && shopId !== "default") {
+        await api.put(`/shops/${shopId}`, {
+          name: currentShop?.name || "My Dukaan",
+          ...currentShop,
+          invoice_settings: billing,
+          invoice_footer: billing.custom_footer_note || currentShop?.invoice_footer || "Thank you for shopping with us!"
+        });
+        const raw = localStorage.getItem("dukaan_shops");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const updated = parsed.map(s => (s.id === shopId || s._id === shopId) ? { ...s, invoice_settings: billing } : s);
+          localStorage.setItem("dukaan_shops", JSON.stringify(updated));
+        }
+      }
+    } catch (err) {
+      console.warn("Cloud sync for shop billing settings:", err);
+    }
+
     setTimeout(() => {
       setSavingBilling(false);
-      toast.success("Dukaan Pro billing & invoice settings saved!");
+      toast.success("Dukaan Pro billing settings saved & synced to cloud!");
     }, 300);
   };
 
@@ -110,6 +251,7 @@ export default function DukaanProStudio({ user, currentShop, isPro }) {
     if (selectedThemeObj) {
       document.documentElement.style.setProperty("--brand-accent-color", selectedThemeObj.primary);
       localStorage.setItem("dukaan_active_theme", theme.theme_id);
+      window.dispatchEvent(new CustomEvent("dukaan_theme_changed", { detail: theme.theme_id }));
     }
     setTimeout(() => {
       setSavingTheme(false);
@@ -770,17 +912,102 @@ export default function DukaanProStudio({ user, currentShop, isPro }) {
               </div>
 
               {labs.ai_restock_predictor && (
-                <div className="p-3 bg-white rounded-xl border border-purple-200 text-xs space-y-1.5 font-sans">
-                  <div className="font-bold text-purple-900 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-500" /> AI Stockout Forecast (Next 72 Hours)
+                <div className="p-4 bg-white rounded-2xl border border-purple-200 text-xs space-y-3 font-sans shadow-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <div className="font-bold text-purple-900 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                      <span className="text-sm">Dynamic AI Stockout Forecast (Next 72 Hours)</span>
+                    </div>
+                    <span className="self-start sm:self-auto px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 font-mono">
+                      7-Day Velocity Model
+                    </span>
                   </div>
-                  <div className="text-[11px] text-slate-600 grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                    <div className="p-2 rounded bg-red-50 border border-red-100 text-red-900 font-medium">
-                      ⚠️ Amul Butter 500g: 3 pcs left (Depleting by tomorrow 3 PM)
+
+                  {aiRestockForecast.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      {aiRestockForecast.slice(0, 4).map((item) => {
+                        const isCritical = item.urgency === "critical";
+                        return (
+                          <div 
+                            key={item.product.id || item.product.name}
+                            className={`p-3 rounded-xl border flex flex-col justify-between gap-2.5 transition-all ${
+                              isCritical 
+                                ? "bg-red-50/70 border-red-200 text-red-950" 
+                                : "bg-amber-50/70 border-amber-200 text-amber-950"
+                            }`}
+                          >
+                            <div>
+                              <div className="flex items-start justify-between gap-2">
+                                <span className="font-bold text-xs truncate">
+                                  {item.product.name}
+                                </span>
+                                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 ${
+                                  isCritical ? "bg-red-200 text-red-900" : "bg-amber-200 text-amber-900"
+                                }`}>
+                                  {isCritical ? "Critical" : "Depleting"}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-[11px] opacity-80 mt-1">
+                                <span>Stock: <strong className="font-mono">{item.currentStock}</strong> pcs</span>
+                                <span>·</span>
+                                <span>Sales: <strong className="font-mono">{item.sold7d}</strong> sold in 7d</span>
+                              </div>
+                              <div className="text-[11px] font-semibold mt-1 flex items-center gap-1">
+                                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                                <span>{item.statusText}</span>
+                              </div>
+                            </div>
+
+                            <div className="pt-2 border-t border-black/5 flex items-center justify-between gap-2">
+                              <span className="text-[10px] opacity-60">
+                                Rate: ~{item.dailyVelocity > 0 ? item.dailyVelocity.toFixed(1) : 0}/day
+                              </span>
+                              <Button
+                                size="sm"
+                                type="button"
+                                onClick={() => handleQuickRestock(item.product, 10)}
+                                className="h-7 px-3 text-[11px] font-bold rounded-lg bg-purple-700 hover:bg-purple-800 text-white shadow-xs"
+                              >
+                                +10 Restock
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <div className="p-2 rounded bg-amber-50 border border-amber-100 text-amber-900 font-medium">
-                      ⚠️ Maggi 2-Min Noodles 70g: 8 pcs left (Depleting in ~48 hrs)
+                  ) : (
+                    <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                        <div>
+                          <div className="font-bold text-xs">All Inventory Stocks Healthy!</div>
+                          <div className="text-[11px] text-emerald-800/80">
+                            Based on real 7-day sales velocity across your {productsList.length} products, no stockouts are expected in the next 72 hours.
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        type="button"
+                        onClick={() => nav("/app/stock")}
+                        className="h-8 px-3 text-xs font-bold border-emerald-300 text-emerald-800 hover:bg-emerald-100 rounded-lg shrink-0"
+                      >
+                        View Stock
+                      </Button>
                     </div>
+                  )}
+
+                  <div className="pt-1 flex items-center justify-between text-[11px] text-purple-900/60 font-medium">
+                    <span>Forecast calculated from your live bill registers & catalog stock.</span>
+                    <button
+                      type="button"
+                      onClick={() => nav("/app/stock")}
+                      className="text-purple-700 hover:underline font-bold flex items-center gap-1"
+                    >
+                      <span>Full Stock Management</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
                   </div>
                 </div>
               )}

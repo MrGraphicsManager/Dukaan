@@ -127,10 +127,24 @@ export const DEFAULT_PRO_LABS = {
    GETTERS & SETTERS (LocalStorage + Shop Persistence)
 ========================================================= */
 
-export function getProBillingSettings(shopId = "default") {
+export function getProBillingSettings(shopId = "default", fallbackShop = null) {
   try {
     const raw = localStorage.getItem(`dukaan_pro_billing_${shopId}`);
-    return raw ? { ...DEFAULT_PRO_BILLING, ...JSON.parse(raw) } : { ...DEFAULT_PRO_BILLING };
+    if (raw) {
+      return { ...DEFAULT_PRO_BILLING, ...JSON.parse(raw) };
+    }
+    if (fallbackShop?.invoice_settings) {
+      return { ...DEFAULT_PRO_BILLING, ...fallbackShop.invoice_settings };
+    }
+    const rawShops = localStorage.getItem("dukaan_shops");
+    if (rawShops) {
+      const parsed = JSON.parse(rawShops);
+      const found = parsed.find(s => s.id === shopId || s._id === shopId);
+      if (found?.invoice_settings) {
+        return { ...DEFAULT_PRO_BILLING, ...found.invoice_settings };
+      }
+    }
+    return { ...DEFAULT_PRO_BILLING };
   } catch {
     return { ...DEFAULT_PRO_BILLING };
   }

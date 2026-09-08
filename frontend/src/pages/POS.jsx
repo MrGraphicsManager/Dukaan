@@ -35,13 +35,23 @@ import {
   Crown,
   AlertTriangle,
   ChevronRight,
-  X
+  X,
+  Table as TableIcon,
+  LayoutGrid,
+  Minimize2,
+  PauseCircle,
+  PlayCircle
 } from "lucide-react";
 import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
 import { useAuth } from "@/lib/AuthContext";
 import { playVoiceSoundbox } from "@/lib/soundbox";
 import { findFMCGByBarcode } from "@/lib/fmcgMasterCatalog";
-import { getProBillingSettings } from "@/lib/proCustomizations";
+import { 
+  getProBillingSettings, 
+  getProThemeSettings, 
+  saveProThemeSettings, 
+  getProLabsSettings 
+} from "@/lib/proCustomizations";
 
 export default function POS() {
   const nav = useNavigate();
@@ -84,6 +94,71 @@ export default function POS() {
 
   // Mobile Cart Slide-up Drawer state
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
+
+  // Dukaan Pro: View Mode & Cart Hold/Recall State
+  const [posViewMode, setPosViewMode] = useState(() => {
+    return getProThemeSettings(user?.email)?.pos_view || "grid";
+  });
+  const [heldCart, setHeldCart] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem(`dukaan_held_cart_${currentShopId}`);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const handleHoldCart = () => {
+    if (cart.length === 0) {
+      toast.info("Cart is empty. Add products before holding bill.");
+      return;
+    }
+    const data = {
+      cart: [...cart],
+      customerId,
+      discount,
+      discountType,
+      heldAt: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+    };
+    sessionStorage.setItem(`dukaan_held_cart_${currentShopId}`, JSON.stringify(data));
+    setHeldCart(data);
+    setCart([]);
+    setDiscount(0);
+    setCustomerId("");
+    toast.success("⏸️ Current bill held! Ready for next customer. Press [F8] to recall.");
+  };
+
+  const handleRecallCart = () => {
+    if (!heldCart || !Array.isArray(heldCart.cart) || heldCart.cart.length === 0) {
+      toast.info("No held bill found to recall.");
+      return;
+    }
+    setCart(heldCart.cart);
+    if (heldCart.customerId) setCustomerId(heldCart.customerId);
+    if (heldCart.discount) setDiscount(heldCart.discount);
+    if (heldCart.discountType) setDiscountType(heldCart.discountType);
+    sessionStorage.removeItem(`dukaan_held_cart_${currentShopId}`);
+    setHeldCart(null);
+    toast.success(`▶️ Held bill restored with ${heldCart.cart.length} items!`);
+  };
+
+  useEffect(() => {
+    const handlePosShortcuts = (e) => {
+      // F7: Hold Cart
+      if (e.key === "F7") {
+        e.preventDefault();
+        handleHoldCart();
+      }
+      // F8: Recall Cart
+      else if (e.key === "F8") {
+        e.preventDefault();
+        handleRecallCart();
+      }
+    };
+    window.addEventListener("keydown", handlePosShortcuts);
+    return () => window.removeEventListener("keydown", handlePosShortcuts);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart, customerId, discount, discountType, heldCart, currentShopId]);
 
   useEffect(() => {
     api.get("/products")
@@ -688,6 +763,76 @@ export default function POS() {
             <Zap className="w-3.5 h-3.5 text-brand-terracotta" />
             <span>Counter Mode (F1-F6)</span>
           </Button>
+          {/* POS View Switcher (Grid vs Table vs Compact) */}
+          <div className="flex items-center p-1 rounded-xl bg-brand-sand/60 border border-brand-mitti">
+            <button
+              onClick={() => {
+                setPosViewMode("grid");
+                saveProThemeSettings(user?.email, { pos_view: "grid" });
+                toast.info("Visual Grid layout activated");
+              }}
+              className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                posViewMode === "grid" ? "bg-brand-indigo text-white shadow-xs" : "text-brand-indigo/60 hover:text-brand-indigo"
+              }`}
+              title="Visual Grid Mode (Touch / Images)"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Grid</span>
+            </button>
+            <button
+              onClick={() => {
+                setPosViewMode("table");
+                saveProThemeSettings(user?.email, { pos_view: "table" });
+                toast.info("Barcode Table layout activated");
+              }}
+              className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                posViewMode === "table" ? "bg-brand-indigo text-white shadow-xs" : "text-brand-indigo/60 hover:text-brand-indigo"
+              }`}
+              title="Compact Barcode Table Mode (Supermarket)"
+            >
+              <TableIcon className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Table</span>
+            </button>
+            <button
+              onClick={() => {
+                setPosViewMode("compact");
+                saveProThemeSettings(user?.email, { pos_view: "compact" });
+                toast.info("Minimalist Counter mode activated");
+              }}
+              className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                posViewMode === "compact" ? "bg-brand-indigo text-white shadow-xs" : "text-brand-indigo/60 hover:text-brand-indigo"
+              }`}
+              title="Minimalist Rapid Mode"
+            >
+              <Minimize2 className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Fast</span>
+            </button>
+          </div>
+
+          {/* Hold & Recall Buttons (F7 & F8) */}
+          <button
+            onClick={handleHoldCart}
+            disabled={cart.length === 0}
+            className="px-3 h-10 rounded-full border border-brand-mitti bg-white hover:bg-brand-sand text-brand-indigo text-xs font-bold flex items-center gap-1.5 shadow-xs disabled:opacity-50 transition-all active:scale-95"
+            title="Hold Current Bill (F7)"
+          >
+            <PauseCircle className="w-3.5 h-3.5 text-amber-600" />
+            <span className="hidden sm:inline">Hold</span>
+            <span className="font-mono text-[10px] text-brand-indigo/50">F7</span>
+          </button>
+
+          {heldCart && (
+            <button
+              onClick={handleRecallCart}
+              className="px-3 h-10 rounded-full bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-md animate-pulse active:scale-95 transition-all"
+              title="Recall Held Bill (F8)"
+            >
+              <PlayCircle className="w-3.5 h-3.5 text-amber-300" />
+              <span>Recall ({heldCart.cart?.length || 1})</span>
+              <span className="font-mono text-[10px] text-purple-200">F8</span>
+            </button>
+          )}
+
           <Button
             variant="outline"
             onClick={handlePrintTestDiagnostic}
@@ -784,7 +929,82 @@ export default function POS() {
             </div>
           </div>
 
-          {/* Product Grid */}
+          {/* Product View Rendering: Table vs Grid */}
+          {posViewMode === "table" ? (
+            <div className="bg-white rounded-3xl border-2 border-brand-mitti overflow-hidden shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs font-sans">
+                  <thead className="bg-brand-sand/60 text-brand-indigo/70 uppercase text-[10px] font-bold border-b border-brand-mitti">
+                    <tr>
+                      <th className="py-3 px-3.5">Barcode</th>
+                      <th className="py-3 px-3.5">Item Name</th>
+                      <th className="py-3 px-3.5">Category</th>
+                      <th className="py-3 px-3.5">Stock</th>
+                      <th className="py-3 px-3.5 text-right">Selling Price</th>
+                      <th className="py-3 px-3.5 text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-brand-mitti/60">
+                    {filtered.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-brand-indigo/50">
+                          No products found matching keyword.
+                        </td>
+                      </tr>
+                    ) : (
+                      filtered.map((p) => {
+                        const inCart = cart.find(x => x.product_id === p.id);
+                        const isOutOfStock = !p.unlimited_stock && p.stock <= 0;
+                        return (
+                          <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="py-2.5 px-3.5 font-mono text-slate-500">{p.barcode || "—"}</td>
+                            <td className="py-2.5 px-3.5 font-bold text-brand-indigo">{p.name}</td>
+                            <td className="py-2.5 px-3.5 text-brand-indigo/60">{p.category || "General"}</td>
+                            <td className="py-2.5 px-3.5">
+                              <span className={`font-bold ${p.unlimited_stock ? "text-slate-500" : p.stock <= 0 ? "text-rose-600" : p.stock <= 5 ? "text-amber-700" : "text-emerald-700"}`}>
+                                {p.unlimited_stock ? "Unlimited" : p.stock <= 0 ? "Out of stock" : `${p.stock} pcs`}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3.5 text-right font-display font-bold text-sm text-brand-indigo">
+                              {money(p.selling_price)}
+                            </td>
+                            <td className="py-2.5 px-3.5 text-center">
+                              {inCart ? (
+                                <div className="inline-flex items-center bg-brand-terracotta text-white rounded-xl h-8 px-1.5 shadow-xs">
+                                  <button
+                                    onClick={() => updateQty(cart.findIndex(x => x.product_id === p.id), -1)}
+                                    className="px-1.5 font-bold hover:bg-black/10 rounded"
+                                  >
+                                    -
+                                  </button>
+                                  <span className="px-2 font-mono font-extrabold">{inCart.qty}</span>
+                                  <button
+                                    onClick={() => updateQty(cart.findIndex(x => x.product_id === p.id), 1)}
+                                    className="px-1.5 font-bold hover:bg-black/10 rounded"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  disabled={isOutOfStock}
+                                  onClick={() => addToCart(p)}
+                                  className="h-8 px-3.5 rounded-xl bg-brand-sand hover:bg-brand-terracotta hover:text-white text-brand-indigo font-bold text-xs border border-brand-mitti transition-all active:scale-95 disabled:opacity-50"
+                                >
+                                  + ADD
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+          /* Product Grid */
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
             {filtered.length === 0 ? (
               <div className="col-span-full text-center py-16 bg-white rounded-3xl border-2 border-dashed border-brand-mitti p-8">
@@ -922,6 +1142,7 @@ export default function POS() {
               })
             )}
           </div>
+          )}
 
         </div>
 

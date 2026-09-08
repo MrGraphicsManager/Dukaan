@@ -116,3 +116,76 @@ input,select,textarea{font-size:16px}
 .shadow-3d-floating { box-shadow: 0 35px 60px -15px rgba(27, 20, 100, 0.18), 0 0 0 1px rgba(235, 227, 213, 0.8); }
 .shadow-3d-card { box-shadow: 0 20px 40px -10px rgba(27, 20, 100, 0.12), 0 4px 6px -2px rgba(27, 20, 100, 0.04); }
 
+/* =========================================================
+   DUKAAN PRO STORE THEMES (Global Accent Swatches)
+========================================================= */
+.theme-purple {
+  --brand-terracotta: #7C3AED;
+  --brand-indigo: #1E1B4B;
+}
+.theme-purple .bg-brand-terracotta { background-color: #7C3AED !important; }
+.theme-purple .text-brand-terracotta { color: #7C3AED !important; }
+.theme-purple .border-brand-terracotta { border-color: #7C3AED !important; }
+.theme-purple .hover\:bg-brand-terracotta\/90:hover { background-color: #6D28D9 !important; }
+
+.theme-emerald {
+  --brand-terracotta: #059669;
+  --brand-indigo: #064E3B;
+}
+.theme-emerald .bg-brand-terracotta { background-color: #059669 !important; }
+.theme-emerald .text-brand-terracotta { color: #059669 !important; }
+.theme-emerald .border-brand-terracotta { border-color: #059669 !important; }
+.theme-emerald .hover\:bg-brand-terracotta\/90:hover { background-color: #047857 !important; }
+
+.theme-indigo {
+  --brand-terracotta: #1B1464;
+  --brand-indigo: #312E81;
+}
+.theme-indigo .bg-brand-terracotta { background-color: #1B1464 !important; }
+.theme-indigo .text-brand-terracotta { color: #1B1464 !important; }
+.theme-indigo .border-brand-terracotta { border-color: #1B1464 !important; }
+.theme-indigo .hover\:bg-brand-terracotta\/90:hover { background-color: #0F0A3C !important; }
+
+.theme-midnight {
+  background-color: #0B0F19 !important;
+  color: #F3F4F6 !important;
+}
+.theme-midnight header {
+  background-color: rgba(17, 24, 39, 0.95) !important;
+  border-color: #1F2937 !important;
+}
+.theme-midnight .bg-white {
+  background-color: #111827 !important;
+  color: #F3F4F6 !important;
+  border-color: #1F2937 !important;
+}
+.theme-midnight .bg-brand-sand,
+.theme-midnight .bg-brand-cream {
+  background-color: #0B0F19 !important;
+}
+.theme-midnight .text-brand-indigo {
+  color: #F3F4F6 !important;
+}
+.theme-midnight .text-brand-indigo\/70,
+.theme-midnight .text-brand-indigo\/60 {
+  color: #9CA3AF !important;
+}
+.theme-midnight .border-brand-mitti {
+  border-color: #1F2937 !important;
+}
+.theme-midnight .divide-brand-mitti > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1F2937 !important;
+}
+.theme-midnight .bg-brand-sand\/50,
+.theme-midnight .bg-brand-sand\/60 {
+  background-color: #1F2937 !important;
+}
+.theme-midnight .bg-brand-terracotta {
+  background-color: #F59E0B !important;
+  color: #0B0F19 !important;
+}
+.theme-midnight .text-brand-terracotta {
+  color: #F59E0B !important;
+}
+
+

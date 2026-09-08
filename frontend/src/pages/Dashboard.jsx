@@ -488,14 +488,16 @@ export default function Dashboard() {
                   <span>Counter</span>
                 </Button>
               </div>
-              <Button
-                variant="outline"
-                onClick={() => setEodOpen(true)}
-                className="w-full h-9 rounded-xl border-amber-400/40 text-amber-300 hover:bg-amber-400/15 bg-white/5 text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs"
-              >
-                <Moon className="w-3.5 h-3.5 text-amber-300" />
-                <span>🌙 Daily EOD Closing Hisab</span>
-              </Button>
+              {proWidgets.profit_estimate !== false && (
+                <Button
+                  variant="outline"
+                  onClick={() => setEodOpen(true)}
+                  className="w-full h-9 rounded-xl border-amber-400/40 text-amber-300 hover:bg-amber-400/15 bg-white/5 text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs"
+                >
+                  <Moon className="w-3.5 h-3.5 text-amber-300" />
+                  <span>🌙 Daily EOD Closing Hisab</span>
+                </Button>
+              )}
               <Button
                 variant="outline"
                 onClick={() => setCustomizerOpen(true)}
@@ -794,11 +796,12 @@ export default function Dashboard() {
       {/* =========================================================
           ELEMENT 4 & 5: HOURLY SALES TREND + CASH DRAWER SPLIT
       ========================================================= */}
+      {(proWidgets.hourly_sales_chart !== false || proWidgets.udhaar_summary !== false) && (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* ELEMENT 4: Interactive Hourly Sales Chart */}
         {proWidgets.hourly_sales_chart !== false && (
-        <div className="lg:col-span-8 bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border-2 border-brand-mitti shadow-sm">
+        <div className={`${proWidgets.udhaar_summary !== false ? "lg:col-span-8" : "lg:col-span-12"} bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border-2 border-brand-mitti shadow-sm`}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
             <div>
               <div className="text-xs uppercase tracking-wider font-bold text-brand-terracotta">Hourly Breakdown</div>
@@ -844,6 +847,7 @@ export default function Dashboard() {
         )}
 
         {/* ELEMENT 5: Cash Drawer & Digital Payment Split Card */}
+        {proWidgets.udhaar_summary !== false && (
         <div className={`${proWidgets.hourly_sales_chart !== false ? "lg:col-span-4" : "lg:col-span-12"} bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-sm flex flex-col justify-between`}>
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -917,8 +921,10 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
+        )}
 
       </div>
+      )}
 
       {/* =========================================================
           ELEMENT 6 & 7: LOW STOCK ACTION CENTER + RECENT ORDERS FEED

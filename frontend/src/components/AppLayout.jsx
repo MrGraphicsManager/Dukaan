@@ -142,6 +142,22 @@ export default function AppLayout() {
   const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const { notifications, unreadCount, fetchNotifications, markRead, markAllRead } = useNotifications();
+  const [activeTheme, setActiveTheme] = useState(() => {
+    return localStorage.getItem("dukaan_active_theme") || "terracotta";
+  });
+
+  useEffect(() => {
+    const handleThemeEvent = (e) => {
+      const newTh = e?.detail || localStorage.getItem("dukaan_active_theme") || "terracotta";
+      setActiveTheme(newTh);
+    };
+    window.addEventListener("dukaan_theme_changed", handleThemeEvent);
+    window.addEventListener("storage", handleThemeEvent);
+    return () => {
+      window.removeEventListener("dukaan_theme_changed", handleThemeEvent);
+      window.removeEventListener("storage", handleThemeEvent);
+    };
+  }, []);
 
   // Read the current subscription from the backend if available; otherwise keep local state
   useEffect(() => {
@@ -478,7 +494,7 @@ export default function AppLayout() {
   }
 
   return (
-    <div className={`min-h-screen ${isPremium ? "premium-app-shell" : "bg-brand-sand"} ${premiumClass}`}>
+    <div className={`min-h-screen theme-${activeTheme} ${isPremium ? "premium-app-shell" : "bg-brand-sand"} ${premiumClass}`}>
 
       {/* Store Inspector Mode Banner (Feature #1) */}
       {inspectorSession && (

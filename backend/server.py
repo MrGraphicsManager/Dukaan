@@ -315,6 +315,8 @@ class ShopIn(BaseModel):
     gst_rate: float = 0
     financial_year: Optional[str] = "2026-27"
     store_active: bool = True
+    invoice_settings: Optional[dict] = None
+    pro_settings: Optional[dict] = None
 
 class ProductIn(BaseModel):
     name: str
@@ -1380,7 +1382,8 @@ async def create_shop(body: ShopIn, user: dict = Depends(get_current_user)):
 @api.put("/shops/{shop_id}")
 async def update_shop(shop_id: str, body: ShopIn, user: dict = Depends(get_current_user)):
     if not ObjectId.is_valid(shop_id): raise HTTPException(400, "bad id")
-    res = await db.shops.update_one({"_id": ObjectId(shop_id), "owner_id": user["id"]}, {"$set": body.model_dump()})
+    update_data = body.model_dump(exclude_unset=True)
+    res = await db.shops.update_one({"_id": ObjectId(shop_id), "owner_id": user["id"]}, {"$set": update_data})
     if res.matched_count == 0: raise HTTPException(404, "not found")
     return clean(await db.shops.find_one({"_id": ObjectId(shop_id)}))
 
