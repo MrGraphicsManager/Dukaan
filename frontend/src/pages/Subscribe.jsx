@@ -28,7 +28,8 @@ import {
   AlertTriangle,
   BadgePercent,
   Tag,
-  ArrowUpRight
+  ArrowUpRight,
+  ArrowDownLeft
 } from "lucide-react";
 import PremiumOnboarding, { EMPTY_PREMIUM_ONBOARDING } from "@/components/PremiumOnboarding";
 
@@ -338,6 +339,7 @@ export default function Subscribe() {
   );
   const userPlanKey = isSubActiveNow && userSub?.plan ? userSub.plan.toLowerCase() : null;
   const userRank = userPlanKey ? (PLAN_RANK[userPlanKey] || 0) : 0;
+  const selectedRank = PLAN_RANK[selected] || 0;
   const userPlan = userSub?.plan;
 
   const hasUsedTrial = Boolean(
@@ -354,19 +356,6 @@ export default function Subscribe() {
   );
   // Free upgrade eligible if selecting Pro on monthly billing, user has already used a trial on any tier, but hasn't taken the Pro trial yet!
   const isProFreeUpgradeEligible = isProPlan && !isAnnual && hasUsedTrial && !hasUsedProTrial;
-
-  // Prevent selecting lower tier (downgrade) when current subscription is active
-  useEffect(() => {
-    if (isSubActiveNow && userRank > 0) {
-      const currentSelectedRank = PLAN_RANK[selected] || 0;
-      if (currentSelectedRank < userRank) {
-        if (userRank === 1) setSelected("business");
-        else if (userRank === 2) setSelected("premium");
-        else if (userRank === 3) setSelected("pro");
-        else setSelected("pro");
-      }
-    }
-  }, [isSubActiveNow, userRank, selected]);
 
   useEffect(() => { 
     if (selected !== "premium" && selected !== "pro") setPremiumReady(false); 
@@ -436,15 +425,16 @@ export default function Subscribe() {
   /* =========================================================
      SUBSCRIPTION COMMITTAL & PERSISTENCE HELPER
   ========================================================= */
-  const commitSubscription = (newSub) => {
+  const commitSubscription = (newSub, upcomingSub = undefined) => {
     const cleanEmail = (user?.email || "").toLowerCase().trim();
     const rawUser = localStorage.getItem("dukaan_user");
     const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
-    parsed.subscription = newSub;
-    if (newSub.plan === "premium" || newSub.plan === "pro") {
+    if (newSub) parsed.subscription = newSub;
+    if (upcomingSub !== undefined) parsed.upcoming_subscription = upcomingSub;
+    if (newSub?.plan === "premium" || newSub?.plan === "pro" || upcomingSub?.plan === "premium" || upcomingSub?.plan === "pro") {
       parsed.is_premium = true;
     }
-    if (newSub.plan === "pro") {
+    if (newSub?.plan === "pro" || upcomingSub?.plan === "pro") {
       parsed.is_pro = true;
     }
     localStorage.setItem("dukaan_user", JSON.stringify(parsed));
@@ -454,22 +444,33 @@ export default function Subscribe() {
     if (cleanEmail) {
       try {
         const all = JSON.parse(localStorage.getItem("dukaan_all_subscriptions") || "{}");
-        all[cleanEmail] = newSub;
+        if (newSub) all[cleanEmail] = newSub;
         localStorage.setItem("dukaan_all_subscriptions", JSON.stringify(all));
+      } catch {}
+      try {
+        const allQueued = JSON.parse(localStorage.getItem("dukaan_upcoming_subscriptions") || "{}");
+        if (upcomingSub) {
+          allQueued[cleanEmail] = upcomingSub;
+        } else if (upcomingSub === null) {
+          delete allQueued[cleanEmail];
+        }
+        localStorage.setItem("dukaan_upcoming_subscriptions", JSON.stringify(allQueued));
       } catch {}
       try {
         let regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
         const idx = regUsers.findIndex(u => u.email && u.email.toLowerCase() === cleanEmail);
         if (idx >= 0) {
-          regUsers[idx].subscription = newSub;
-          if (newSub.plan === "premium" || newSub.plan === "pro") regUsers[idx].is_premium = true;
-          if (newSub.plan === "pro") regUsers[idx].is_pro = true;
+          if (newSub) regUsers[idx].subscription = newSub;
+          if (upcomingSub !== undefined) regUsers[idx].upcoming_subscription = upcomingSub;
+          if (newSub?.plan === "premium" || newSub?.plan === "pro" || upcomingSub?.plan === "premium" || upcomingSub?.plan === "pro") regUsers[idx].is_premium = true;
+          if (newSub?.plan === "pro" || upcomingSub?.plan === "pro") regUsers[idx].is_pro = true;
         } else {
           regUsers.push({
             id: `usr_${Date.now()}`,
             email: cleanEmail,
             name: user?.name || cleanEmail.split("@")[0],
             subscription: newSub,
+            upcoming_subscription: upcomingSub || null,
             is_verified: true,
             created_at: new Date().toISOString()
           });
@@ -477,6 +478,7 @@ export default function Subscribe() {
         localStorage.setItem("dukaan_registered_users", JSON.stringify(regUsers));
       } catch {}
     }
+    window.dispatchEvent(new CustomEvent("dukaan_subscription_updated"));
     return parsed;
   };
 
@@ -709,11 +711,6 @@ export default function Subscribe() {
       return;
     }
 
-    if (isSubActiveNow && (PLAN_RANK[selected] || 0) < userRank) {
-      toast.error(`Downgrading from ${userPlanKey.toUpperCase()} plan is not permitted.`);
-      return;
-    }
-
     setBusy(true);
     const rawAmount = isAnnual ? plan.annual : plan.monthly;
     const discount = appliedPromo?.discount_amount || 0;
@@ -730,31 +727,50 @@ export default function Subscribe() {
         prefill: { name: user?.name || "Dukaan Owner", email: user?.email || "owner@dukaan.in" }, 
         theme: { color: "#1B1464" }, 
         handler: async (value) => {
-          let newExpiry = new Date();
           let durationDays = isAnnual ? 365 : 30;
           if (selected === "pro") {
             durationDays = isAnnual ? 548 : 60; // 12+6 months (18 months) for annual, 1+1 month (60 days) for monthly
           }
 
-          let baseTime = Date.now();
           const rawUser = localStorage.getItem("dukaan_user");
           const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
-          
-          if (parsed.subscription?.expires_at) {
-            const curExp = new Date(parsed.subscription.expires_at).getTime();
-            if (!isNaN(curExp) && curExp > baseTime) baseTime = curExp;
+          const userEmail = (user?.email || parsed?.email || "owner@dukaan.in").toLowerCase().trim();
+
+          const curSub = parsed.subscription;
+          const curExp = curSub?.expires_at ? new Date(curSub.expires_at).getTime() : 0;
+          const isCurrentlyActive = Boolean(curExp && curExp > Date.now() && (curSub?.status === "active" || curSub?.status === "trial"));
+
+          let newSub = null;
+          let upcomingSub = null;
+
+          if (isCurrentlyActive) {
+            newSub = curSub;
+            upcomingSub = {
+              plan: selected,
+              plan_name: plan.name,
+              status: "scheduled",
+              is_annual: isAnnual,
+              starts_at: curSub.expires_at,
+              expires_at: new Date(curExp + (durationDays * 86400000)).toISOString(),
+              duration_days: durationDays,
+              amount_paid: amountToCharge,
+              paid_at: new Date().toISOString(),
+              payment_method: "razorpay",
+              razorpay_order_id: value.razorpay_order_id || null,
+              razorpay_payment_id: value.razorpay_payment_id || `pay_${Date.now()}`
+            };
+            commitSubscription(newSub, upcomingSub);
+          } else {
+            const newExpiry = new Date(Date.now() + (durationDays * 86400000));
+            newSub = {
+              plan: selected,
+              status: "active",
+              is_annual: isAnnual,
+              expires_at: newExpiry.toISOString(),
+              activated_at: new Date().toISOString()
+            };
+            commitSubscription(newSub, null);
           }
-          newExpiry = new Date(baseTime + (durationDays * 86400000));
-
-          const newSub = { 
-            plan: selected, 
-            status: "active", 
-            is_annual: isAnnual,
-            expires_at: newExpiry.toISOString(),
-            activated_at: new Date().toISOString()
-          };
-
-          commitSubscription(newSub);
 
           try { 
             const apiRes = await api.post("/subscriptions/razorpay/verify", { 
@@ -764,16 +780,23 @@ export default function Subscribe() {
               plan: selected,
               annual: isAnnual,
               promo_code: appliedPromo?.code || null,
-              user_email: user?.email,
-              expires_at: newExpiry.toISOString()
+              user_email: userEmail,
+              amount: amountToCharge,
+              upcoming_subscription: upcomingSub
             }); 
             if (apiRes.data?.access_token) {
               localStorage.setItem("dukaan_access_token", apiRes.data.access_token);
             }
           } catch (_) {}
 
-          setDone({ status: "active", plan: selected, annual: isAnnual, expires_at: newExpiry.toISOString() }); 
-          toast.success(`${plan.name} Plan Activated!`);
+          setDone({ 
+            status: "active", 
+            plan: selected, 
+            annual: isAnnual, 
+            expires_at: upcomingSub ? upcomingSub.expires_at : newSub.expires_at,
+            is_upcoming: Boolean(upcomingSub)
+          }); 
+          toast.success(upcomingSub ? `${plan.name} Plan scheduled for upcoming cycle!` : `${plan.name} Plan Activated!`);
         },
         modal: {
           ondismiss: () => {
@@ -786,7 +809,70 @@ export default function Subscribe() {
         const r = new window.Razorpay(rzpOptions);
         r.open();
       } else {
-        const durationDays = isAnnual ? 365 : 30;
+        let durationDays = isAnnual ? 365 : 30;
+        if (selected === "pro") durationDays = isAnnual ? 548 : 60;
+        const rawUser = localStorage.getItem("dukaan_user");
+        const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
+        const curSub = parsed.subscription;
+        const curExp = curSub?.expires_at ? new Date(curSub.expires_at).getTime() : 0;
+        const isCurrentlyActive = Boolean(curExp && curExp > Date.now() && (curSub?.status === "active" || curSub?.status === "trial"));
+
+        if (isCurrentlyActive) {
+          const upcomingSub = {
+            plan: selected,
+            plan_name: plan.name,
+            status: "scheduled",
+            is_annual: isAnnual,
+            starts_at: curSub.expires_at,
+            expires_at: new Date(curExp + (durationDays * 86400000)).toISOString(),
+            duration_days: durationDays,
+            amount_paid: amountToCharge,
+            paid_at: new Date().toISOString(),
+            payment_method: "razorpay"
+          };
+          commitSubscription(curSub, upcomingSub);
+          setDone({ status: "active", plan: selected, annual: isAnnual, expires_at: upcomingSub.expires_at, is_upcoming: true });
+          toast.success(`${plan.name} Plan scheduled for upcoming cycle!`);
+        } else {
+          const newExpiry = new Date(Date.now() + (durationDays * 86400000));
+          const fallbackSub = { 
+            plan: selected, 
+            status: "active", 
+            is_annual: isAnnual, 
+            expires_at: newExpiry.toISOString(),
+            activated_at: new Date().toISOString()
+          };
+          commitSubscription(fallbackSub, null);
+          setDone({ status: "active", plan: selected, annual: isAnnual, expires_at: newExpiry.toISOString() });
+          toast.success(`${plan.name} Plan Activated!`);
+        }
+      }
+    } catch (e) { 
+      let durationDays = isAnnual ? 365 : 30;
+      if (selected === "pro") durationDays = isAnnual ? 548 : 60;
+      const rawUser = localStorage.getItem("dukaan_user");
+      const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
+      const curSub = parsed.subscription;
+      const curExp = curSub?.expires_at ? new Date(curSub.expires_at).getTime() : 0;
+      const isCurrentlyActive = Boolean(curExp && curExp > Date.now() && (curSub?.status === "active" || curSub?.status === "trial"));
+
+      if (isCurrentlyActive) {
+        const upcomingSub = {
+          plan: selected,
+          plan_name: plan.name,
+          status: "scheduled",
+          is_annual: isAnnual,
+          starts_at: curSub.expires_at,
+          expires_at: new Date(curExp + (durationDays * 86400000)).toISOString(),
+          duration_days: durationDays,
+          amount_paid: amountToCharge,
+          paid_at: new Date().toISOString(),
+          payment_method: "razorpay"
+        };
+        commitSubscription(curSub, upcomingSub);
+        setDone({ status: "active", plan: selected, annual: isAnnual, expires_at: upcomingSub.expires_at, is_upcoming: true });
+        toast.success(`${plan.name} Plan scheduled for upcoming cycle!`);
+      } else {
         const newExpiry = new Date(Date.now() + (durationDays * 86400000));
         const fallbackSub = { 
           plan: selected, 
@@ -795,25 +881,10 @@ export default function Subscribe() {
           expires_at: newExpiry.toISOString(),
           activated_at: new Date().toISOString()
         };
-        commitSubscription(fallbackSub);
-
+        commitSubscription(fallbackSub, null);
         setDone({ status: "active", plan: selected, annual: isAnnual, expires_at: newExpiry.toISOString() });
         toast.success(`${plan.name} Plan Activated!`);
       }
-    } catch (e) { 
-      const durationDays = isAnnual ? 365 : 30;
-      const newExpiry = new Date(Date.now() + (durationDays * 86400000));
-      const fallbackSub = { 
-        plan: selected, 
-        status: "active", 
-        is_annual: isAnnual, 
-        expires_at: newExpiry.toISOString(),
-        activated_at: new Date().toISOString()
-      };
-      commitSubscription(fallbackSub);
-
-      setDone({ status: "active", plan: selected, annual: isAnnual, expires_at: newExpiry.toISOString() });
-      toast.success(`${plan.name} Plan Activated!`);
     } finally { 
       setBusy(false); 
     }
@@ -951,10 +1022,6 @@ export default function Subscribe() {
               : value.original_monthly;
 
             const handleCardClick = () => {
-              if (isDowngrade) {
-                toast.info(`You are currently on the ${userPlanKey?.toUpperCase()} tier. Downgrading is not permitted.`);
-                return;
-              }
               setSelected(key);
             };
 
@@ -965,14 +1032,14 @@ export default function Subscribe() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.08, duration: 0.4 }}
-                whileHover={isDowngrade ? {} : { y: -6 }}
+                whileHover={{ y: -6 }}
                 className={`relative rounded-3xl p-6 md:p-7 border-2 transition-all flex flex-col justify-between ${
-                  isDowngrade
-                    ? "border-slate-200 bg-slate-50/70 opacity-60 cursor-not-allowed"
-                    : isSelected
+                  isSelected
                     ? key === "pro"
                       ? "border-purple-600 bg-white shadow-2xl ring-2 ring-purple-500/30 cursor-pointer"
                       : "border-brand-terracotta bg-white shadow-xl ring-2 ring-brand-terracotta/20 cursor-pointer"
+                    : isDowngrade
+                    ? "border-amber-300 bg-gradient-to-b from-white via-white to-amber-50/20 shadow-xs hover:border-amber-400 cursor-pointer"
                     : key === "pro"
                     ? "border-purple-300 bg-gradient-to-b from-white via-white to-purple-50/30 shadow-md hover:border-purple-500 cursor-pointer"
                     : isFeatured
@@ -982,8 +1049,8 @@ export default function Subscribe() {
               >
                 {/* Badges */}
                 {isDowngrade ? (
-                  <span className="absolute -top-3.5 left-4 inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider bg-slate-400 text-white shadow-sm">
-                    <Lock className="w-3 h-3" /> Locked
+                  <span className="absolute -top-3.5 left-4 inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider bg-amber-600 text-white shadow-sm">
+                    <ArrowDownLeft className="w-3 h-3" /> Downgrade Option
                   </span>
                 ) : isCurrentActivePlan ? (
                   <span className="absolute -top-3.5 left-4 inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider bg-emerald-600 text-white shadow-md">
@@ -1165,17 +1232,22 @@ export default function Subscribe() {
                 <div className="pt-4 border-t border-brand-mitti">
                   {isDowngrade ? (
                     <Button
-                      disabled
-                      className="w-full h-12 rounded-2xl font-bold text-xs bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                      onClick={handleCardClick}
+                      className={`w-full h-12 rounded-2xl font-bold text-xs shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 ${
+                        isSelected
+                          ? "bg-amber-600 hover:bg-amber-700 text-white shadow-md"
+                          : "bg-amber-50 hover:bg-amber-100 text-amber-900 border-2 border-amber-300"
+                      }`}
                     >
-                      Downgrade Not Available
+                      <span>Downgrade to {value.name}</span>
+                      <ArrowDownLeft className="w-3.5 h-3.5" />
                     </Button>
                   ) : isCurrentActivePlan ? (
                     <Button
                       onClick={handleCardClick}
                       className={`w-full h-12 rounded-2xl font-bold text-xs shadow-xs active:scale-95 transition-all ${
-                        renew
-                          ? "bg-brand-terracotta hover:bg-brand-terracotta/90 text-white"
+                        renew || isSelected
+                          ? "bg-brand-terracotta hover:bg-brand-terracotta/90 text-white shadow-md"
                           : "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-2 border-emerald-300"
                       }`}
                     >
@@ -1184,10 +1256,10 @@ export default function Subscribe() {
                   ) : isUpgrade ? (
                     <Button
                       onClick={handleCardClick}
-                      className="w-full h-12 rounded-2xl font-bold text-xs bg-brand-terracotta hover:bg-brand-terracotta/90 text-white shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                      className="w-full h-12 rounded-2xl font-bold text-xs bg-brand-indigo hover:bg-brand-indigo/90 text-white shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5"
                     >
                       <span>Upgrade to {value.name}</span>
-                      <ArrowRight className="w-4 h-4" />
+                      <ArrowUpRight className="w-4 h-4" />
                     </Button>
                   ) : (
                     <Button
@@ -1431,15 +1503,29 @@ export default function Subscribe() {
                       <span>Skip Trial & Pay ₹{plan.monthly}/month (1+1 Month Free)</span>
                     </Button>
                   </>
-                ) : hasUsedTrial ? (
-                  // TRIAL ALREADY CLAIMED: STRICTLY PAID UPGRADE
+                ) : (hasUsedTrial || isSubActiveNow) ? (
+                  // TRIAL ALREADY CLAIMED OR ACTIVE SUBSCRIPTION: PAID TRANSITION
                   <Button 
                     disabled={busy} 
                     onClick={pay} 
-                    className="w-full h-14 rounded-2xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-extrabold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
+                    className={`w-full h-14 rounded-2xl font-extrabold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 text-white ${
+                      isSubActiveNow && userRank > 0 && selectedRank < userRank 
+                        ? "bg-amber-600 hover:bg-amber-700" 
+                        : "bg-brand-terracotta hover:bg-brand-terracotta/90"
+                    }`}
                   >
                     <CreditCard className="w-4 h-4" />
-                    <span>{busy ? "Opening Razorpay…" : selected === "pro" ? `Pay ₹499/month (1+1 Mo Free) & Activate Pro` : `Pay ₹${plan.monthly}/month & Activate Plan`}</span>
+                    <span>
+                      {busy 
+                        ? "Opening Razorpay…" 
+                        : isSubActiveNow && selected === userPlanKey
+                        ? `Pay ₹${Math.max(0, plan.monthly - (appliedPromo?.discount_amount || 0))} & Renew ${plan.name} Plan`
+                        : isSubActiveNow && userRank > 0 && selectedRank < userRank
+                        ? `Pay ₹${Math.max(0, plan.monthly - (appliedPromo?.discount_amount || 0))} & Downgrade to ${plan.name} (Upcoming Cycle)`
+                        : selected === "pro"
+                        ? `Pay ₹499/month (1+1 Mo Free) & Upgrade to Pro`
+                        : `Pay ₹${Math.max(0, plan.monthly - (appliedPromo?.discount_amount || 0))}/month & Activate ${plan.name}`}
+                    </span>
                   </Button>
                 ) : (
                   // MONTHLY PLAN: ₹1 AUTOPAY MANDATE FOR FREE TRIAL

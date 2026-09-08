@@ -292,6 +292,12 @@ async function getPersistentState(force = false) {
               ...json.granted_subscriptions
             };
           }
+          if (json.queued_subscriptions) {
+            globalPlatformConfig.queued_subscriptions = {
+              ...globalPlatformConfig.queued_subscriptions,
+              ...json.queued_subscriptions
+            };
+          }
           if (json.frozen_merchants) {
             globalPlatformConfig.frozen_merchants = {
               ...globalPlatformConfig.frozen_merchants,
@@ -408,6 +414,7 @@ async function savePersistentState(extraConfig = {}) {
       ota_version: globalPlatformConfig.ota_version,
       kill_switch_active: globalPlatformConfig.kill_switch_active,
       granted_subscriptions: globalPlatformConfig.granted_subscriptions || {},
+      queued_subscriptions: globalPlatformConfig.queued_subscriptions || {},
       frozen_merchants: globalPlatformConfig.frozen_merchants || {},
       verified_merchants: globalPlatformConfig.verified_merchants || {},
       pricing: globalPlatformConfig.pricing,
@@ -730,10 +737,21 @@ function makeToken(userData) {
 
 function parseToken(authHeader) {
   if (!authHeader) return null;
-  const match = authHeader.match(/^Bearer\s+(?:duk_)?([A-Za-z0-9_-]+)/);
-  if (!match) return null;
+  const raw = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!raw) return null;
+  const tokenStr = raw.startsWith("duk_") ? raw.slice(4) : raw;
+  if (tokenStr.includes(".")) {
+    const parts = tokenStr.split(".");
+    if (parts.length >= 2) {
+      try {
+        const payloadJson = Buffer.from(parts[1], "base64url").toString("utf-8");
+        const payload = JSON.parse(payloadJson);
+        if (payload && typeof payload === "object") return payload;
+      } catch (_) {}
+    }
+  }
   try {
-    const json = Buffer.from(match[1], "base64url").toString("utf-8");
+    const json = Buffer.from(tokenStr, "base64url").toString("utf-8");
     const parsed = JSON.parse(json);
     return parsed && typeof parsed === "object" ? parsed : null;
   } catch (e) {
@@ -745,7 +763,7 @@ exports.handler = async (event, context) => {
   // CORS & Anti-Caching Headers (Ensures real-time updates across browsers)
   const headers = {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Shop-Id",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Shop-Id, X-User-Email, Cache-Control, Pragma",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Content-Type": "application/json",
     "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
@@ -1352,17 +1370,61 @@ exports.handler = async (event, context) => {
       if (plan === "pro") {
         durationDays = isAnnual ? 548 : 60; // 12+6 months free or 1+1 month free
       }
-      const expires_at = body.expires_at || new Date(Date.now() + durationDays * 86400000).toISOString();
-      const subscription = {
-        plan,
-        status: "active",
-        is_annual: isAnnual,
-        razorpay_order_id: body.razorpay_order_id,
-        razorpay_payment_id: body.razorpay_payment_id || `pay_rzp_${Date.now()}`,
-        promo_code: body.promo_code || null,
-        expires_at,
-        activated_at: new Date().toISOString()
-      };
+
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      let user = parseToken(authHeader) || {};
+      const email = ((body.user_email || body.email || user.email) || "").toLowerCase().trim();
+
+      if (!globalPlatformConfig.granted_subscriptions) globalPlatformConfig.granted_subscriptions = {};
+      if (!globalPlatformConfig.queued_subscriptions) globalPlatformConfig.queued_subscriptions = {};
+
+      const currentActive = email ? (globalPlatformConfig.granted_subscriptions[email] || null) : null;
+      const curExp = currentActive?.expires_at ? new Date(currentActive.expires_at).getTime() : 0;
+      const isCurrentlyActive = Boolean(curExp && curExp > Date.now() && (currentActive?.status === "active" || currentActive?.status === "trial"));
+
+      let subscription = null;
+      let upcomingSub = body.upcoming_subscription || null;
+
+      if (isCurrentlyActive && !body.instant_activate) {
+        subscription = currentActive;
+
+        if (!upcomingSub) {
+          upcomingSub = {
+            plan,
+            plan_name: body.plan_name || (plan.charAt(0).toUpperCase() + plan.slice(1)),
+            status: "scheduled",
+            is_annual: isAnnual,
+            starts_at: currentActive.expires_at,
+            expires_at: new Date(curExp + durationDays * 86400000).toISOString(),
+            duration_days: durationDays,
+            amount_paid: body.amount || (plan === "pro" ? 499 : plan === "premium" ? 239 : plan === "business" ? 119 : 79),
+            paid_at: new Date().toISOString(),
+            razorpay_order_id: body.razorpay_order_id || null,
+            razorpay_payment_id: body.razorpay_payment_id || `pay_rzp_${Date.now()}`
+          };
+        }
+        if (email) {
+          globalPlatformConfig.queued_subscriptions[email] = upcomingSub;
+        }
+      } else {
+        const baseTime = (body.rollover_remaining && curExp > Date.now()) ? curExp : Date.now();
+        const expires_at = body.expires_at || new Date(baseTime + durationDays * 86400000).toISOString();
+        subscription = {
+          plan,
+          status: "active",
+          is_annual: isAnnual,
+          razorpay_order_id: body.razorpay_order_id,
+          razorpay_payment_id: body.razorpay_payment_id || `pay_rzp_${Date.now()}`,
+          promo_code: body.promo_code || null,
+          expires_at,
+          activated_at: new Date().toISOString()
+        };
+        if (email) {
+          globalPlatformConfig.granted_subscriptions[email] = subscription;
+          delete globalPlatformConfig.queued_subscriptions[email];
+        }
+        upcomingSub = null;
+      }
 
       const appliedPromoCode = (body.promo_code || "").trim().toUpperCase();
       if (appliedPromoCode) {
@@ -1372,19 +1434,16 @@ exports.handler = async (event, context) => {
         }
       }
 
-      const authHeader = event.headers.authorization || event.headers.Authorization || "";
-      let user = parseToken(authHeader) || {};
-      const email = ((body.user_email || body.email || user.email) || "").toLowerCase().trim();
       if (email) {
         user.email = email;
-        if (!globalPlatformConfig.granted_subscriptions) globalPlatformConfig.granted_subscriptions = {};
-        globalPlatformConfig.granted_subscriptions[email] = subscription;
-        recordRegisteredUser({ email, subscription, is_verified: true });
+        recordRegisteredUser({ email, subscription, upcoming_subscription: upcomingSub, is_verified: true });
       }
       savePersistentState().catch(() => {});
+
       user.subscription = subscription;
-      if (plan === "premium" || plan === "pro") user.is_premium = true;
-      if (plan === "pro") user.is_pro = true;
+      user.upcoming_subscription = upcomingSub;
+      if (subscription?.plan === "premium" || subscription?.plan === "pro") user.is_premium = true;
+      if (subscription?.plan === "pro") user.is_pro = true;
       const new_token = makeToken(user);
 
       return {
@@ -1393,6 +1452,8 @@ exports.handler = async (event, context) => {
         body: JSON.stringify({
           ok: true,
           subscription,
+          upcoming: upcomingSub,
+          upcoming_subscription: upcomingSub,
           access_token: new_token,
           user
         })
@@ -1409,11 +1470,17 @@ exports.handler = async (event, context) => {
       const email = ((user?.email || headerEmail || queryEmail) || "").toLowerCase().trim();
 
       let granted = null;
+      let queued = null;
       if (email) {
         granted = globalPlatformConfig.granted_subscriptions?.[email];
         if (!granted && globalPlatformConfig.granted_subscriptions) {
           const foundKey = Object.keys(globalPlatformConfig.granted_subscriptions).find(k => k.toLowerCase() === email);
           if (foundKey) granted = globalPlatformConfig.granted_subscriptions[foundKey];
+        }
+        queued = globalPlatformConfig.queued_subscriptions?.[email];
+        if (!queued && globalPlatformConfig.queued_subscriptions) {
+          const foundKey = Object.keys(globalPlatformConfig.queued_subscriptions).find(k => k.toLowerCase() === email);
+          if (foundKey) queued = globalPlatformConfig.queued_subscriptions[foundKey];
         }
       }
 
@@ -1421,15 +1488,107 @@ exports.handler = async (event, context) => {
       if (!activeSub && email) {
         const reg = registeredUsersList.find(u => u.email && u.email.toLowerCase() === email);
         if (reg?.subscription) activeSub = reg.subscription;
+        if (!queued && reg?.upcoming_subscription) queued = reg.upcoming_subscription;
       }
       if (!activeSub) activeSub = user?.subscription || null;
+      if (!queued) queued = user?.upcoming_subscription || null;
+
+      // Auto-activation: If current activeSub has expired and queued sub is waiting
+      if (activeSub?.expires_at && new Date(activeSub.expires_at).getTime() <= Date.now() && queued) {
+        activeSub = {
+          plan: queued.plan,
+          status: "active",
+          is_annual: Boolean(queued.is_annual),
+          expires_at: queued.expires_at || new Date(Date.now() + (queued.duration_days || 30) * 86400000).toISOString(),
+          activated_at: new Date().toISOString()
+        };
+        if (email) {
+          if (!globalPlatformConfig.granted_subscriptions) globalPlatformConfig.granted_subscriptions = {};
+          globalPlatformConfig.granted_subscriptions[email] = activeSub;
+          if (globalPlatformConfig.queued_subscriptions) delete globalPlatformConfig.queued_subscriptions[email];
+          recordRegisteredUser({ email, subscription: activeSub, upcoming_subscription: null, is_verified: true });
+          savePersistentState().catch(() => {});
+        }
+        queued = null;
+      }
 
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           active: activeSub,
-          subscription: activeSub
+          subscription: activeSub,
+          upcoming: queued,
+          queued: queued
+        })
+      };
+    }
+
+    // 9A. ACTIVATE QUEUED SUBSCRIPTION INSTANTLY
+    if (path === "/subscriptions/activate-queued" && event.httpMethod === "POST") {
+      await getPersistentState();
+      const authHeader = event.headers.authorization || event.headers.Authorization || "";
+      const user = parseToken(authHeader);
+      const email = ((body.user_email || body.email || user?.email) || "").toLowerCase().trim();
+
+      if (!email) {
+        return { statusCode: 400, headers, body: JSON.stringify({ detail: "User email is required." }) };
+      }
+
+      if (!globalPlatformConfig.granted_subscriptions) globalPlatformConfig.granted_subscriptions = {};
+      if (!globalPlatformConfig.queued_subscriptions) globalPlatformConfig.queued_subscriptions = {};
+
+      let queued = body.upcoming_subscription || globalPlatformConfig.queued_subscriptions[email];
+      if (!queued && registeredUsersList) {
+        const reg = registeredUsersList.find(u => u.email && u.email.toLowerCase() === email);
+        if (reg?.upcoming_subscription) queued = reg.upcoming_subscription;
+      }
+
+      if (!queued) {
+        return { statusCode: 404, headers, body: JSON.stringify({ detail: "No upcoming subscription found to activate." }) };
+      }
+
+      const curSub = globalPlatformConfig.granted_subscriptions[email];
+      const curExp = curSub?.expires_at ? new Date(curSub.expires_at).getTime() : 0;
+      const remainingMs = Math.max(0, curExp - Date.now());
+      const durationMs = (queued.duration_days || (queued.plan === "pro" ? 60 : 30)) * 86400000;
+      const newExpiry = new Date(Date.now() + durationMs + remainingMs).toISOString();
+
+      const newActive = {
+        plan: queued.plan,
+        status: "active",
+        is_annual: Boolean(queued.is_annual),
+        razorpay_order_id: queued.razorpay_order_id,
+        razorpay_payment_id: queued.razorpay_payment_id,
+        expires_at: newExpiry,
+        activated_at: new Date().toISOString()
+      };
+
+      globalPlatformConfig.granted_subscriptions[email] = newActive;
+      delete globalPlatformConfig.queued_subscriptions[email];
+      recordRegisteredUser({ email, subscription: newActive, upcoming_subscription: null, is_verified: true });
+      savePersistentState().catch(() => {});
+
+      const updatedUser = {
+        ...(user || {}),
+        email,
+        subscription: newActive,
+        upcoming_subscription: null,
+        is_premium: newActive.plan === "premium" || newActive.plan === "pro",
+        is_pro: newActive.plan === "pro"
+      };
+      const new_token = makeToken(updatedUser);
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          ok: true,
+          active: newActive,
+          subscription: newActive,
+          upcoming: null,
+          access_token: new_token,
+          user: updatedUser
         })
       };
     }

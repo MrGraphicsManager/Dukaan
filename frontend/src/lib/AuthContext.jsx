@@ -64,6 +64,43 @@ export function savePersistentSubscription(email, subscription) {
   } catch {}
 }
 
+export function getPersistentUpcomingSubscription(email) {
+  if (!email) return null;
+  const clean = email.toLowerCase().trim();
+  try {
+    const allQueued = JSON.parse(localStorage.getItem("dukaan_upcoming_subscriptions") || "{}");
+    if (allQueued[clean]) return allQueued[clean];
+  } catch {}
+  try {
+    const regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
+    const found = regUsers.find(u => u.email && u.email.toLowerCase() === clean);
+    if (found?.upcoming_subscription) return found.upcoming_subscription;
+  } catch {}
+  return null;
+}
+
+export function savePersistentUpcomingSubscription(email, upcomingSub) {
+  if (!email) return;
+  const clean = email.toLowerCase().trim();
+  try {
+    const allQueued = JSON.parse(localStorage.getItem("dukaan_upcoming_subscriptions") || "{}");
+    if (upcomingSub) {
+      allQueued[clean] = upcomingSub;
+    } else {
+      delete allQueued[clean];
+    }
+    localStorage.setItem("dukaan_upcoming_subscriptions", JSON.stringify(allQueued));
+  } catch {}
+  try {
+    let regUsers = JSON.parse(localStorage.getItem("dukaan_registered_users") || "[]");
+    const idx = regUsers.findIndex(u => u.email && u.email.toLowerCase() === clean);
+    if (idx >= 0) {
+      regUsers[idx].upcoming_subscription = upcomingSub || null;
+      localStorage.setItem("dukaan_registered_users", JSON.stringify(regUsers));
+    }
+  } catch {}
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
@@ -223,31 +260,63 @@ export function AuthProvider({ children }) {
         // Retain local subscription if backend doesn't return one or if local one has valid active days
         const stored = localStorage.getItem("dukaan_user");
         let localSub = null;
+        let localUpcomingSub = null;
         let localIsPremium = false;
         if (stored) {
           try {
             const parsed = JSON.parse(stored);
             localSub = parsed.subscription;
+            localUpcomingSub = parsed.upcoming_subscription;
             localIsPremium = Boolean(parsed.is_premium);
           } catch {}
         }
         const persistentSub = getPersistentSubscription(cleanEmail);
+        const persistentUpcoming = getPersistentUpcomingSubscription(cleanEmail);
 
         // Query subscriptions endpoint directly for any live admin-granted plans
         let activeSubscription = data.subscription;
+        let serverUpcoming = null;
         try {
           const subRes = await api.get("/subscriptions/me");
           if (subRes.data?.active) {
             activeSubscription = subRes.data.active;
           }
+          if (subRes.data?.upcoming || subRes.data?.queued) {
+            serverUpcoming = subRes.data.upcoming || subRes.data.queued;
+          }
         } catch {}
 
-        const finalSub = activeSubscription || persistentSub || localSub || null;
+        // Pick subscription with latest expiry so renewals are never wiped out
+        const candidateSubs = [activeSubscription, persistentSub, localSub].filter(Boolean);
+        let finalSub = candidateSubs[0] || null;
+        for (const c of candidateSubs) {
+          const cTime = c?.expires_at ? new Date(c.expires_at).getTime() : 0;
+          const bestTime = finalSub?.expires_at ? new Date(finalSub.expires_at).getTime() : 0;
+          if (cTime > bestTime) {
+            finalSub = c;
+          }
+        }
+
+        let upcomingSub = serverUpcoming || persistentUpcoming || localUpcomingSub || null;
+
+        // Auto-promote if current active subscription has expired
+        if (finalSub?.expires_at && new Date(finalSub.expires_at).getTime() <= Date.now() && upcomingSub) {
+          finalSub = {
+            plan: upcomingSub.plan,
+            status: "active",
+            is_annual: Boolean(upcomingSub.is_annual),
+            expires_at: upcomingSub.expires_at || new Date(Date.now() + (upcomingSub.duration_days || 30) * 86400000).toISOString(),
+            activated_at: new Date().toISOString()
+          };
+          upcomingSub = null;
+        }
+
         const isUserAdmin = isAdminEmail(cleanEmail);
         const finalUser = {
           ...data,
           is_admin: isUserAdmin,
           subscription: finalSub,
+          upcoming_subscription: upcomingSub,
           is_premium: data.is_premium || localIsPremium || (finalSub?.plan === "premium" || finalSub?.plan === "pro"),
           is_pro: data.is_pro || (finalSub?.plan === "pro")
         };
@@ -256,6 +325,7 @@ export function AuthProvider({ children }) {
         if (finalSub) {
           savePersistentSubscription(cleanEmail, finalSub);
         }
+        savePersistentUpcomingSubscription(cleanEmail, upcomingSub);
         await loadShops(finalUser.default_shop_id);
         return finalUser;
       }
