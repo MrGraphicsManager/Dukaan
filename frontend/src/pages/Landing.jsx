@@ -30,7 +30,8 @@ import {
   Phone,
   HelpCircle,
   LogIn,
-  UserPlus
+  UserPlus,
+  Rocket
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import InstallAppButton from "@/components/InstallAppButton";
@@ -38,6 +39,12 @@ import Card3D from "@/components/Card3D";
 import ThreeDHeroKiosk from "@/components/ThreeDHeroKiosk";
 import ThreeDCounterModeShowcase from "@/components/ThreeDCounterModeShowcase";
 import ThreeDBackground from "@/components/ThreeDBackground";
+import LivePosDemoSimulator from "@/components/landing/LivePosDemoSimulator";
+import DukaanProShowcase from "@/components/landing/DukaanProShowcase";
+import EngineeringJourneyRoadmap from "@/components/landing/EngineeringJourneyRoadmap";
+import RoiCalculator from "@/components/landing/RoiCalculator";
+import ShopCategoryMatcher from "@/components/landing/ShopCategoryMatcher";
+import HardwareCompatibility from "@/components/landing/HardwareCompatibility";
 
 const FEATURES = [
   { 
@@ -370,24 +377,28 @@ export default function Landing() {
           </Link>
 
           {/* Desktop Navigation Links (Clean spacing, zero overlap) */}
-          <nav className="hidden lg:flex items-center gap-3.5 xl:gap-6 text-xs xl:text-sm font-semibold text-brand-indigo/80 shrink-0">
-            <a href="#features" className="hover:text-brand-terracotta transition-colors whitespace-nowrap">Features</a>
-            <a href="#counter-mode" className="hover:text-brand-terracotta transition-colors flex items-center gap-1 whitespace-nowrap">
-              <span>Counter Mode</span>
-              <span className="bg-brand-terracotta/10 text-brand-terracotta text-[10px] font-bold px-1.5 py-0.5 rounded-full">3D</span>
+          <nav className="hidden lg:flex items-center gap-3.5 xl:gap-5 text-xs xl:text-sm font-semibold text-brand-indigo/80 shrink-0">
+            <a href="#live-demo" className="hover:text-brand-terracotta transition-colors flex items-center gap-1 whitespace-nowrap">
+              <span>Try Demo</span>
+              <span className="bg-amber-400/20 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full">Live</span>
             </a>
+            <a href="#dukaan-pro" className="hover:text-amber-600 transition-colors flex items-center gap-1 whitespace-nowrap font-bold text-amber-800">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>Dukaan Pro</span>
+            </a>
+            <a href="#features" className="hover:text-brand-terracotta transition-colors whitespace-nowrap">Features</a>
+            <a href="#counter-mode" className="hover:text-brand-terracotta transition-colors whitespace-nowrap">Counter (F1-F6)</a>
+            <a href="#our-story" className="hover:text-brand-terracotta transition-colors whitespace-nowrap">Our Story</a>
             <a href="#pricing" className="hover:text-brand-terracotta transition-colors whitespace-nowrap">Pricing</a>
             <Link to="/careers" className="text-blue-600 font-bold hover:text-blue-700 flex items-center gap-1.5 transition-colors whitespace-nowrap">
               <Briefcase className="w-3.5 h-3.5" />
-              <span>We're Hiring</span>
-              <span className="bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">2 Roles</span>
+              <span>Hiring</span>
+              <span className="bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">2</span>
             </Link>
             <Link to="/mobile" className="text-[#0066FF] font-bold hover:text-blue-700 flex items-center gap-1.5 transition-colors whitespace-nowrap">
               <Smartphone className="w-3.5 h-3.5" />
-              <span>Mobile App</span>
-              <span className="bg-[#0066FF] text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full">New</span>
+              <span>App</span>
             </Link>
-            <a href="#faq" className="hover:text-brand-terracotta transition-colors whitespace-nowrap">FAQ</a>
           </nav>
 
           {/* Right Action Buttons & Mobile Toggle */}
@@ -499,6 +510,36 @@ export default function Landing() {
 
 
                   <a
+                    href="#live-demo"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="p-3 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 flex items-center gap-2.5 transition-colors"
+                  >
+                    <Zap className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div className="text-left">
+                      <div className="text-xs font-bold text-amber-900 flex items-center gap-1">
+                        <span>Try Live Demo</span>
+                        <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1 rounded-sm">Free</span>
+                      </div>
+                      <div className="text-[10px] text-amber-800/70 font-medium">Interactive POS</div>
+                    </div>
+                  </a>
+
+                  <a
+                    href="#dukaan-pro"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="p-3 rounded-xl bg-slate-900 text-white hover:bg-slate-800 border border-slate-700 flex items-center gap-2.5 transition-colors"
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                    <div className="text-left">
+                      <div className="text-xs font-bold text-white flex items-center gap-1">
+                        <span>Dukaan Pro</span>
+                        <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1 rounded-sm">PRO</span>
+                      </div>
+                      <div className="text-[10px] text-slate-300 font-medium">Custom Invoices & PIN</div>
+                    </div>
+                  </a>
+
+                  <a
                     href="#counter-mode"
                     onClick={() => setMobileMenuOpen(false)}
                     className="p-3 rounded-xl bg-brand-sand/50 hover:bg-brand-sand border border-brand-mitti/40 flex items-center gap-2.5 transition-colors"
@@ -509,7 +550,19 @@ export default function Landing() {
                         <span>Counter Mode</span>
                         <span className="text-[9px] bg-brand-terracotta text-white font-bold px-1 rounded-sm">3D</span>
                       </div>
-                      <div className="text-[10px] text-brand-indigo/60 font-medium">Fast POS Billing</div>
+                      <div className="text-[10px] text-brand-indigo/60 font-medium">Fast POS (F1-F6)</div>
+                    </div>
+                  </a>
+
+                  <a
+                    href="#our-story"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="p-3 rounded-xl bg-brand-sand/50 hover:bg-brand-sand border border-brand-mitti/40 flex items-center gap-2.5 transition-colors"
+                  >
+                    <Rocket className="w-4 h-4 text-brand-indigo shrink-0" />
+                    <div className="text-left">
+                      <div className="text-xs font-bold text-brand-indigo">Our 7-Day Story</div>
+                      <div className="text-[10px] text-brand-indigo/60 font-medium">90+ Commits</div>
                     </div>
                   </a>
 
@@ -533,7 +586,7 @@ export default function Landing() {
                     <Wallet className="w-4 h-4 text-brand-indigo shrink-0" />
                     <div className="text-left">
                       <div className="text-xs font-bold text-brand-indigo">Pricing Plans</div>
-                      <div className="text-[10px] text-brand-indigo/60 font-medium">From ₹499/mo</div>
+                      <div className="text-[10px] text-brand-indigo/60 font-medium">From ₹79/mo</div>
                     </div>
                   </a>
                 </div>
@@ -663,6 +716,14 @@ export default function Landing() {
               <Store className="w-4 h-4 text-brand-terracotta" />
               <span>Open Billing Counter</span>
             </Link>
+
+            <a 
+              href="#live-demo"
+              className="h-14 px-6 text-sm rounded-full border-2 border-brand-mitti hover:border-amber-500 bg-amber-50/80 hover:bg-amber-100 text-amber-900 font-extrabold active:scale-95 transition-all shadow-xs flex items-center gap-2"
+            >
+              <Zap className="w-4 h-4 text-amber-600" />
+              <span>Try Live Demo ↓</span>
+            </a>
           </div>
 
           {/* Trust points */}
@@ -692,6 +753,16 @@ export default function Landing() {
         </motion.div>
 
       </section>
+
+      {/* =========================================================
+          INTERACTIVE LIVE POS DEMO SIMULATOR (v3)
+      ========================================================= */}
+      <LivePosDemoSimulator />
+
+      {/* =========================================================
+          DUKAAN PRO FLAGSHIP SHOWCASE & LIVE RECEIPT ENGINE (v3)
+      ========================================================= */}
+      <DukaanProShowcase />
 
       {/* =========================================================
           3D FEATURES GRID
@@ -748,6 +819,26 @@ export default function Landing() {
       <section id="counter-mode" className="relative z-10">
         <ThreeDCounterModeShowcase />
       </section>
+
+      {/* =========================================================
+          SHOP CATEGORY MATCHER (v3)
+      ========================================================= */}
+      <ShopCategoryMatcher />
+
+      {/* =========================================================
+          INTERACTIVE ROI & TIME-SAVINGS CALCULATOR (v3)
+      ========================================================= */}
+      <RoiCalculator />
+
+      {/* =========================================================
+          UNIVERSAL HARDWARE COMPATIBILITY (v3)
+      ========================================================= */}
+      <HardwareCompatibility />
+
+      {/* =========================================================
+          THE 7-DAY ENGINEERING JOURNEY ROADMAP (v3)
+      ========================================================= */}
+      <EngineeringJourneyRoadmap />
 
       {/* =========================================================
           HOW IT WORKS (3D STEPS)
@@ -991,8 +1082,11 @@ export default function Landing() {
           </div>
         </div>
         <p className="text-xs text-brand-indigo/60 mb-6 font-medium">Run Your Dukaan. Smarter.</p>
-        <div className="flex flex-wrap items-center justify-center gap-6 md:gap-8 mb-8 text-sm font-medium">
+        <div className="flex flex-wrap items-center justify-center gap-5 md:gap-7 mb-8 text-sm font-medium">
+          <a href="#live-demo" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Live Demo</a>
+          <a href="#dukaan-pro" className="text-amber-800 font-bold hover:text-amber-600 transition-colors">Dukaan Pro</a>
           <a href="#features" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Features</a>
+          <a href="#our-story" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Our 7-Day Story</a>
           <a href="#pricing" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Pricing Plans</a>
           <Link to="/subscribe" className="text-brand-indigo/70 hover:text-brand-terracotta transition-colors">Buy Subscription</Link>
           <Link to="/careers" className="text-blue-600 font-bold hover:underline transition-colors">Careers (We're Hiring 🚀)</Link>
