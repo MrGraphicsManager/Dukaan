@@ -343,11 +343,11 @@ export default function Landing() {
       {/* =========================================================
           TOP ANNOUNCEMENT BAR (A PRODUCT BY PEAN SYSTEM)
       ========================================================= */}
-      <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-800 text-white px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium flex items-center justify-center gap-2.5 text-center shadow-xs z-50 relative">
-        <span className="bg-amber-400 text-slate-950 text-[10px] font-black uppercase px-2 py-0.5 rounded-full tracking-wider shrink-0 shadow-2xs">
+      <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-800 text-white px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-sm font-medium flex items-center justify-center gap-2 sm:gap-2.5 text-center shadow-xs z-50 relative">
+        <span className="bg-amber-400 text-slate-950 text-[9px] sm:text-[10px] font-black uppercase px-2 py-0.5 rounded-full tracking-wider shrink-0 shadow-2xs">
           PEAN RETAIL OS
         </span>
-        <span className="text-blue-50 font-normal">
+        <span className="text-blue-50 font-normal truncate sm:overflow-visible">
           {announcement || "India's Fastest Cloud POS & Retail Ecosystem · A Flagship Product by PEAN"}
         </span>
       </div>
@@ -356,14 +356,14 @@ export default function Landing() {
           TOP NAVBAR
       ========================================================= */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-200 shadow-2xs">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 h-20 flex items-center justify-between gap-3">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-3">
           
           {/* Brand Logo & by PEAN tag */}
-          <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
-            <img src="/logo.png" alt="Dukaan" className="h-9 sm:h-10 w-auto object-contain transition-transform group-hover:scale-105" />
-            <div className="flex flex-col border-l border-slate-200 pl-2.5 shrink-0">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 font-mono leading-none">by</span>
-              <span className="text-xs font-black tracking-tight text-slate-950 leading-tight">PEAN</span>
+          <Link to="/" className="flex items-center gap-2 sm:gap-2.5 shrink-0 group">
+            <img src="/logo.png" alt="Dukaan" className="h-8 sm:h-10 w-auto object-contain transition-transform group-hover:scale-105" />
+            <div className="flex flex-col border-l border-slate-200 pl-2 sm:pl-2.5 shrink-0">
+              <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-slate-400 font-mono leading-none">by</span>
+              <span className="text-[11px] sm:text-xs font-black tracking-tight text-slate-950 leading-tight">PEAN</span>
             </div>
           </Link>
 
@@ -643,24 +643,67 @@ export default function Landing() {
                   </Link>
                 </div>
 
-                <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-xs">
-                  <Link to="/careers" onClick={() => setMobileMenuOpen(false)} className="text-blue-600 font-bold">
-                    🚀 We're Hiring at PEAN
+                {/* Quick Navigation Links */}
+                <div className="grid grid-cols-4 gap-2 pt-2 border-t border-slate-200 text-center text-xs font-bold text-slate-700">
+                  <a 
+                    href="#features" 
+                    onClick={() => setMobileMenuOpen(false)} 
+                    className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 hover:text-blue-600 transition-colors"
+                  >
+                    Features
+                  </a>
+                  <a 
+                    href="#pricing" 
+                    onClick={() => setMobileMenuOpen(false)} 
+                    className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 hover:text-blue-600 transition-colors"
+                  >
+                    Pricing
+                  </a>
+                  <a 
+                    href="#faq" 
+                    onClick={() => setMobileMenuOpen(false)} 
+                    className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 hover:text-blue-600 transition-colors"
+                  >
+                    FAQ
+                  </a>
+                  <Link 
+                    to="/careers" 
+                    onClick={() => setMobileMenuOpen(false)} 
+                    className="p-2 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                  >
+                    Careers
                   </Link>
-                  <a href="tel:7016430577" className="text-slate-600 font-semibold">
-                    Helpline: 7016430577
+                </div>
+
+                <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-xs font-semibold">
+                  <span className="text-slate-500">Official Merchant Support</span>
+                  <a href="tel:7016430577" className="text-blue-700 font-bold flex items-center gap-1">
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>7016430577</span>
                   </a>
                 </div>
 
-                <Button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    nav("/app");
-                  }}
-                  className="w-full h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md"
-                >
-                  Launch Merchant Portal
-                </Button>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      nav("/login");
+                    }}
+                    className="h-11 rounded-xl text-slate-800 font-bold text-sm border-slate-300 hover:bg-slate-100"
+                  >
+                    Log In
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      nav("/app");
+                    }}
+                    className="h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md"
+                  >
+                    Open Dukaan
+                  </Button>
+                </div>
               </div>
             </motion.div>
           )}
@@ -671,30 +714,30 @@ export default function Landing() {
           HERO SECTION: "THE COMPLETE RETAIL OS · POWERED BY PEAN"
           FEATURING THE 5-WAY PLAN SWITCHER HUB
       ========================================================= */}
-      <section className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 pt-10 md:pt-16 pb-16">
+      <section className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 pt-6 sm:pt-10 md:pt-16 pb-12 sm:pb-16">
         
         {/* Top Eyebrow */}
-        <div className="text-center max-w-3xl mx-auto mb-8">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-900 text-xs font-black uppercase tracking-widest mb-4 shadow-2xs">
+        <div className="text-center max-w-3xl mx-auto mb-6 sm:mb-8">
+          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-900 text-[11px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest mb-3 sm:mb-4 shadow-2xs">
             <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
             <span>A Flagship Product by PEAN · The Retail Operating System</span>
           </div>
 
-          <h1 className="font-sans font-black text-4xl sm:text-5xl lg:text-6xl tracking-[-0.03em] leading-[1.06] text-slate-950">
+          <h1 className="font-sans font-black text-3xl sm:text-5xl lg:text-6xl tracking-[-0.03em] leading-[1.08] sm:leading-[1.06] text-slate-950">
             Manage. Grow. Simplify. <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-amber-600">
               Every Store, One Platform.
             </span>
           </h1>
 
-          <p className="mt-5 text-base sm:text-lg text-slate-600 font-normal leading-relaxed max-w-2xl mx-auto">
+          <p className="mt-4 sm:mt-5 text-sm sm:text-lg text-slate-600 font-normal leading-relaxed max-w-2xl mx-auto">
             From single-counter Kiranas to multi-branch supermarkets. Fast POS billing, customer Khata WhatsApp collection, multi-shop HQ, cashier PIN security, and custom thermal receipts.
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+          <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-md sm:max-w-none mx-auto">
             <Button
               onClick={() => nav("/app")}
-              className="h-14 sm:h-16 px-8 sm:px-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-black text-base sm:text-lg active:scale-95 transition-all shadow-xl shadow-blue-500/25 flex items-center gap-2.5"
+              className="w-full sm:w-auto h-13 sm:h-16 px-6 sm:px-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-black text-sm sm:text-lg active:scale-95 transition-all shadow-xl shadow-blue-500/25 flex items-center justify-center gap-2.5"
             >
               <span>Launch Free Counter App</span>
               <ArrowRight className="w-5 h-5" />
@@ -702,7 +745,7 @@ export default function Landing() {
 
             <a
               href="#pricing"
-              className="h-14 sm:h-16 px-8 sm:px-10 rounded-full bg-white hover:bg-slate-50 border-2 border-slate-300 hover:border-slate-500 text-slate-900 font-black text-base sm:text-lg active:scale-95 transition-all shadow-xs flex items-center gap-2.5"
+              className="w-full sm:w-auto h-13 sm:h-16 px-6 sm:px-10 rounded-full bg-white hover:bg-slate-50 border-2 border-slate-300 hover:border-slate-500 text-slate-900 font-black text-sm sm:text-lg active:scale-95 transition-all shadow-xs flex items-center justify-center gap-2.5"
             >
               <span>Explore All 4 Plans ↓</span>
             </a>
@@ -712,11 +755,11 @@ export default function Landing() {
         {/* =========================================================
             THE 5-WAY INTERACTIVE PLAN SELECTOR HUB
         ========================================================= */}
-        <div className="mt-12 max-w-5xl mx-auto bg-white rounded-3xl border-2 border-slate-200 shadow-xl overflow-hidden">
+        <div className="mt-8 sm:mt-12 max-w-5xl mx-auto bg-white rounded-3xl border-2 border-slate-200 shadow-xl overflow-hidden">
           
           {/* Tab Navigation Header */}
-          <div className="p-3 bg-slate-100/70 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+          <div className="p-2.5 sm:p-3 bg-slate-100/70 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-none touch-pan-x">
               {[
                 { id: "starter", name: "Starter", price: "₹79", icon: Zap, color: "emerald" },
                 { id: "business", name: "Business", price: "₹119", icon: Sparkles, color: "amber", badge: "POPULAR" },
@@ -730,7 +773,7 @@ export default function Landing() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveHeroTab(tab.id)}
-                    className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 shrink-0 ${
+                    className={`px-3.5 sm:px-6 py-2 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 sm:gap-2 shrink-0 ${
                       isActive
                         ? "bg-white text-slate-950 shadow-md border border-slate-200 scale-[1.02]"
                         : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
@@ -1257,10 +1300,10 @@ export default function Landing() {
                     </ul>
                   </div>
 
-                  <div className="mt-auto pt-5 space-y-3">
+                  <div className="mt-auto pt-5 space-y-2.5">
                     <Link
                       to={p.route}
-                      className={`w-full h-13 sm:h-14 rounded-full text-sm sm:text-base font-black border-2 transition-all flex items-center justify-center gap-2 active:scale-95 shadow-xs ${
+                      className={`w-full h-12 sm:h-13 px-3 rounded-full text-xs sm:text-sm font-black border-2 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 shadow-2xs ${
                         p.is_pro
                           ? "border-blue-600 bg-blue-50 text-blue-900 hover:bg-blue-100"
                           : p.featured
@@ -1268,13 +1311,13 @@ export default function Landing() {
                           : "border-slate-300 bg-slate-50 text-slate-800 hover:bg-slate-100"
                       }`}
                     >
-                      <span>Explore {p.name} Details</span>
-                      <ArrowRight className="w-4 h-4" />
+                      <span>Explore {p.name === "Dukaan Pro" ? "Pro Plan" : `${p.name} Plan`}</span>
+                      <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                     </Link>
 
                     <Button
                       onClick={() => nav(`/subscribe?plan=${p.id}`)}
-                      className={`w-full h-13 sm:h-14 rounded-full text-sm sm:text-base font-black active:scale-95 transition-all shadow-md flex items-center justify-center gap-2 ${
+                      className={`w-full h-12 sm:h-13 px-3 rounded-full text-xs sm:text-sm font-black active:scale-95 transition-all shadow-md flex items-center justify-center gap-1.5 whitespace-nowrap ${
                         p.is_pro
                           ? "bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-amber-400/25"
                           : p.featured
@@ -1283,7 +1326,7 @@ export default function Landing() {
                       }`}
                     >
                       <span>Choose {p.name}</span>
-                      <ArrowRight className="w-4 h-4" />
+                      <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                     </Button>
                   </div>
 
@@ -1403,6 +1446,11 @@ export default function Landing() {
           <p className="mt-2 text-slate-600 text-sm">
             Everything is transparent. Upgrade or downgrade anytime with zero loss of data.
           </p>
+        </div>
+
+        {/* Mobile Swipe Hint */}
+        <div className="sm:hidden text-center text-[11px] text-blue-700 font-bold mb-3 flex items-center justify-center gap-1.5 bg-blue-50 py-2 px-3 rounded-xl border border-blue-200">
+          <span>👈 Swipe sideways to compare all plans 👉</span>
         </div>
 
         <div className="bg-white rounded-3xl border border-slate-200 shadow-md overflow-hidden">
@@ -1627,14 +1675,11 @@ export default function Landing() {
       </section>
 
       {/* =========================================================
-          FOOTER (A PRODUCT BY PEAN SYSTEM)
-      ========================================================= */}
-      {/* =========================================================
           FOOTER (A PRODUCT BY PEAN SYSTEM - CLEAN 4-COLUMN GRID)
       ========================================================= */}
-      <footer className="border-t border-slate-200 bg-white pt-16 pb-12 relative z-10">
+      <footer className="border-t border-slate-200 bg-white pt-12 sm:pt-16 pb-24 lg:pb-12 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-slate-200">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 sm:gap-10 pb-12 border-b border-slate-200">
             
             {/* Col 1 (Span 2): Brand & PEAN Ecosystem */}
             <div className="lg:col-span-2 space-y-4">
@@ -1757,6 +1802,35 @@ export default function Landing() {
 
         </div>
       </footer>
+
+      {/* =========================================================
+          MOBILE STICKY ACTION BAR (PEAN RETAIL OS)
+      ========================================================= */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-2.5 shadow-2xl flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <img src="/logo.png" alt="Dukaan" className="h-7 w-auto object-contain shrink-0" />
+          <div className="flex flex-col min-w-0">
+            <span className="text-[10px] font-black text-slate-900 leading-tight truncate">PEAN Retail OS</span>
+            <span className="text-[9px] font-bold text-emerald-700 leading-none">Starting ₹79/mo</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <a
+            href="tel:7016430577"
+            className="h-9 px-3 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold flex items-center gap-1.5 transition-colors"
+          >
+            <Phone className="w-3.5 h-3.5 text-blue-600" />
+            <span className="hidden xs:inline">Helpline</span>
+          </a>
+          <Button
+            onClick={() => nav("/app")}
+            className="h-9 px-4 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md shadow-blue-500/20 flex items-center gap-1.5 active:scale-95"
+          >
+            <span>Open App</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      </div>
 
     </div>
   );
