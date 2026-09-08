@@ -278,10 +278,11 @@ export default function AdminSubscriptions() {
 
   // Feature #13: Dynamic Pricing
   const [dynamicPricing, setDynamicPricing] = useState({
-    starter_annual: 790,
-    business_annual: 1490,
-    premium_annual: 2990,
-    trial_days: 14
+    starter_annual: 799,
+    business_annual: 1199,
+    premium_annual: 2239,
+    pro_annual: 4999,
+    trial_days: 30
   });
 
   // Feature #35: Mobile Companion & Terminal Control (Executive Admin)
@@ -783,6 +784,7 @@ export default function AdminSubscriptions() {
               starter_annual: res.data.pricing.starter?.yearly || prev.starter_annual,
               business_annual: res.data.pricing.business?.yearly || prev.business_annual,
               premium_annual: res.data.pricing.premium?.yearly || prev.premium_annual,
+              pro_annual: res.data.pricing.pro?.yearly || prev.pro_annual,
               trial_days: res.data.trial_days || prev.trial_days
             }));
           }
@@ -1211,18 +1213,19 @@ export default function AdminSubscriptions() {
   const handleSaveDynamicPricing = async () => {
     const payload = {
       pricing: {
-        starter: { monthly: 499, yearly: Number(dynamicPricing.starter_annual) || 790 },
-        business: { monthly: 999, yearly: Number(dynamicPricing.business_annual) || 1490 },
-        premium: { monthly: 1999, yearly: Number(dynamicPricing.premium_annual) || 2990 }
+        starter: { monthly: 79, yearly: Number(dynamicPricing.starter_annual) || 799 },
+        business: { monthly: 119, yearly: Number(dynamicPricing.business_annual) || 1199 },
+        premium: { monthly: 239, yearly: Number(dynamicPricing.premium_annual) || 2239 },
+        pro: { monthly: 499, yearly: Number(dynamicPricing.pro_annual) || 4999 }
       },
-      trial_days: Number(dynamicPricing.trial_days) || 14
+      trial_days: Number(dynamicPricing.trial_days) || 30
     };
 
     try {
       await api.post("/platform/config", payload).catch(() => {});
       await api.post("/platform/force-update").catch(() => {});
       localStorage.setItem("dukaan_pricing_config", JSON.stringify(payload));
-      addAuditLog("UPDATE_PRICING", "PLATFORM", `Starter: ₹${dynamicPricing.starter_annual}, Business: ₹${dynamicPricing.business_annual}, Premium: ₹${dynamicPricing.premium_annual}`);
+      addAuditLog("UPDATE_PRICING", "PLATFORM", `Starter: ₹${dynamicPricing.starter_annual}, Business: ₹${dynamicPricing.business_annual}, Premium: ₹${dynamicPricing.premium_annual}, Pro: ₹${dynamicPricing.pro_annual}`);
       toast.success("Platform subscription pricing & free trial days updated!");
     } catch {
       toast.error("Failed to update pricing.");
@@ -2515,11 +2518,13 @@ export default function AdminSubscriptions() {
                   </div>
 
                   {(() => {
+                    const proCount = rows.filter(r => (r.plan || "").toLowerCase() === "pro").length;
                     const premCount = rows.filter(r => (r.plan || "").toLowerCase() === "premium").length;
                     const bizCount = rows.filter(r => (r.plan || "").toLowerCase() === "business").length;
                     const startCount = rows.filter(r => (r.plan || "").toLowerCase() === "starter").length;
                     const triCount = rows.filter(r => r.status === "trial" || (r.source || "").includes("trial")).length;
                     const totalP = Math.max(1, rows.length);
+                    const proP = Math.round((proCount / totalP) * 100);
                     const premP = Math.round((premCount / totalP) * 100);
                     const bizP = Math.round((bizCount / totalP) * 100);
                     const startP = Math.round((startCount / totalP) * 100);
@@ -2528,8 +2533,20 @@ export default function AdminSubscriptions() {
                       <div className="space-y-3">
                         <div>
                           <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
+                            <span className="text-amber-300 flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Dukaan Pro VIP (₹4,999 / yr)
+                            </span>
+                            <span className="font-mono text-slate-300">{proCount} Merchants ({proP}%)</span>
+                          </div>
+                          <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-amber-400 to-yellow-300 rounded-full" style={{ width: `${proP}%` }} />
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
                             <span className="text-amber-400 flex items-center gap-1.5">
-                              <Sparkles className="w-3.5 h-3.5" /> Premium Plan (₹2,990 / yr)
+                              <Sparkles className="w-3.5 h-3.5" /> Premium Plan (₹2,239 / yr)
                             </span>
                             <span className="font-mono text-slate-300">{premCount} Merchants ({premP}%)</span>
                           </div>
@@ -2541,7 +2558,7 @@ export default function AdminSubscriptions() {
                         <div>
                           <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
                             <span className="text-blue-400 flex items-center gap-1.5">
-                              <Store className="w-3.5 h-3.5" /> Business Plan (₹1,490 / yr)
+                              <Store className="w-3.5 h-3.5" /> Business Plan (₹1,199 / yr)
                             </span>
                             <span className="font-mono text-slate-300">{bizCount} Merchants ({bizP}%)</span>
                           </div>
@@ -2553,7 +2570,7 @@ export default function AdminSubscriptions() {
                         <div>
                           <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
                             <span className="text-slate-400 flex items-center gap-1.5">
-                              <Check className="w-3.5 h-3.5" /> Starter Plan (₹790 / yr)
+                              <Check className="w-3.5 h-3.5" /> Starter Plan (₹799 / yr)
                             </span>
                             <span className="font-mono text-slate-300">{startCount} Merchants ({startP}%)</span>
                           </div>
@@ -2740,6 +2757,7 @@ export default function AdminSubscriptions() {
                     { id: "all", label: "All Users" },
                     { id: "google", label: "Google Accounts" },
                     { id: "verified", label: "Verified Only" },
+                    { id: "pro", label: "Pro VIP" },
                     { id: "premium", label: "Premium" },
                     { id: "business", label: "Business" },
                     { id: "starter", label: "Starter" },
@@ -3810,7 +3828,7 @@ export default function AdminSubscriptions() {
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
                   <div>
                     <Label className="text-xs text-slate-400">Starter Plan (₹ / year)</Label>
                     <Input
@@ -3836,6 +3854,17 @@ export default function AdminSubscriptions() {
                       value={dynamicPricing.premium_annual}
                       onChange={e => setDynamicPricing(prev => ({ ...prev, premium_annual: e.target.value }))}
                       className="mt-1.5 bg-slate-900 border-slate-700 text-white font-mono text-xs rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-amber-400 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" /> Dukaan Pro (₹ / year)
+                    </Label>
+                    <Input
+                      type="number"
+                      value={dynamicPricing.pro_annual}
+                      onChange={e => setDynamicPricing(prev => ({ ...prev, pro_annual: e.target.value }))}
+                      className="mt-1.5 bg-slate-900 border-amber-500/40 text-white font-mono text-xs rounded-xl"
                     />
                   </div>
                   <div>
@@ -4917,6 +4946,7 @@ export default function AdminSubscriptions() {
                   <SelectItem value="starter">Starter Plan (POS & Basic Inventory)</SelectItem>
                   <SelectItem value="business">Business Plan (Stock, Reports & Khata)</SelectItem>
                   <SelectItem value="premium">Premium Plan (Full Multi-Shop, Soundbox & GST)</SelectItem>
+                  <SelectItem value="pro">Dukaan Pro Plan (VIP Full Customization & 24/7 Dedicated Support)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -5261,6 +5291,7 @@ export default function AdminSubscriptions() {
                   <SelectItem value="starter">Starter Plan (Rank 1)</SelectItem>
                   <SelectItem value="business">Business Plan (Rank 2)</SelectItem>
                   <SelectItem value="premium">Premium Plan (Rank 3)</SelectItem>
+                  <SelectItem value="pro">Dukaan Pro Plan (Rank 4 VIP)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

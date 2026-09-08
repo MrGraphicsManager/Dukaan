@@ -413,10 +413,11 @@ export default function AppLayout() {
     );
   }
 
-  const isPremium = subscription?.plan === "premium" || user?.subscription?.plan === "premium" || user?.is_premium || user?.plan === "premium";
-  const tierMap = PLAN_TIER || { starter: 1, business: 2, premium: 3 };
-  const routeMap = ROUTE_PLAN || {};
   const activePlan = subscription?.plan || user?.subscription?.plan || "starter";
+  const isPremium = activePlan === "premium" || activePlan === "pro" || user?.is_premium || user?.is_pro || user?.plan === "premium" || user?.plan === "pro";
+  const isPro = activePlan === "pro" || user?.is_pro || user?.plan === "pro";
+  const tierMap = PLAN_TIER || { starter: 1, business: 2, premium: 3, pro: 4 };
+  const routeMap = ROUTE_PLAN || {};
   const currentTier = user?.is_admin ? 999 : (tierMap[activePlan] || 1);
   const isLocked = (to) => {
     const need = routeMap[to];
@@ -535,11 +536,15 @@ export default function AppLayout() {
               <span className="text-[10px] font-mono font-bold text-brand-indigo/50 tracking-wider bg-brand-sand px-2 py-0.5 rounded-full border border-brand-mitti">
                 by PEAN
               </span>
-              {isPremium && (
+              {isPro ? (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-gradient-to-r from-purple-700 via-indigo-600 to-brand-terracotta text-white shadow-sm border border-purple-400 font-mono flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-300" /> DUKAAN PRO VIP
+                </span>
+              ) : isPremium ? (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 text-slate-900 shadow-xs border border-amber-300 font-mono">
                   PREMIUM MERCHANT
                 </span>
-              )}
+              ) : null}
               {(user?.is_verified || user?.is_verified_store || currentShop?.gst_status === "approved") && (
                 <span className="hidden lg:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono" title="Verified Dukaan Merchant">
                   <ShieldCheck className="w-3 h-3 text-emerald-600" /> VERIFIED

@@ -48,7 +48,8 @@ export function savePersistentSubscription(email, subscription) {
     const idx = regUsers.findIndex(u => u.email && u.email.toLowerCase() === clean);
     if (idx >= 0) {
       regUsers[idx].subscription = subscription;
-      if (subscription.plan === "premium") regUsers[idx].is_premium = true;
+      if (subscription.plan === "premium" || subscription.plan === "pro") regUsers[idx].is_premium = true;
+      if (subscription.plan === "pro") regUsers[idx].is_pro = true;
     } else {
       regUsers.push({
         id: `user_${Date.now()}`,
@@ -247,7 +248,8 @@ export function AuthProvider({ children }) {
           ...data,
           is_admin: isUserAdmin,
           subscription: finalSub,
-          is_premium: data.is_premium || localIsPremium || (finalSub?.plan === "premium")
+          is_premium: data.is_premium || localIsPremium || (finalSub?.plan === "premium" || finalSub?.plan === "pro"),
+          is_pro: data.is_pro || (finalSub?.plan === "pro")
         };
         setUser(finalUser);
         localStorage.setItem("dukaan_user", JSON.stringify(finalUser));
@@ -276,7 +278,8 @@ export function AuthProvider({ children }) {
             const persistentSub = getPersistentSubscription(clean);
             if (!current.subscription && persistentSub) {
               current.subscription = persistentSub;
-              if (persistentSub.plan === "premium") current.is_premium = true;
+              if (persistentSub.plan === "premium" || persistentSub.plan === "pro") current.is_premium = true;
+              if (persistentSub.plan === "pro") current.is_pro = true;
             }
             setUser(current);
             return current;
@@ -361,7 +364,8 @@ export function AuthProvider({ children }) {
         email: cleanEmail,
         is_admin: isUserAdmin,
         subscription: finalSub,
-        is_premium: Boolean((localFound || {}).is_premium || (data?.user || {}).is_premium || (u || {}).is_premium || finalSub?.plan === "premium")
+        is_premium: Boolean((localFound || {}).is_premium || (data?.user || {}).is_premium || (u || {}).is_premium || finalSub?.plan === "premium" || finalSub?.plan === "pro"),
+        is_pro: Boolean((localFound || {}).is_pro || (data?.user || {}).is_pro || (u || {}).is_pro || finalSub?.plan === "pro")
       };
       if (finalSub) {
         savePersistentSubscription(cleanEmail, finalSub);
@@ -581,7 +585,8 @@ export function AuthProvider({ children }) {
       is_admin: false,
       provider,
       subscription: persistentSub || null,
-      is_premium: persistentSub?.plan === "premium"
+      is_premium: persistentSub?.plan === "premium" || persistentSub?.plan === "pro",
+      is_pro: persistentSub?.plan === "pro"
     };
 
     try {
@@ -644,7 +649,8 @@ export function AuthProvider({ children }) {
     const finalSub = socialUser.subscription || persistentSub || null;
     socialUser.subscription = finalSub;
     if (finalSub) {
-      if (finalSub.plan === "premium") socialUser.is_premium = true;
+      if (finalSub.plan === "premium" || finalSub.plan === "pro") socialUser.is_premium = true;
+      if (finalSub.plan === "pro") socialUser.is_pro = true;
       savePersistentSubscription(cleanEmail, finalSub);
     }
 

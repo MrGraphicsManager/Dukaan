@@ -12,6 +12,7 @@ import {
   Sparkles, 
   ArrowRight,
   Receipt,
+  ExternalLink,
   Download,
   AlertCircle
 } from "lucide-react";
@@ -20,7 +21,9 @@ const TIER_PLANS = [
   {
     id: "starter",
     name: "Starter",
-    price: 99,
+    price: 79,
+    originalPrice: 99,
+    discount: "20% OFF",
     setup: 299,
     badge: "Solo Shop",
     features: [
@@ -33,7 +36,9 @@ const TIER_PLANS = [
   {
     id: "business",
     name: "Business",
-    price: 149,
+    price: 119,
+    originalPrice: 149,
+    discount: "20% OFF",
     setup: 499,
     featured: true,
     badge: "Most Popular",
@@ -48,7 +53,9 @@ const TIER_PLANS = [
   {
     id: "premium",
     name: "Premium",
-    price: 299,
+    price: 239,
+    originalPrice: 299,
+    discount: "20% OFF",
     setup: 999,
     badge: "Full Power",
     features: [
@@ -57,6 +64,24 @@ const TIER_PLANS = [
       "Full FY Tax & Profit Audit",
       "GST Invoicing & Verification",
       "Priority VIP Support & Soundbox"
+    ]
+  },
+  {
+    id: "pro",
+    name: "Dukaan Pro",
+    price: 499,
+    originalPrice: null,
+    offerBadge: "1+1 Month Free",
+    setup: 0,
+    vip: true,
+    badge: "VIP Flagship",
+    features: [
+      "Everything in Premium",
+      "Custom Billing & Invoices",
+      "Custom Dashboard & Widgets",
+      "Customize Everything",
+      "Early Access to New Updates",
+      "24/7 Dedicated Support"
     ]
   }
 ];
@@ -97,7 +122,8 @@ export default function Billing() {
                 const u = JSON.parse(stored);
                 if (u.subscription?.plan !== r.data.active.plan || u.subscription?.expires_at !== r.data.active.expires_at) {
                   u.subscription = r.data.active;
-                  if (r.data.active.plan === "premium") u.is_premium = true;
+                  if (r.data.active.plan === "premium" || r.data.active.plan === "pro") u.is_premium = true;
+                  if (r.data.active.plan === "pro") u.is_pro = true;
                   localStorage.setItem("dukaan_user", JSON.stringify(u));
                 }
                 if (u.email) {
@@ -226,27 +252,34 @@ export default function Billing() {
           <p className="text-sm text-brand-indigo/60 mt-0.5">Upgrade or change your shop's plan anytime.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {TIER_PLANS.map((plan) => {
             const isCurrent = currentPlanId === plan.id;
             return (
               <div
                 key={plan.id}
-                className={`rounded-3xl p-7 border-2 transition-all flex flex-col justify-between relative ${
-                  plan.featured 
+                className={`rounded-3xl p-6 sm:p-7 border-2 transition-all flex flex-col justify-between relative ${
+                  plan.vip
+                    ? "bg-slate-950 text-white border-amber-400 shadow-xl ring-2 ring-amber-400/20"
+                    : plan.featured 
                     ? "bg-brand-indigo text-white border-brand-indigo shadow-xl" 
                     : "bg-white text-brand-indigo border-brand-mitti shadow-xs"
                 }`}
               >
                 {plan.featured && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-brand-terracotta text-white text-[10px] font-extrabold uppercase tracking-widest px-3.5 py-1 rounded-full shadow-sm">
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-brand-terracotta text-white text-[10px] font-extrabold uppercase tracking-widest px-3.5 py-1 rounded-full shadow-sm whitespace-nowrap">
                     {plan.badge}
+                  </div>
+                )}
+                {plan.vip && (
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 text-[10px] font-black uppercase tracking-widest px-3.5 py-1 rounded-full shadow-sm flex items-center gap-1 whitespace-nowrap">
+                    <Sparkles className="w-3 h-3" /> VIP Flagship
                   </div>
                 )}
 
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <span className={`text-xs font-bold uppercase tracking-wider ${plan.featured ? "text-brand-terracotta" : "text-brand-terracotta"}`}>
+                    <span className={`text-xs font-bold uppercase tracking-wider ${plan.vip ? "text-amber-400" : "text-brand-terracotta"}`}>
                       {plan.name}
                     </span>
                     {isCurrent && (
@@ -256,20 +289,39 @@ export default function Billing() {
                     )}
                   </div>
 
-                  <div className="flex items-baseline gap-1.5 mb-6">
+                  <div className="flex items-baseline gap-2 mb-1 flex-wrap">
                     <span className="font-display text-4xl font-extrabold">₹{plan.price}</span>
-                    <span className={`text-xs font-medium ${plan.featured ? "text-white/60" : "text-brand-indigo/50"}`}>
-                      /month (+ ₹{plan.setup} setup)
+                    {plan.originalPrice && (
+                      <span className="text-sm line-through text-slate-400 font-semibold">₹{plan.originalPrice}</span>
+                    )}
+                    <span className={`text-xs font-medium ${plan.vip ? "text-slate-400" : plan.featured ? "text-white/60" : "text-brand-indigo/50"}`}>
+                      /month
                     </span>
                   </div>
 
-                  <div className={`h-px w-full my-4 ${plan.featured ? "bg-white/15" : "bg-brand-mitti"}`} />
+                  <div className="flex items-center gap-1.5 mb-4 flex-wrap">
+                    {plan.discount && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
+                        {plan.discount}
+                      </span>
+                    )}
+                    {plan.offerBadge && (
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-amber-200 text-amber-900">
+                        {plan.offerBadge}
+                      </span>
+                    )}
+                    <span className={`text-[11px] font-medium ${plan.vip ? "text-slate-400" : plan.featured ? "text-white/60" : "text-brand-indigo/50"}`}>
+                      {plan.setup > 0 ? `+ ₹${plan.setup} setup` : "Zero setup fee"}
+                    </span>
+                  </div>
+
+                  <div className={`h-px w-full my-4 ${plan.vip ? "bg-slate-800" : plan.featured ? "bg-white/15" : "bg-brand-mitti"}`} />
 
                   <ul className="space-y-3 mb-8 text-xs font-medium">
                     {plan.features.map((feat, i) => (
                       <li key={i} className="flex items-start gap-2.5">
-                        <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${plan.featured ? "text-brand-terracotta" : "text-emerald-600"}`} />
-                        <span className={plan.featured ? "text-white/90" : "text-brand-indigo/80"}>{feat}</span>
+                        <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${plan.vip ? "text-amber-400" : plan.featured ? "text-brand-terracotta" : "text-emerald-600"}`} />
+                        <span className={plan.vip ? "text-slate-300" : plan.featured ? "text-white/90" : "text-brand-indigo/80"}>{feat}</span>
                       </li>
                     ))}
                   </ul>
@@ -278,7 +330,9 @@ export default function Billing() {
                 <Button
                   onClick={() => nav(`/subscribe?plan=${plan.id}`)}
                   className={`w-full h-12 rounded-2xl font-bold text-xs shadow-sm active:scale-95 transition-all ${
-                    plan.featured 
+                    plan.vip
+                      ? "bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-black"
+                      : plan.featured 
                       ? "bg-brand-terracotta hover:bg-brand-terracotta/90 text-white" 
                       : "bg-brand-sand hover:bg-brand-mitti text-brand-indigo border border-brand-mitti"
                   }`}

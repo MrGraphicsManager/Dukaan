@@ -85,11 +85,12 @@ let globalPlatformConfig = {
   announcement: "",
   updated_at: new Date().toISOString(),
   pricing: {
-    starter: { monthly: 499, yearly: 4990 },
-    business: { monthly: 999, yearly: 9990 },
-    premium: { monthly: 1999, yearly: 19990 }
+    starter: { monthly: 79, yearly: 799 },
+    business: { monthly: 119, yearly: 1199 },
+    premium: { monthly: 239, yearly: 2239 },
+    pro: { monthly: 499, yearly: 4999 }
   },
-  trial_days: 14,
+  trial_days: 30,
   ota_version: 1,
   kill_switch_active: false,
   kill_switch_at: null,
@@ -884,7 +885,8 @@ exports.handler = async (event, context) => {
         is_frozen: isFrozen,
         is_admin: isAdmin,
         subscription: granted || null,
-        is_premium: granted?.plan === "premium"
+        is_premium: granted?.plan === "premium" || granted?.plan === "pro",
+        is_pro: granted?.plan === "pro"
       };
 
       recordRegisteredUser(user);
@@ -964,7 +966,8 @@ exports.handler = async (event, context) => {
         is_frozen: isFrozen,
         is_admin: isAdmin,
         subscription: sub,
-        is_premium: sub.plan === "premium"
+        is_premium: sub.plan === "premium" || sub.plan === "pro",
+        is_pro: sub.plan === "pro"
       };
 
       recordRegisteredUser(user);
@@ -1058,10 +1061,12 @@ exports.handler = async (event, context) => {
 
         if (granted) {
           mergedUser.subscription = granted;
-          if (granted.plan === "premium") mergedUser.is_premium = true;
+          if (granted.plan === "premium" || granted.plan === "pro") mergedUser.is_premium = true;
+          if (granted.plan === "pro") mergedUser.is_pro = true;
         } else if (existingReg?.subscription) {
           mergedUser.subscription = existingReg.subscription;
-          if (existingReg.subscription.plan === "premium") mergedUser.is_premium = true;
+          if (existingReg.subscription.plan === "premium" || existingReg.subscription.plan === "pro") mergedUser.is_premium = true;
+          if (existingReg.subscription.plan === "pro") mergedUser.is_pro = true;
         }
 
         recordRegisteredUser(mergedUser);
@@ -1215,7 +1220,8 @@ exports.handler = async (event, context) => {
         is_admin: isAdmin,
         provider,
         subscription: granted || null,
-        is_premium: granted?.plan === "premium"
+        is_premium: granted?.plan === "premium" || granted?.plan === "pro",
+        is_pro: granted?.plan === "pro"
       };
 
       recordRegisteredUser(user);
@@ -1304,7 +1310,8 @@ exports.handler = async (event, context) => {
         savePersistentState().catch(() => {});
       }
       user.subscription = subscription;
-      if (plan === "premium") user.is_premium = true;
+      if (plan === "premium" || plan === "pro") user.is_premium = true;
+      if (plan === "pro") user.is_pro = true;
       const new_token = makeToken(user);
 
       return {
@@ -1324,7 +1331,10 @@ exports.handler = async (event, context) => {
       await getPersistentState();
       const plan = body.plan || "business";
       const isAnnual = Boolean(body.annual);
-      const durationDays = isAnnual ? 365 : 30;
+      let durationDays = isAnnual ? 365 : 30;
+      if (plan === "pro") {
+        durationDays = isAnnual ? 548 : 60; // 12+6 months free or 1+1 month free
+      }
       const expires_at = body.expires_at || new Date(Date.now() + durationDays * 86400000).toISOString();
       const subscription = {
         plan,
@@ -1356,7 +1366,8 @@ exports.handler = async (event, context) => {
       }
       savePersistentState().catch(() => {});
       user.subscription = subscription;
-      if (plan === "premium") user.is_premium = true;
+      if (plan === "premium" || plan === "pro") user.is_premium = true;
+      if (plan === "pro") user.is_pro = true;
       const new_token = makeToken(user);
 
       return {

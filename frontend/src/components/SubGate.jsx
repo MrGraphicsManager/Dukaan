@@ -11,9 +11,9 @@ const ALLOWED_WITHOUT_SUB = [
   "/app/admin",
 ];
 
-export const PLAN_TIER = { starter: 1, business: 2, premium: 3 };
+export const PLAN_TIER = { starter: 1, business: 2, premium: 3, pro: 4 };
 export const TIER = PLAN_TIER;
-export const NAMES = { starter: "Starter", business: "Business", premium: "Premium" };
+export const NAMES = { starter: "Starter", business: "Business", premium: "Premium", pro: "Dukaan Pro" };
 
 // Which routes require which plan
 export const ROUTE_PLAN = {

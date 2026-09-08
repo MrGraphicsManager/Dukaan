@@ -5,12 +5,12 @@ export default function MobileUpgrade({ onBack }) {
   const [billingCycle, setBillingCycle] = useState("yearly");
 
   const perks = [
-    "Unlimited Digital Invoices & Estimates",
+    "Custom Billing & Invoice Formats",
+    "Custom Dashboard & KPI Widgets",
+    "Customize Everything (Layout & Themes)",
+    "Early Access to New Platform Updates",
+    "Dedicated 24/7 Priority Support",
     "Automated WhatsApp Payment Reminders",
-    "Bluetooth 2-inch & 3-inch Printer Support",
-    "Multi-device Cloud Sync & Staff Access",
-    "Advanced Profit & Loss Analytics",
-    "Dedicated 24/7 VIP Phone Support",
   ];
 
   return (
@@ -30,7 +30,7 @@ export default function MobileUpgrade({ onBack }) {
           </button>
           <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-400 text-xs font-bold">
             <Crown className="w-3.5 h-3.5" />
-            <span>Dukaan Pro</span>
+            <span>Dukaan Pro VIP</span>
           </div>
           <div className="w-10" />
         </div>
@@ -41,7 +41,7 @@ export default function MobileUpgrade({ onBack }) {
             Grow Your Business 10x with Pro
           </h1>
           <p className="text-xs text-slate-400 mt-1.5">
-            Everything your shop needs to sell faster, track profit & recover udhaar.
+            Full custom billing, personalized dashboards & 24/7 dedicated support.
           </p>
         </div>
 
@@ -49,11 +49,12 @@ export default function MobileUpgrade({ onBack }) {
         <div className="flex items-center bg-slate-800/90 p-1 rounded-2xl border border-slate-700/80 mb-6">
           <button
             onClick={() => setBillingCycle("monthly")}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
               billingCycle === "monthly" ? "bg-[#0066FF] text-white shadow-md" : "text-slate-400"
             }`}
           >
-            Monthly · ₹149
+            <span>Monthly · ₹499</span>
+            <span className="block text-[9px] text-amber-300 font-extrabold">1+1 Mo Free</span>
           </button>
           <button
             onClick={() => setBillingCycle("yearly")}
@@ -61,17 +62,15 @@ export default function MobileUpgrade({ onBack }) {
               billingCycle === "yearly" ? "bg-[#0066FF] text-white shadow-md" : "text-slate-400"
             }`}
           >
-            <span>Yearly · ₹1,490</span>
-            <span className="absolute -top-2 right-2 bg-amber-400 text-slate-900 text-[9px] font-black px-1.5 py-0.2 rounded-full shadow-xs">
-              Save 20%
-            </span>
+            <span>Yearly · ₹4,999</span>
+            <span className="block text-[9px] text-amber-300 font-extrabold">12+6 Mo Free (Save 16.5%)</span>
           </button>
         </div>
 
         {/* Feature List */}
         <div className="bg-slate-800/50 backdrop-blur-xs rounded-2xl p-4 border border-slate-700/60 space-y-3 mb-6">
           <div className="text-[11px] font-black text-slate-400 uppercase tracking-wider">
-            Included in Dukaan Pro
+            Included in Dukaan Pro VIP
           </div>
           {perks.map((perk, idx) => (
             <div key={idx} className="flex items-center gap-2.5 text-xs">
@@ -87,10 +86,10 @@ export default function MobileUpgrade({ onBack }) {
       {/* Footer CTA */}
       <div className="space-y-3">
         <button
-          onClick={() => alert("Proceeding to Razorpay checkout for ₹" + (billingCycle === "yearly" ? "1,490" : "149"))}
-          className="w-full py-3.5 bg-linear-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 active:scale-98 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 cursor-pointer transition-all"
+          onClick={() => alert("Proceeding to Razorpay checkout for ₹" + (billingCycle === "yearly" ? "4,999" : "499"))}
+          className="w-full py-3.5 bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 active:scale-98 text-slate-950 font-black text-sm rounded-xl shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2 cursor-pointer transition-all"
         >
-          <span>Upgrade to Pro Now</span>
+          <span>Upgrade to Dukaan Pro VIP</span>
           <ArrowRight className="w-4 h-4" />
         </button>
 

@@ -36,6 +36,7 @@ export const PLAN_RANK = {
   starter: 1,
   business: 2,
   premium: 3,
+  pro: 4,
 };
 
 const PLANS = {
@@ -44,8 +45,11 @@ const PLANS = {
     name: "Starter", 
     tagline: "For small kirana & single counter shops",
     setup: 299, 
-    monthly: 99, 
-    annual: 990,
+    monthly: 79,
+    original_monthly: 99,
+    annual: 799,
+    original_annual: 999,
+    discount: "20% OFF",
     trial_days: 90,
     badge: "Solo Shop",
     features: [
@@ -64,8 +68,11 @@ const PLANS = {
     name: "Business", 
     tagline: "Most popular choice for active Indian retail",
     setup: 499, 
-    monthly: 149, 
-    annual: 1490,
+    monthly: 119,
+    original_monthly: 149,
+    annual: 1199,
+    original_annual: 1499,
+    discount: "20% OFF",
     trial_days: 60,
     featured: true,
     badge: "Recommended",
@@ -85,8 +92,11 @@ const PLANS = {
     name: "Premium", 
     tagline: "For growing multi-shop chains & GST stores",
     setup: 999, 
-    monthly: 299, 
-    annual: 2990,
+    monthly: 239,
+    original_monthly: 299,
+    annual: 2239,
+    original_annual: 2799,
+    discount: "20% OFF",
     trial_days: 30,
     badge: "Full Power",
     features: [
@@ -98,6 +108,31 @@ const PLANS = {
     ],
     limitations: []
   },
+  pro: {
+    id: "pro",
+    name: "Dukaan Pro",
+    tagline: "VIP Flagship with Complete Customization & 24/7 Dedicated Support",
+    setup: 0,
+    monthly: 499,
+    original_monthly: 499,
+    annual: 4999,
+    original_annual: 5988,
+    discount: "Save 16.5%",
+    monthly_offer: "1+1 Month Free",
+    annual_offer: "12+6 Month Free (Save 16.5%)",
+    trial_days: 30,
+    badge: "VIP Flagship",
+    vip: true,
+    features: [
+      "Everything in Premium",
+      "Custom Billing & Invoice Formats",
+      "Custom Dashboard & KPI Widgets",
+      "Customize Everything (Layout & Theme)",
+      "Early Access to New Updates",
+      "24/7 Dedicated Priority Support"
+    ],
+    limitations: []
+  }
 };
 
 const FAQS = [
@@ -162,6 +197,12 @@ export default function Subscribe() {
         monthly: platformConfig.pricing.premium?.monthly ?? PLANS.premium.monthly,
         annual: platformConfig.pricing.premium?.yearly ?? PLANS.premium.annual,
         trial_days: platformConfig.trial_days ?? PLANS.premium.trial_days
+      },
+      pro: {
+        ...PLANS.pro,
+        monthly: platformConfig.pricing.pro?.monthly ?? PLANS.pro.monthly,
+        annual: platformConfig.pricing.pro?.yearly ?? PLANS.pro.annual,
+        trial_days: platformConfig.trial_days ?? PLANS.pro.trial_days
       }
     };
   }, [platformConfig]);
@@ -248,7 +289,7 @@ export default function Subscribe() {
     }
   };
 
-  const isPremium = selected === "premium";
+  const isPremium = selected === "premium" || selected === "pro";
   const isAnnual = billingCycle === "annual";
   const activeShop = (shops || []).find((s) => s?.id === currentShopId) || shops?.[0] || { name: "Apni Dukaan" };
 
@@ -289,13 +330,14 @@ export default function Subscribe() {
       if (currentSelectedRank < userRank) {
         if (userRank === 1) setSelected("business");
         else if (userRank === 2) setSelected("premium");
-        else setSelected("premium");
+        else if (userRank === 3) setSelected("pro");
+        else setSelected("pro");
       }
     }
   }, [isSubActiveNow, userRank, selected]);
 
   useEffect(() => { 
-    if (selected !== "premium") setPremiumReady(false); 
+    if (selected !== "premium" && selected !== "pro") setPremiumReady(false); 
   }, [selected]);
 
   useEffect(() => { 
@@ -367,8 +409,11 @@ export default function Subscribe() {
     const rawUser = localStorage.getItem("dukaan_user");
     const parsed = rawUser ? JSON.parse(rawUser) : { email: user?.email || "owner@dukaan.in", name: user?.name || "Shop Owner" };
     parsed.subscription = newSub;
-    if (newSub.plan === "premium") {
+    if (newSub.plan === "premium" || newSub.plan === "pro") {
       parsed.is_premium = true;
+    }
+    if (newSub.plan === "pro") {
+      parsed.is_pro = true;
     }
     localStorage.setItem("dukaan_user", JSON.stringify(parsed));
     if (updateUser) {
@@ -385,7 +430,8 @@ export default function Subscribe() {
         const idx = regUsers.findIndex(u => u.email && u.email.toLowerCase() === cleanEmail);
         if (idx >= 0) {
           regUsers[idx].subscription = newSub;
-          if (newSub.plan === "premium") regUsers[idx].is_premium = true;
+          if (newSub.plan === "premium" || newSub.plan === "pro") regUsers[idx].is_premium = true;
+          if (newSub.plan === "pro") regUsers[idx].is_pro = true;
         } else {
           regUsers.push({
             id: `usr_${Date.now()}`,
@@ -578,7 +624,10 @@ export default function Subscribe() {
         theme: { color: "#1B1464" }, 
         handler: async (value) => {
           let newExpiry = new Date();
-          const durationDays = isAnnual ? 365 : 30;
+          let durationDays = isAnnual ? 365 : 30;
+          if (selected === "pro") {
+            durationDays = isAnnual ? 548 : 60; // 12+6 months (18 months) for annual, 1+1 month (60 days) for monthly
+          }
 
           let baseTime = Date.now();
           const rawUser = localStorage.getItem("dukaan_user");
@@ -779,9 +828,9 @@ export default function Subscribe() {
         </motion.div>
 
         {/* =========================================================
-            3 PLAN TIERS GRID
+            4 PLAN TIERS GRID (September 2026 Updated)
         ========================================================= */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-7 items-stretch">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
           {Object.entries(PLANS).map(([key, value], index) => {
             const isSelected = selected === key;
             const isFeatured = value.featured;
@@ -790,6 +839,9 @@ export default function Subscribe() {
             const isCurrentActivePlan = isSubActiveNow && userPlanKey === key;
             const isUpgrade = isSubActiveNow && userRank > 0 && cardRank > userRank;
             const displayPrice = isAnnual ? Math.round(value.annual / 12) : value.monthly;
+            const originalDisplayPrice = isAnnual 
+              ? (value.original_annual ? Math.round(value.original_annual / 12) : null)
+              : value.original_monthly;
 
             const handleCardClick = () => {
               if (isDowngrade) {
@@ -805,13 +857,17 @@ export default function Subscribe() {
                 onClick={handleCardClick}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1, duration: 0.4 }}
+                transition={{ delay: index * 0.08, duration: 0.4 }}
                 whileHover={isDowngrade ? {} : { y: -6 }}
-                className={`relative rounded-3xl p-7 md:p-8 border-2 transition-all flex flex-col justify-between ${
+                className={`relative rounded-3xl p-6 md:p-7 border-2 transition-all flex flex-col justify-between ${
                   isDowngrade
                     ? "border-slate-200 bg-slate-50/70 opacity-60 cursor-not-allowed"
                     : isSelected
-                    ? "border-brand-terracotta bg-white shadow-xl ring-2 ring-brand-terracotta/20 cursor-pointer"
+                    ? key === "pro"
+                      ? "border-purple-600 bg-white shadow-2xl ring-2 ring-purple-500/30 cursor-pointer"
+                      : "border-brand-terracotta bg-white shadow-xl ring-2 ring-brand-terracotta/20 cursor-pointer"
+                    : key === "pro"
+                    ? "border-purple-300 bg-gradient-to-b from-white via-white to-purple-50/30 shadow-md hover:border-purple-500 cursor-pointer"
                     : isFeatured
                     ? "border-brand-indigo/30 bg-white shadow-md hover:border-brand-indigo cursor-pointer"
                     : "border-brand-mitti bg-white shadow-xs hover:border-brand-indigo/30 cursor-pointer"
@@ -819,126 +875,169 @@ export default function Subscribe() {
               >
                 {/* Badges */}
                 {isDowngrade ? (
-                  <span className="absolute -top-3.5 left-6 inline-flex items-center gap-1 rounded-full px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider bg-slate-400 text-white shadow-sm">
-                    <Lock className="w-3.5 h-3.5" /> Downgrade Unavailable
+                  <span className="absolute -top-3.5 left-4 inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider bg-slate-400 text-white shadow-sm">
+                    <Lock className="w-3 h-3" /> Locked
                   </span>
                 ) : isCurrentActivePlan ? (
-                  <span className="absolute -top-3.5 left-6 inline-flex items-center gap-1 rounded-full px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider bg-emerald-600 text-white shadow-md">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Current Plan
+                  <span className="absolute -top-3.5 left-4 inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider bg-emerald-600 text-white shadow-md">
+                    <CheckCircle2 className="w-3 h-3" /> Current Plan
                   </span>
                 ) : isUpgrade ? (
-                  <span className="absolute -top-3.5 left-6 inline-flex items-center gap-1 rounded-full px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider bg-indigo-600 text-white shadow-md">
-                    <ArrowUpRight className="w-3.5 h-3.5" /> Upgrade
+                  <span className="absolute -top-3.5 left-4 inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider bg-indigo-600 text-white shadow-md">
+                    <ArrowUpRight className="w-3 h-3" /> Upgrade
                   </span>
                 ) : isFeatured ? (
-                  <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 rounded-full px-4 py-1 text-xs font-extrabold uppercase tracking-wider bg-brand-terracotta text-white shadow-md">
-                    <Sparkles className="w-3.5 h-3.5" /> Most Popular
+                  <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 rounded-full px-3.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wider bg-brand-terracotta text-white shadow-md">
+                    <Sparkles className="w-3 h-3" /> Popular
                   </span>
                 ) : null}
 
+                {key === "pro" && !isCurrentActivePlan && !isDowngrade && (
+                  <span className="absolute -top-3.5 right-4 inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider bg-gradient-to-r from-purple-700 to-indigo-700 text-white shadow-md border border-purple-300">
+                    <Sparkles className="w-3 h-3 text-amber-300" /> VIP Flagship
+                  </span>
+                )}
+
                 {key === "premium" && !isCurrentActivePlan && !isDowngrade && (
-                  <span className="absolute -top-3.5 right-6 inline-flex items-center gap-1 rounded-full px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider bg-amber-500 text-white shadow-sm">
-                    <Crown className="w-3.5 h-3.5" /> Multi-Shop
+                  <span className="absolute -top-3.5 right-4 inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider bg-amber-500 text-white shadow-sm">
+                    <Crown className="w-3 h-3" /> Multi-Shop
                   </span>
                 )}
 
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs uppercase tracking-widest font-extrabold text-brand-terracotta">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className={`text-xs uppercase tracking-widest font-extrabold ${key === "pro" ? "text-purple-700" : "text-brand-terracotta"}`}>
                       {value.name} Tier
                     </span>
                     {isSelected && !isDowngrade && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                         <Check className="w-3 h-3 text-emerald-600" /> Selected
                       </span>
                     )}
                   </div>
 
-                  <p className="text-xs text-brand-indigo/60 min-h-[32px] font-medium leading-relaxed">
+                  <p className="text-xs text-brand-indigo/60 min-h-[30px] font-medium leading-snug">
                     {value.tagline}
                   </p>
 
-                  {/* Price */}
-                  <div className="mt-4 mb-4 flex items-baseline gap-1.5">
-                    <span className="font-display text-5xl font-extrabold text-brand-indigo">
-                      ₹{displayPrice}
-                    </span>
-                    <span className="text-sm font-semibold text-brand-indigo/60">
-                      / month
-                    </span>
+                  {/* Price with strikethrough & discount */}
+                  <div className="mt-3.5 mb-3">
+                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                      <span className="font-display text-4xl font-extrabold text-brand-indigo">
+                        ₹{displayPrice}
+                      </span>
+                      {originalDisplayPrice && originalDisplayPrice > displayPrice && (
+                        <span className="text-sm font-semibold line-through text-slate-400">
+                          ₹{originalDisplayPrice}
+                        </span>
+                      )}
+                      <span className="text-xs font-semibold text-brand-indigo/60">
+                        / mo
+                      </span>
+                    </div>
+
+                    {/* Discount Badge */}
+                    <div className="mt-2">
+                      {key === "pro" ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-purple-100 text-purple-800 border border-purple-200">
+                          <Sparkles className="w-3 h-3 text-purple-600" />
+                          {isAnnual ? (value.annual_offer || "12+6 Mo Free · Save 16.5%") : (value.monthly_offer || "1+1 Month Free")}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          <BadgePercent className="w-3 h-3 text-emerald-600" /> 20% Discount
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Pricing Subtext & Trial / Annual Badge */}
                   {isAnnual ? (
-                    <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 mb-6">
-                      <div className="font-heading font-extrabold text-sm flex items-center justify-between">
-                        <span>Billed ₹{value.annual} / year</span>
-                        <span className="text-[10px] bg-amber-200 px-2 py-0.5 rounded-full font-bold uppercase">Save 17%</span>
+                    <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 mb-4 text-left">
+                      <div className="font-heading font-extrabold text-xs flex items-center justify-between">
+                        <span>Billed ₹{value.annual}/yr</span>
+                        {value.original_annual && (
+                          <span className="text-[10px] line-through text-amber-800/60">₹{value.original_annual}</span>
+                        )}
                       </div>
-                      <div className="text-[11px] text-amber-800/80 mt-1 font-medium">
-                        Instant 1-Year Full Access · No Trial Required
+                      <div className="text-[10px] text-amber-800/80 mt-0.5 font-semibold">
+                        {key === "pro" ? "12+6 Months Free · 18 Mo Total Access" : "Save 20% on 365 Days Access"}
                       </div>
                     </div>
                   ) : hasUsedTrial ? (
-                    <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 text-blue-900 mb-6">
-                      <div className="font-heading font-extrabold text-sm flex items-center gap-1.5">
-                        <Sparkles className="w-4 h-4 text-blue-600" />
-                        <span>Paid Subscription</span>
+                    <div className="p-3 rounded-2xl bg-blue-50 border border-blue-200 text-blue-900 mb-4 text-left">
+                      <div className="font-heading font-extrabold text-xs flex items-center gap-1">
+                        <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Paid Plan</span>
                       </div>
-                      <div className="text-[11px] text-blue-800/80 mt-0.5 font-medium">
-                        Standard monthly subscription · Instant renewal.
+                      <div className="text-[10px] text-blue-800/80 mt-0.5 font-medium">
+                        {key === "pro" ? "1+1 Month Free · 60 Days Access" : "Standard monthly renewal."}
                       </div>
                     </div>
                   ) : (
-                    <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 mb-6">
-                      <div className="font-heading font-extrabold text-base flex items-center gap-1.5">
-                        <Zap className="w-4 h-4 text-emerald-600" />
-                        <span>{value.trial_days} Days FREE Trial</span>
+                    <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 mb-4 text-left">
+                      <div className="font-heading font-extrabold text-xs flex items-center gap-1">
+                        <Zap className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>{key === "pro" ? "1+1 Month Free Access" : `${value.trial_days} Days FREE Trial`}</span>
                       </div>
-                      <div className="text-[11px] text-emerald-800/80 mt-0.5 font-medium">
-                        ₹1 Razorpay Autopay setup · Auto-renews only after {value.trial_days} days.
+                      <div className="text-[10px] text-emerald-800/80 mt-0.5 font-medium">
+                        {key === "pro" ? "Pay ₹499 for 60 Days VIP Access" : `₹1 Autopay · Renews after ${value.trial_days}d.`}
                       </div>
                     </div>
                   )}
 
-                  <div className="h-px w-full bg-brand-mitti my-5" />
+                  <div className="h-px w-full bg-brand-mitti my-4" />
 
                   {/* Features List */}
-                  <div className="space-y-3 mb-6">
-                    <div className="text-[11px] uppercase tracking-wider font-extrabold text-brand-indigo/50">
+                  <div className="space-y-2.5 mb-5">
+                    <div className="text-[10px] uppercase tracking-wider font-extrabold text-brand-indigo/50">
                       Included in {value.name}:
                     </div>
 
                     {value.features.map((f, i) => (
-                      <div key={i} className="flex items-start gap-2.5 text-xs text-brand-indigo font-medium leading-relaxed">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <div key={i} className="flex items-start gap-2 text-xs text-brand-indigo font-medium leading-tight">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                         <span>{f}</span>
                       </div>
                     ))}
 
                     {/* Excluded items */}
                     {value.limitations?.map((l, i) => (
-                      <div key={i} className="flex items-start gap-2.5 text-xs text-brand-indigo/40 font-medium">
-                        <X className="w-4 h-4 text-brand-indigo/30 shrink-0 mt-0.5" />
+                      <div key={i} className="flex items-start gap-2 text-xs text-brand-indigo/40 font-medium">
+                        <X className="w-3.5 h-3.5 text-brand-indigo/30 shrink-0 mt-0.5" />
                         <span>{l}</span>
                       </div>
                     ))}
 
                     {/* Official Dukaan Premium Identity Showcase */}
                     {key === "premium" && (
-                      <div className="mt-4 p-3.5 rounded-2xl bg-gradient-to-br from-amber-50 via-yellow-50/50 to-amber-100/40 border-2 border-amber-300/70 shadow-xs">
-                        <div className="flex items-center justify-between gap-3 mb-2">
-                          <span className="text-[10px] font-mono font-extrabold uppercase tracking-wider text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full">
-                            ★ Exclusive Premium Identity
+                      <div className="mt-3 p-3 rounded-2xl bg-gradient-to-br from-amber-50 via-yellow-50/50 to-amber-100/40 border border-amber-300/70 shadow-xs">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-[9px] font-mono font-extrabold uppercase tracking-wider text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full">
+                            ★ Premium Identity
                           </span>
                         </div>
                         <img 
                           src="/logo-premium.png" 
                           alt="Dukaan Premium Official Logo" 
-                          className="h-10 sm:h-12 w-auto object-contain mx-auto drop-shadow-xs my-1" 
+                          className="h-8 w-auto object-contain mx-auto drop-shadow-xs my-1" 
                         />
-                        <p className="text-[11px] text-amber-900 font-medium text-center mt-1.5 leading-snug">
-                          Your POS Counter, invoices, and portal will display this official <b>Dukaan Premium</b> logo & golden badge.
+                        <p className="text-[10px] text-amber-900 font-medium text-center mt-1 leading-tight">
+                          Includes official golden badge & soundbox.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Official Dukaan Pro Showcase */}
+                    {key === "pro" && (
+                      <div className="mt-3 p-3 rounded-2xl bg-gradient-to-br from-purple-50 via-indigo-50/50 to-amber-50/40 border border-purple-300/70 shadow-xs">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-[9px] font-mono font-extrabold uppercase tracking-wider text-purple-800 bg-purple-200/80 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <Sparkles className="w-2.5 h-2.5 text-amber-500" /> Full Customization
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-purple-950 font-semibold text-center mt-1 leading-tight">
+                          Custom billing, personalized dashboard & 24/7 dedicated support.
                         </p>
                       </div>
                     )}

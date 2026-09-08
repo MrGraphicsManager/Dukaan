@@ -62,7 +62,7 @@ export default function MobileProfile({ onBack, onTabChange, onLogout, onUpgrade
               <span>Dukaan Pro</span>
             </div>
             <div className="text-sm font-black mt-0.5">Upgrade for WhatsApp Bills</div>
-            <div className="text-[11px] text-blue-100">Starting at ₹ 149/mo</div>
+            <div className="text-[11px] text-blue-100">Starting at ₹ 79/mo</div>
           </div>
           <ChevronRight className="w-5 h-5 text-white/80" />
         </div>

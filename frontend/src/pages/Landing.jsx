@@ -80,9 +80,12 @@ const FEATURES = [
 
 const PLANS = [
   { 
+    id: "starter",
     name: "Starter", 
     setup: 299, 
-    price: 99, 
+    price: 79, 
+    originalPrice: 99,
+    discount: "20% OFF",
     perks: [
       "Fast POS Billing & Invoices", 
       "Unlimited Products & Inventory", 
@@ -91,9 +94,12 @@ const PLANS = [
     ] 
   },
   { 
+    id: "business",
     name: "Business", 
     setup: 499, 
-    price: 149, 
+    price: 119, 
+    originalPrice: 149,
+    discount: "20% OFF",
     perks: [
       "Everything in Starter", 
       "Customer Khata Directory", 
@@ -104,9 +110,12 @@ const PLANS = [
     featured: true 
   },
   { 
+    id: "premium",
     name: "Premium", 
     setup: 999, 
-    price: 299, 
+    price: 239, 
+    originalPrice: 299,
+    discount: "20% OFF",
     perks: [
       "Everything in Business", 
       "Multi-Shop Headquarter Support", 
@@ -115,6 +124,23 @@ const PLANS = [
       "Priority VIP Support & Soundbox"
     ] 
   },
+  {
+    id: "pro",
+    name: "Dukaan Pro",
+    setup: 0,
+    price: 499,
+    originalPrice: null,
+    offerBadge: "1+1 Month Free",
+    vip: true,
+    perks: [
+      "Everything in Premium",
+      "Custom Billing & Invoices",
+      "Custom Dashboard & Widgets",
+      "Customize Everything",
+      "Early Access to New Updates",
+      "24/7 Dedicated Support"
+    ]
+  }
 ];
 
 const FAQS = [
@@ -782,7 +808,7 @@ export default function Landing() {
       {/* =========================================================
           PRICING SECTION (3D ELEVATED CARDS)
       ========================================================= */}
-      <Reveal className="relative z-10 mx-auto max-w-6xl px-5 py-24 border-t border-brand-mitti" id="pricing">
+      <Reveal className="relative z-10 mx-auto max-w-7xl px-5 py-24 border-t border-brand-mitti" id="pricing">
         <div className="text-center max-w-2xl mx-auto mb-16">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-mitti bg-white text-xs font-semibold uppercase tracking-widest text-brand-terracotta mb-4">
             Transparent Indian Pricing
@@ -795,49 +821,72 @@ export default function Landing() {
           </p>
         </div>
 
-        <motion.div variants={stagger} className="grid md:grid-cols-3 gap-8 items-stretch">
+        <motion.div variants={stagger} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
           {PLANS.map((p) => (
             <Card3D 
               key={p.name} 
-              depth={p.featured ? 22 : 12} 
+              depth={p.vip ? 24 : p.featured ? 22 : 12} 
               glow={true} 
               className="w-full"
             >
               <div 
-                className={`rounded-3xl p-8 border-2 shadow-3d-card relative flex flex-col justify-between h-full preserve-3d ${
-                  p.featured 
+                className={`rounded-3xl p-6 sm:p-7 border-2 shadow-3d-card relative flex flex-col justify-between h-full preserve-3d ${
+                  p.vip
+                    ? "bg-slate-950 text-white border-2 border-amber-400 shadow-xl ring-2 ring-amber-400/20"
+                    : p.featured 
                     ? "bg-white text-slate-900 border-2 border-brand-terracotta shadow-xl ring-2 ring-brand-terracotta/20" 
                     : "bg-white text-brand-indigo border-brand-mitti"
                 }`}
               >
                 {p.featured && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-brand-terracotta text-white text-[11px] font-extrabold uppercase tracking-widest py-1.5 px-4 rounded-full shadow-md translate-z-30 flex items-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5" /> Most Popular for Shops
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-brand-terracotta text-white text-[11px] font-extrabold uppercase tracking-widest py-1.5 px-4 rounded-full shadow-md translate-z-30 flex items-center gap-1 whitespace-nowrap">
+                    <Sparkles className="w-3.5 h-3.5" /> Most Popular
+                  </div>
+                )}
+                {p.vip && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 text-[11px] font-black uppercase tracking-widest py-1.5 px-4 rounded-full shadow-md translate-z-30 flex items-center gap-1 whitespace-nowrap">
+                    <Sparkles className="w-3.5 h-3.5" /> VIP Flagship
                   </div>
                 )}
 
                 <div>
-                  <div className={`text-xs uppercase tracking-widest font-extrabold ${p.featured ? "text-brand-terracotta" : "text-brand-terracotta"}`}>
+                  <div className={`text-xs uppercase tracking-widest font-extrabold ${p.vip ? "text-amber-400" : "text-brand-terracotta"}`}>
                     {p.name} PLAN
                   </div>
 
-                  <div className="mt-4 flex items-baseline gap-2">
-                    <span className="font-display text-5xl font-extrabold">₹{p.price}</span>
-                    <span className={`text-sm font-semibold ${p.featured ? "text-slate-500" : "text-brand-indigo/50"}`}>/month</span>
-                  </div>
-                  <div className={`mt-1 text-xs font-medium ${p.featured ? "text-slate-500" : "text-brand-indigo/50"}`}>
-                    + ₹{p.setup} one-time setup fee
+                  <div className="mt-4 flex items-baseline gap-2 flex-wrap">
+                    <span className="font-display text-4xl sm:text-5xl font-extrabold">₹{p.price}</span>
+                    {p.originalPrice && (
+                      <span className="text-base line-through text-slate-400 font-semibold">₹{p.originalPrice}</span>
+                    )}
+                    <span className={`text-xs font-semibold ${p.vip ? "text-slate-400" : p.featured ? "text-slate-500" : "text-brand-indigo/50"}`}>/month</span>
                   </div>
 
-                  <div className={`my-6 h-px w-full ${p.featured ? "bg-slate-200" : "bg-brand-mitti"}`} />
+                  <div className="mt-1 flex items-center gap-2 flex-wrap">
+                    {p.discount && (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
+                        {p.discount}
+                      </span>
+                    )}
+                    {p.offerBadge && (
+                      <span className="text-[10px] font-extrabold text-amber-900 bg-amber-200 px-2 py-0.5 rounded-md">
+                        {p.offerBadge}
+                      </span>
+                    )}
+                    <span className={`text-[11px] font-medium ${p.vip ? "text-slate-400" : p.featured ? "text-slate-500" : "text-brand-indigo/50"}`}>
+                      {p.setup > 0 ? `+ ₹${p.setup} setup` : "Zero setup fee"}
+                    </span>
+                  </div>
 
-                  <ul className="space-y-3.5 mb-8">
+                  <div className={`my-5 h-px w-full ${p.vip ? "bg-slate-800" : p.featured ? "bg-slate-200" : "bg-brand-mitti"}`} />
+
+                  <ul className="space-y-3 mb-8">
                     {p.perks.map((x) => (
-                      <li key={x} className="flex items-start gap-3">
-                        <div className={`mt-0.5 rounded-full p-0.5 shrink-0 ${p.featured ? "bg-brand-leaf/15 text-brand-leaf" : "bg-brand-leaf/10 text-brand-leaf"}`}>
+                      <li key={x} className="flex items-start gap-2.5">
+                        <div className={`mt-0.5 rounded-full p-0.5 shrink-0 ${p.vip ? "bg-amber-400/20 text-amber-400" : p.featured ? "bg-brand-leaf/15 text-brand-leaf" : "bg-brand-leaf/10 text-brand-leaf"}`}>
                           <Check className="w-3.5 h-3.5" />
                         </div>
-                        <span className={`text-sm font-medium ${p.featured ? "text-slate-700" : "text-brand-indigo/80"}`}>{x}</span>
+                        <span className={`text-xs sm:text-sm font-medium ${p.vip ? "text-slate-300" : p.featured ? "text-slate-700" : "text-brand-indigo/80"}`}>{x}</span>
                       </li>
                     ))}
                   </ul>
@@ -845,10 +894,12 @@ export default function Landing() {
 
                 <div className="mt-auto pt-4">
                   <Button 
-                    onClick={() => nav(`/subscribe?plan=${p.name.toLowerCase()}`)} 
-                    data-testid={`price-cta-${p.name.toLowerCase()}`} 
-                    className={`w-full h-13 rounded-full text-base font-bold active:scale-95 transition-all shadow-md ${
-                      p.featured 
+                    onClick={() => nav(`/subscribe?plan=${(p.id || p.name).toLowerCase()}`)} 
+                    data-testid={`price-cta-${(p.id || p.name).toLowerCase()}`} 
+                    className={`w-full h-12 rounded-full text-sm font-bold active:scale-95 transition-all shadow-md ${
+                      p.vip
+                        ? "bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-black"
+                        : p.featured 
                         ? "bg-brand-terracotta hover:bg-brand-terracotta/90 text-white" 
                         : "bg-brand-sand border-2 border-brand-mitti hover:border-brand-indigo text-brand-indigo"
                     }`}
