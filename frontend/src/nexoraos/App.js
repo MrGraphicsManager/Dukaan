@@ -35,8 +35,9 @@ function Protected({ children, roles }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center text-[#6B5A52]">Loading…</div>;
   if (!user) return <Navigate to="/nexoraos/login" replace />;
-  if (user.role === "admin") return <Navigate to="/nexoraos/admin/dashboard" replace />;
-  if (roles && !roles.includes(user.role)) return <Navigate to="/nexoraos/dashboard" replace />;
+  const role = user.role || "owner";
+  if (role === "admin") return <Navigate to="/nexoraos/admin/dashboard" replace />;
+  if (roles && !roles.includes(role)) return <Navigate to="/nexoraos/dashboard" replace />;
   return children;
 }
 

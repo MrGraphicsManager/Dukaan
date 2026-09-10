@@ -10,8 +10,14 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const { login, setTokenAndUser } = useAuth();
+  const { login, setTokenAndUser, user } = useAuth();
   const nav = useNavigate();
+
+  React.useEffect(() => {
+    if (user && (user.email || user.id)) {
+      nav(user.role === "admin" ? "/nexoraos/admin/dashboard" : "/nexoraos/dashboard", { replace: true });
+    }
+  }, [user, nav]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -19,7 +25,7 @@ export default function Login() {
     try {
       const u = await login(email, password);
       toast.success("Welcome back");
-      nav(u.role === "admin" ? "/nexoraos/admin/dashboard" : "/nexoraos/dashboard");
+      nav(u?.role === "admin" ? "/nexoraos/admin/dashboard" : "/nexoraos/dashboard", { replace: true });
     } catch (err) {
       toast.error(formatApiErrorDetail(err.response?.data?.detail) || "Login failed");
     } finally { setBusy(false); }
