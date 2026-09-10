@@ -1,7 +1,7 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api, money } from "../../lib/api";
+import { api, money, API } from "../../lib/api";
 import { Download } from "lucide-react";
 
 export default function AdminInvoices() {
@@ -10,8 +10,8 @@ export default function AdminInvoices() {
 
   const download = async () => {
     try {
-      const token = localStorage.getItem("nx_token");
-      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/admin/invoices/export`, { headers: { Authorization: `Bearer ${token}` } });
+      const token = localStorage.getItem("nx_token") || localStorage.getItem("dukaan_token");
+      const res = await fetch(`${API}/admin/invoices/export`, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error("Export failed");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);

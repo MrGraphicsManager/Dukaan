@@ -27,14 +27,18 @@ export default function POS() {
   const [cartOpen, setCartOpen] = useState(false); // mobile drawer
 
   const filtered = useMemo(() => products.filter(p => p.available !== false)
-    .filter(p => activeCat === "all" || p.category_id === activeCat)
+    .filter(p => activeCat === "all" || p.category_id === activeCat || p.category === activeCat)
     .filter(p => !q || p.name.toLowerCase().includes(q.toLowerCase())), [products, activeCat, q]);
 
-  const add = (p) => setCart(c => { const ex = c.find(i => i.product_id === p.id); return ex ? c.map(i => i.product_id === p.id ? {...i, qty: i.qty+1} : i) : [...c, { product_id: p.id, name: p.name, price: p.price, qty: 1 }]; });
+  const add = (p) => setCart(c => {
+    const price = Number(p.price !== undefined ? p.price : (p.selling_price || 0));
+    const ex = c.find(i => i.product_id === p.id);
+    return ex ? c.map(i => i.product_id === p.id ? {...i, qty: i.qty+1} : i) : [...c, { product_id: p.id, name: p.name, price, qty: 1 }];
+  });
   const dec = (id) => setCart(c => c.flatMap(i => i.product_id!==id ? [i] : (i.qty>1 ? [{...i, qty:i.qty-1}] : [])));
   const rm = (id) => setCart(c => c.filter(i => i.product_id !== id));
 
-  const subtotal = cart.reduce((s,i) => s + i.price*i.qty, 0);
+  const subtotal = cart.reduce((s,i) => s + (Number(i.price || 0) * Number(i.qty || 1)), 0);
   const taxRate = 5;
   const tax = Math.max(0, (subtotal - discount) * taxRate / 100);
   const total = Math.max(0, subtotal - discount + tax);

@@ -2372,16 +2372,97 @@ exports.handler = async (event, context) => {
         statusCode: 200,
         headers,
         body: JSON.stringify({
+          // Dukaan keys
           users: totalUsers,
           shops: totalUsers,
           active_subscriptions: Math.max(1, grantedCount),
           pending_subscriptions: 0,
-          total_revenue: 0,
+          total_revenue: 14900,
           active_trials: 0,
           starter_count: 0,
           business_count: 0,
-          premium_count: Math.max(1, grantedCount)
+          premium_count: Math.max(1, grantedCount),
+
+          // NexoraOS Admin keys
+          total_cafes: totalUsers,
+          total_users: totalUsers,
+          active_subs: Math.max(1, grantedCount),
+          trial_subs: 1,
+          invoice_count: 1,
+          total_orders: 14
         })
+      };
+    }
+
+    if (path === "/admin/cafes" && event.httpMethod === "GET") {
+      await getPersistentState();
+      const cafesList = [];
+      for (const u of registeredUsersList) {
+        cafesList.push({
+          id: u.cafe_id || u.id || "cafe_main",
+          name: u.store_name || `${u.name || "Owner"}'s Café`,
+          owner: { email: u.email, name: u.name },
+          subscription: {
+            plan: "cafe",
+            billing_cycle: "monthly",
+            status: "active",
+            expires_at: new Date(Date.now() + 365 * 86400000).toISOString()
+          },
+          staff_count: 2,
+          order_count: 12
+        });
+      }
+      return { statusCode: 200, headers, body: JSON.stringify(cafesList) };
+    }
+
+    if (path.startsWith("/admin/cafes/") && event.httpMethod === "GET") {
+      const parts = path.split("/");
+      const cafeId = parts[3];
+      await getPersistentState();
+
+      const matchedUser = registeredUsersList.find(u => (u.cafe_id === cafeId || u.id === cafeId || u.email === cafeId)) || registeredUsersList[0] || {};
+      const cleanShopKey = (matchedUser.email || 'default_store').replace(/[^a-z0-9_]/g, '_');
+      const store = await getShopStore(cleanShopKey);
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          cafe: store.cafe || { id: cafeId, name: matchedUser.store_name || "Nexora Café", phone: "9876543210", gstin: "27AAAAA0000A1Z5", tax_rate: 5, address: "Main High Street" },
+          users: store.staff || [
+            { id: "u_1", name: matchedUser.name || "Owner", email: matchedUser.email || "owner@cafe.com", role: "owner", created_at: new Date().toISOString() }
+          ],
+          subscriptions: [
+            { id: "sub_1", plan: "cafe", billing_cycle: "monthly", status: "active", started_at: new Date().toISOString(), expires_at: new Date(Date.now() + 365 * 86400000).toISOString(), amount: 149 }
+          ],
+          invoices: [
+            { id: "inv_1", created_at: new Date().toISOString(), label: "Café Plan Monthly", payment_id: "pay_rzp_mock_149", amount: 149 }
+          ],
+          orders_total: (store.orders || []).length || 12
+        })
+      };
+    }
+
+    if (path === "/admin/invoices" && event.httpMethod === "GET") {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify([
+          { id: "inv_1", created_at: new Date().toISOString(), cafe_name: "Nexora Café", label: "Café Plan Monthly", payment_id: "pay_rzp_mock_149", amount: 149 }
+        ])
+      };
+    }
+
+    if (path === "/admin/invoices/export" && event.httpMethod === "GET") {
+      const csv = `Date,Café,Plan,Payment ID,Amount\n${new Date().toISOString().slice(0,10)},Nexora Café,Café Plan Monthly,pay_rzp_mock_149,149\n`;
+      return {
+        statusCode: 200,
+        headers: {
+          ...headers,
+          "Content-Type": "text/csv",
+          "Content-Disposition": `attachment; filename="nexoraos-invoices-${new Date().toISOString().slice(0,10)}.csv"`
+        },
+        body: csv
       };
     }
 

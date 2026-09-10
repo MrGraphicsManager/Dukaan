@@ -61,9 +61,9 @@ export default function Menu() {
               products.map(p => (
                 <tr key={p.id} className="border-t border-[#F2E8DC]">
                   <td className="px-4 py-3 font-semibold">{p.name}</td>
-                  <td className="px-4 py-3 text-[#6B5A52]">{cats.find(c=>c.id===p.category_id)?.name || "—"}</td>
-                  <td className="px-4 py-3 text-right tabular">{money(p.price)}</td>
-                  <td className="px-4 py-3 text-right tabular">{p.prep_time}m</td>
+                  <td className="px-4 py-3 text-[#6B5A52]">{cats.find(c=>c.id===p.category_id)?.name || p.category || "—"}</td>
+                  <td className="px-4 py-3 text-right tabular">{money(p.price || p.selling_price)}</td>
+                  <td className="px-4 py-3 text-right tabular">{p.prep_time || 5}m</td>
                   <td className="px-4 py-3"><button onClick={()=>toggleAvail(p)} data-testid={`menu-toggle-${p.id}`} className={`badge-status ${p.available!==false?"status-available":"status-cancelled"}`}>{p.available!==false?"Yes":"No"}</button></td>
                   <td className="px-4 py-3 text-right flex justify-end gap-1">
                     <button onClick={()=>setProdForm(p)} className="p-1.5 rounded-md hover:bg-[#F5ECE1]"><Edit2 className="w-3.5 h-3.5"/></button>
