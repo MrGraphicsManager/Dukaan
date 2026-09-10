@@ -273,6 +273,124 @@ async function saveShopStore(shopKey, storeData) {
   }, { 'Title': 'StoreSync-' + cleanKey }, 2500).catch(() => {});
 }
 
+// ==========================================
+// NEXORAOS DEDICATED CAFE PERSISTENCE
+// ==========================================
+const cafeStores = new Map();
+
+function isNexoraRequest(event, path = "") {
+  const hContext = String(event.headers?.['x-app-context'] || event.headers?.['X-App-Context'] || '');
+  const hPlatform = String(event.headers?.['x-platform'] || event.headers?.['X-Platform'] || '');
+  if (hContext.toLowerCase() === 'nexoraos' || hPlatform.toLowerCase() === 'nexoraos') {
+    return true;
+  }
+  if (path.startsWith('/tables') ||
+      path.startsWith('/categories') ||
+      path.startsWith('/inventory') ||
+      path.startsWith('/staff') ||
+      path.startsWith('/cafes') ||
+      path.startsWith('/cafe') ||
+      path.startsWith('/kitchen') ||
+      path.startsWith('/subscription') ||
+      path.startsWith('/public/')) {
+    return true;
+  }
+  return false;
+}
+
+async function getCafeStore(shopKey) {
+  if (cafeStores.has(shopKey)) {
+    return cafeStores.get(shopKey);
+  }
+  const cleanKey = shopKey.replace(/[^a-z0-9_]/g, '_').slice(0, 32);
+  const cafeTopic = 'nexora_cafe_v6_' + cleanKey;
+  let cafeData = null;
+  try {
+    const res = await safeHttpGet('https://ntfy.sh/' + cafeTopic + '/raw?poll=1&limit=5', 2500);
+    if (res.ok) {
+      const raw = await res.text();
+      if (raw && raw.trim()) {
+        const lines = raw.trim().split('\n').filter(Boolean);
+        for (let i = lines.length - 1; i >= 0; i--) {
+          try {
+            const parsed = JSON.parse(lines[i]);
+            if (parsed && (Array.isArray(parsed.products) || parsed.cafe || Array.isArray(parsed.tables))) {
+              cafeData = parsed;
+              break;
+            }
+          } catch (_) {}
+        }
+      }
+    }
+  } catch (_) {}
+
+  if (!cafeData) {
+    cafeData = {
+      products: [],
+      orders: [],
+      customers: [],
+      cafe: {
+        id: 'cafe_' + cleanKey,
+        name: "My Café",
+        address: "",
+        phone: "",
+        gstin: "",
+        tax_rate: 5,
+        upi_enabled: true,
+        is_pro: true,
+        ready_message: "Your order is ready! Please collect from the counter."
+      },
+      tables: [],
+      categories: [],
+      inventory: [],
+      staff: [],
+      updated_at: new Date().toISOString()
+    };
+  }
+
+  if (!Array.isArray(cafeData.products)) cafeData.products = [];
+  if (!Array.isArray(cafeData.orders)) cafeData.orders = [];
+  if (!Array.isArray(cafeData.customers)) cafeData.customers = [];
+  if (!Array.isArray(cafeData.tables)) cafeData.tables = [];
+  if (!Array.isArray(cafeData.categories)) cafeData.categories = [];
+  if (!Array.isArray(cafeData.inventory)) cafeData.inventory = [];
+  if (!Array.isArray(cafeData.staff)) cafeData.staff = [];
+  if (!cafeData.cafe) {
+    cafeData.cafe = {
+      id: 'cafe_' + cleanKey,
+      name: "My Café",
+      address: "",
+      phone: "",
+      gstin: "",
+      tax_rate: 5,
+      upi_enabled: true,
+      is_pro: true,
+      ready_message: "Your order is ready! Please collect from the counter."
+    };
+  }
+
+  cafeStores.set(shopKey, cafeData);
+  return cafeData;
+}
+
+async function saveCafeStore(shopKey, cafeData) {
+  cafeStores.set(shopKey, cafeData);
+  cafeData.updated_at = new Date().toISOString();
+  const cleanKey = shopKey.replace(/[^a-z0-9_]/g, '_').slice(0, 32);
+  const cafeTopic = 'nexora_cafe_v6_' + cleanKey;
+  safeHttpPost('https://ntfy.sh/' + cafeTopic, {
+    products: (cafeData.products || []).slice(0, 250),
+    orders: (cafeData.orders || []).slice(0, 150),
+    customers: (cafeData.customers || []).slice(0, 100),
+    tables: cafeData.tables || [],
+    categories: cafeData.categories || [],
+    inventory: cafeData.inventory || [],
+    staff: cafeData.staff || [],
+    cafe: cafeData.cafe || null,
+    updated_at: cafeData.updated_at
+  }, { 'Title': 'NexoraCafe-' + cleanKey }, 2500).catch(() => {});
+}
+
 let registeredUsersList = [
   {
     id: "usr_admin_master",
@@ -1000,19 +1118,21 @@ exports.handler = async (event, context) => {
         verification_token,
         subscription: null
       };
-      if (body.cafe_name) {
+      if (body.cafe_name || isNexoraRequest(event, path)) {
         try {
           const cleanShopKey = email.replace(/[^a-z0-9_]/g, '_');
-          const userStore = await getShopStore(cleanShopKey);
-          userStore.cafe = {
-            ...(userStore.cafe || {}),
+          const cafeStore = await getCafeStore(cleanShopKey);
+          cafeStore.cafe = {
             id: 'cafe_' + Date.now(),
-            name: body.cafe_name,
+            name: body.cafe_name || `${name || email.split("@")[0]}'s Café`,
             tax_rate: 5,
             upi_enabled: true,
             is_pro: true
           };
-          await saveShopStore(cleanShopKey, userStore);
+          cafeStore.staff = [
+            { id: newRegUser.id, name: newRegUser.name, email: newRegUser.email, role: "owner" }
+          ];
+          await saveCafeStore(cleanShopKey, cafeStore);
         } catch (_) {}
       }
       if (!globalPlatformConfig.email_verifications) globalPlatformConfig.email_verifications = {};
@@ -1342,7 +1462,7 @@ exports.handler = async (event, context) => {
           is_verified: isVerified
         };
 
-        if (!isAdmin && (!mergedUser.is_verified || !mergedUser.phone_verified)) {
+        if (!isAdmin && !isNexoraRequest(event, path) && (!mergedUser.is_verified || (!mergedUser.phone_verified && !mergedUser.email_verified))) {
           return {
             statusCode: 401,
             headers,
@@ -1369,9 +1489,10 @@ exports.handler = async (event, context) => {
             user: mergedUser,
             cafe: {
               id: mergedUser.cafe_id || mergedUser.id || "cafe_main",
-              name: mergedUser.store_name || (mergedUser.name ? `${mergedUser.name}'s Café` : "Nexora Café"),
+              name: mergedUser.cafe_name || mergedUser.store_name || (mergedUser.name ? `${mergedUser.name}'s Café` : "My Café"),
               tax_rate: 5,
-              upi_enabled: true
+              upi_enabled: true,
+              is_pro: true
             }
           })
         };
@@ -1560,9 +1681,10 @@ exports.handler = async (event, context) => {
           user: userPayload,
           cafe: {
             id: userPayload.cafe_id || userPayload.id || "cafe_main",
-            name: userPayload.name ? `${userPayload.name}'s Café` : "Nexora Café",
+            name: matchedUser?.cafe_name || matchedUser?.store_name || (userPayload.name ? `${userPayload.name}'s Café` : "My Café"),
             tax_rate: 5,
-            upi_enabled: true
+            upi_enabled: true,
+            is_pro: true
           }
         })
       };
@@ -2422,7 +2544,7 @@ exports.handler = async (event, context) => {
 
       const matchedUser = registeredUsersList.find(u => (u.cafe_id === cafeId || u.id === cafeId || u.email === cafeId)) || registeredUsersList[0] || {};
       const cleanShopKey = (matchedUser.email || 'default_store').replace(/[^a-z0-9_]/g, '_');
-      const store = await getShopStore(cleanShopKey);
+      const store = await getCafeStore(cleanShopKey);
 
       return {
         statusCode: 200,
@@ -3331,7 +3453,8 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const isNexora = isNexoraRequest(event, path);
+      const store = isNexora ? await getCafeStore(shopKey) : await getShopStore(shopKey);
 
       const q = (event.queryStringParameters?.q || "").toLowerCase().trim();
       const category = (event.queryStringParameters?.category || "").toLowerCase().trim();
@@ -3341,7 +3464,7 @@ exports.handler = async (event, context) => {
         list = list.filter(p => (p.name || "").toLowerCase().includes(q) || (p.category || "").toLowerCase().includes(q) || (p.barcode && p.barcode.includes(q)));
       }
       if (category && category !== "all") {
-        list = list.filter(p => (p.category || "").toLowerCase() === category);
+        list = list.filter(p => (p.category || "").toLowerCase() === category || p.category_id === category);
       }
       return { statusCode: 200, headers, body: JSON.stringify(list) };
     }
@@ -3350,7 +3473,8 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const isNexora = isNexoraRequest(event, path);
+      const store = isNexora ? await getCafeStore(shopKey) : await getShopStore(shopKey);
 
       const incoming = Array.isArray(body.products) ? body.products : [];
       if (incoming.length > 0) {
@@ -3363,7 +3487,8 @@ exports.handler = async (event, context) => {
           }
         }
         store.products = merged;
-        await saveShopStore(shopKey, store);
+        if (isNexora) await saveCafeStore(shopKey, store);
+        else await saveShopStore(shopKey, store);
       }
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true, count: store.products.length, products: store.products }) };
     }
@@ -3372,17 +3497,23 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const isNexora = isNexoraRequest(event, path);
+      const store = isNexora ? await getCafeStore(shopKey) : await getShopStore(shopKey);
 
+      const priceVal = Number(body.price !== undefined ? body.price : (body.selling_price || 0));
       const newProd = {
         id: body.id || ('prod_' + Date.now() + '_' + Math.floor(100 + Math.random() * 900)),
         name: (body.name || "New Product").trim(),
+        category_id: body.category_id || "",
         category: body.category || "General",
-        selling_price: Number(body.selling_price || body.price || 0),
+        price: priceVal,
+        selling_price: priceVal,
         purchase_price: Number(body.purchase_price || body.costPrice || 0),
         stock: body.unlimited_stock ? 0 : Number(body.stock || 0),
         min_stock: Number(body.min_stock || 5),
         unlimited_stock: Boolean(body.unlimited_stock),
+        prep_time: Number(body.prep_time || 5),
+        available: body.available !== false,
         barcode: body.barcode ? String(body.barcode).trim() : "",
         batch_number: body.batch_number ? String(body.batch_number).trim() : "",
         expiry_date: body.expiry_date ? String(body.expiry_date).trim() : "",
@@ -3390,7 +3521,8 @@ exports.handler = async (event, context) => {
       };
 
       store.products = [newProd, ...(store.products || []).filter(p => p.id !== newProd.id)];
-      await saveShopStore(shopKey, store);
+      if (isNexora) await saveCafeStore(shopKey, store);
+      else await saveShopStore(shopKey, store);
       return { statusCode: 200, headers, body: JSON.stringify(newProd) };
     }
 
@@ -3398,7 +3530,8 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const isNexora = isNexoraRequest(event, path);
+      const store = isNexora ? await getCafeStore(shopKey) : await getShopStore(shopKey);
 
       const parts = path.split("/");
       const prodId = parts[2];
@@ -3407,7 +3540,8 @@ exports.handler = async (event, context) => {
       if (idx >= 0) {
         store.products[idx].stock = Math.max(0, Number(store.products[idx].stock || 0) + delta);
         store.products[idx].updated_at = new Date().toISOString();
-        await saveShopStore(shopKey, store);
+        if (isNexora) await saveCafeStore(shopKey, store);
+        else await saveShopStore(shopKey, store);
         return { statusCode: 200, headers, body: JSON.stringify({ ok: true, product: store.products[idx] }) };
       }
       return { statusCode: 404, headers, body: JSON.stringify({ detail: "Product not found" }) };
@@ -3417,7 +3551,8 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const isNexora = isNexoraRequest(event, path);
+      const store = isNexora ? await getCafeStore(shopKey) : await getShopStore(shopKey);
 
       const parts = path.split("/");
       const prodId = parts[2];
@@ -3427,14 +3562,16 @@ exports.handler = async (event, context) => {
         if (mergedProd.price !== undefined && mergedProd.selling_price === undefined) mergedProd.selling_price = mergedProd.price;
         if (mergedProd.selling_price !== undefined && mergedProd.price === undefined) mergedProd.price = mergedProd.selling_price;
         store.products[idx] = mergedProd;
-        await saveShopStore(shopKey, store);
+        if (isNexora) await saveCafeStore(shopKey, store);
+        else await saveShopStore(shopKey, store);
         return { statusCode: 200, headers, body: JSON.stringify(store.products[idx]) };
       } else {
         const newProd = { id: prodId, ...body, updated_at: new Date().toISOString() };
         if (newProd.price !== undefined && newProd.selling_price === undefined) newProd.selling_price = newProd.price;
         if (newProd.selling_price !== undefined && newProd.price === undefined) newProd.price = newProd.selling_price;
         store.products = [newProd, ...(store.products || [])];
-        await saveShopStore(shopKey, store);
+        if (isNexora) await saveCafeStore(shopKey, store);
+        else await saveShopStore(shopKey, store);
         return { statusCode: 200, headers, body: JSON.stringify(newProd) };
       }
     }
@@ -3443,12 +3580,14 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const isNexora = isNexoraRequest(event, path);
+      const store = isNexora ? await getCafeStore(shopKey) : await getShopStore(shopKey);
 
       const parts = path.split("/");
       const prodId = parts[2];
       store.products = (store.products || []).filter(p => p.id !== prodId);
-      await saveShopStore(shopKey, store);
+      if (isNexora) await saveCafeStore(shopKey, store);
+      else await saveShopStore(shopKey, store);
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true, id: prodId }) };
     }
 
@@ -3459,7 +3598,8 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const isNexora = isNexoraRequest(event, path);
+      const store = isNexora ? await getCafeStore(shopKey) : await getShopStore(shopKey);
 
       const status = event.queryStringParameters?.status;
       const payment = event.queryStringParameters?.payment_method;
@@ -3483,7 +3623,8 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const isNexora = isNexoraRequest(event, path);
+      const store = isNexora ? await getCafeStore(shopKey) : await getShopStore(shopKey);
 
       const items = Array.isArray(body.items) ? body.items : [];
       const discount = Number(body.discount || 0);
@@ -3560,7 +3701,8 @@ exports.handler = async (event, context) => {
       }
 
       store.orders = [newOrder, ...(store.orders || [])];
-      await saveShopStore(shopKey, store);
+      if (isNexora) await saveCafeStore(shopKey, store);
+      else await saveShopStore(shopKey, store);
       return { statusCode: 200, headers, body: JSON.stringify(newOrder) };
     }
 
@@ -3568,7 +3710,8 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const isNexora = isNexoraRequest(event, path);
+      const store = isNexora ? await getCafeStore(shopKey) : await getShopStore(shopKey);
 
       const parts = path.split("/");
       const orderId = parts[2];
@@ -3583,7 +3726,8 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const isNexora = isNexoraRequest(event, path);
+      const store = isNexora ? await getCafeStore(shopKey) : await getShopStore(shopKey);
 
       const parts = path.split("/");
       const orderId = parts[2];
@@ -3598,7 +3742,8 @@ exports.handler = async (event, context) => {
         ord.payment_method = "cash";
         ord.status = ord.status === "completed" ? "completed" : "paid";
         ord.updated_at = new Date().toISOString();
-        await saveShopStore(shopKey, store);
+        if (isNexora) await saveCafeStore(shopKey, store);
+        else await saveShopStore(shopKey, store);
         return { statusCode: 200, headers, body: JSON.stringify(ord) };
       }
 
@@ -3618,7 +3763,8 @@ exports.handler = async (event, context) => {
         }
       }
 
-      await saveShopStore(shopKey, store);
+      if (isNexora) await saveCafeStore(shopKey, store);
+      else await saveShopStore(shopKey, store);
       return { statusCode: 200, headers, body: JSON.stringify(ord) };
     }
 
@@ -3626,12 +3772,14 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const isNexora = isNexoraRequest(event, path);
+      const store = isNexora ? await getCafeStore(shopKey) : await getShopStore(shopKey);
 
       const parts = path.split("/");
       const orderId = parts[2];
       store.orders = (store.orders || []).filter(o => o.id !== orderId && o.order_no !== orderId);
-      await saveShopStore(shopKey, store);
+      if (isNexora) await saveCafeStore(shopKey, store);
+      else await saveShopStore(shopKey, store);
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true, id: orderId }) };
     }
 
@@ -3642,12 +3790,13 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const isNexora = isNexoraRequest(event, path);
+      const store = isNexora ? await getCafeStore(shopKey) : await getShopStore(shopKey);
 
       const q = (event.queryStringParameters?.q || "").toLowerCase().trim();
       let list = store.customers || [];
       if (q) {
-        list = list.filter(c => (c.name && c.name.toLowerCase().includes(q)) || (c.phone && c.phone.includes(q)));
+        list = list.filter(c => (c.name && c.name.toLowerCase().includes(q)) || (c.phone && c.phone.includes(q)) || (c.email && c.email.toLowerCase().includes(q)));
       }
       return { statusCode: 200, headers, body: JSON.stringify(list) };
     }
@@ -3656,13 +3805,17 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const isNexora = isNexoraRequest(event, path);
+      const store = isNexora ? await getCafeStore(shopKey) : await getShopStore(shopKey);
 
       const newCust = {
         id: body.id || ('c_' + Date.now()),
         name: (body.name || "Customer").trim(),
         phone: (body.phone || "").trim(),
+        email: (body.email || "").trim(),
         notes: (body.notes || "").trim(),
+        total_orders: 0,
+        total_spend: 0,
         total_purchases: Number(body.total_purchases || 0),
         total_paid: Number(body.total_paid || 0),
         total_pending: Number(body.total_pending || 0),
@@ -3675,7 +3828,8 @@ exports.handler = async (event, context) => {
       } else {
         store.customers = [newCust, ...(store.customers || [])];
       }
-      await saveShopStore(shopKey, store);
+      if (isNexora) await saveCafeStore(shopKey, store);
+      else await saveShopStore(shopKey, store);
       return { statusCode: 200, headers, body: JSON.stringify(newCust) };
     }
 
@@ -3683,19 +3837,22 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const isNexora = isNexoraRequest(event, path);
+      const store = isNexora ? await getCafeStore(shopKey) : await getShopStore(shopKey);
 
       const parts = path.split("/");
       const cId = parts[2];
       const idx = (store.customers || []).findIndex(c => c.id === cId);
       if (idx >= 0) {
         store.customers[idx] = { ...store.customers[idx], ...body, id: cId, updated_at: new Date().toISOString() };
-        await saveShopStore(shopKey, store);
+        if (isNexora) await saveCafeStore(shopKey, store);
+        else await saveShopStore(shopKey, store);
         return { statusCode: 200, headers, body: JSON.stringify(store.customers[idx]) };
       }
       const created = { id: cId, ...body };
       store.customers = [created, ...(store.customers || [])];
-      await saveShopStore(shopKey, store);
+      if (isNexora) await saveCafeStore(shopKey, store);
+      else await saveShopStore(shopKey, store);
       return { statusCode: 200, headers, body: JSON.stringify(created) };
     }
 
@@ -3703,12 +3860,14 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const isNexora = isNexoraRequest(event, path);
+      const store = isNexora ? await getCafeStore(shopKey) : await getShopStore(shopKey);
 
       const parts = path.split("/");
       const cId = parts[2];
       store.customers = (store.customers || []).filter(c => c.id !== cId);
-      await saveShopStore(shopKey, store);
+      if (isNexora) await saveCafeStore(shopKey, store);
+      else await saveShopStore(shopKey, store);
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true, id: cId }) };
     }
 
@@ -3716,7 +3875,8 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const isNexora = isNexoraRequest(event, path);
+      const store = isNexora ? await getCafeStore(shopKey) : await getShopStore(shopKey);
 
       const parts = path.split("/");
       const cId = parts[2];
@@ -3784,7 +3944,8 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const isNexora = isNexoraRequest(event, path);
+      const store = isNexora ? await getCafeStore(shopKey) : await getShopStore(shopKey);
 
       const now = new Date();
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -3878,7 +4039,7 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
       return { statusCode: 200, headers, body: JSON.stringify(store.tables || []) };
     }
 
@@ -3886,7 +4047,7 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
 
       const newTable = {
         id: body.id || ('tbl_' + Date.now() + '_' + Math.floor(100 + Math.random() * 900)),
@@ -3896,7 +4057,7 @@ exports.handler = async (event, context) => {
         created_at: new Date().toISOString()
       };
       store.tables = [...(store.tables || []), newTable];
-      await saveShopStore(shopKey, store);
+      await saveCafeStore(shopKey, store);
       return { statusCode: 200, headers, body: JSON.stringify(newTable) };
     }
 
@@ -3904,7 +4065,7 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
 
       const parts = path.split("/");
       const tableId = parts[2];
@@ -3916,7 +4077,7 @@ exports.handler = async (event, context) => {
         } else if (body.status === "available") {
           delete store.tables[tblIdx].occupied_at;
         }
-        await saveShopStore(shopKey, store);
+        await saveCafeStore(shopKey, store);
         return { statusCode: 200, headers, body: JSON.stringify(store.tables[tblIdx]) };
       }
       return { statusCode: 404, headers, body: JSON.stringify({ detail: "Table not found" }) };
@@ -3926,12 +4087,12 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
 
       const parts = path.split("/");
       const tableId = parts[2];
       store.tables = (store.tables || []).filter(t => t.id !== tableId && String(t.number) !== tableId);
-      await saveShopStore(shopKey, store);
+      await saveCafeStore(shopKey, store);
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true, id: tableId }) };
     }
 
@@ -3942,7 +4103,7 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
       return { statusCode: 200, headers, body: JSON.stringify(store.categories || []) };
     }
 
@@ -3950,7 +4111,7 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
 
       const newCat = {
         id: body.id || ('cat_' + Date.now() + '_' + Math.floor(100 + Math.random() * 900)),
@@ -3958,7 +4119,7 @@ exports.handler = async (event, context) => {
         created_at: new Date().toISOString()
       };
       store.categories = [...(store.categories || []), newCat];
-      await saveShopStore(shopKey, store);
+      await saveCafeStore(shopKey, store);
       return { statusCode: 200, headers, body: JSON.stringify(newCat) };
     }
 
@@ -3966,12 +4127,12 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
 
       const parts = path.split("/");
       const catId = parts[2];
       store.categories = (store.categories || []).filter(c => c.id !== catId);
-      await saveShopStore(shopKey, store);
+      await saveCafeStore(shopKey, store);
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true, id: catId }) };
     }
 
@@ -3982,7 +4143,7 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
       return { statusCode: 200, headers, body: JSON.stringify(store.inventory || []) };
     }
 
@@ -3990,7 +4151,7 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
 
       const newItem = {
         id: body.id || ('inv_' + Date.now() + '_' + Math.floor(100 + Math.random() * 900)),
@@ -4004,7 +4165,7 @@ exports.handler = async (event, context) => {
         created_at: new Date().toISOString()
       };
       store.inventory = [...(store.inventory || []), newItem];
-      await saveShopStore(shopKey, store);
+      await saveCafeStore(shopKey, store);
       return { statusCode: 200, headers, body: JSON.stringify(newItem) };
     }
 
@@ -4012,7 +4173,7 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
 
       const itemId = body.item_id;
       const qty = Number(body.qty || 0);
@@ -4026,7 +4187,7 @@ exports.handler = async (event, context) => {
           store.inventory[idx].current_stock = Math.max(0, Number(store.inventory[idx].current_stock || 0) - qty);
         }
         store.inventory[idx].updated_at = new Date().toISOString();
-        await saveShopStore(shopKey, store);
+        await saveCafeStore(shopKey, store);
         return { statusCode: 200, headers, body: JSON.stringify(store.inventory[idx]) };
       }
       return { statusCode: 404, headers, body: JSON.stringify({ detail: "Inventory item not found" }) };
@@ -4036,14 +4197,14 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
 
       const parts = path.split("/");
       const invId = parts[2];
       const idx = (store.inventory || []).findIndex(i => i.id === invId);
       if (idx >= 0) {
         store.inventory[idx] = { ...store.inventory[idx], ...body, id: invId, updated_at: new Date().toISOString() };
-        await saveShopStore(shopKey, store);
+        await saveCafeStore(shopKey, store);
         return { statusCode: 200, headers, body: JSON.stringify(store.inventory[idx]) };
       }
       return { statusCode: 404, headers, body: JSON.stringify({ detail: "Item not found" }) };
@@ -4053,12 +4214,12 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
 
       const parts = path.split("/");
       const invId = parts[2];
       store.inventory = (store.inventory || []).filter(i => i.id !== invId);
-      await saveShopStore(shopKey, store);
+      await saveCafeStore(shopKey, store);
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true, id: invId }) };
     }
 
@@ -4069,7 +4230,7 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
       return { statusCode: 200, headers, body: JSON.stringify(store.staff || []) };
     }
 
@@ -4077,7 +4238,7 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
 
       const newStaff = {
         id: body.id || ('stf_' + Date.now() + '_' + Math.floor(100 + Math.random() * 900)),
@@ -4087,7 +4248,7 @@ exports.handler = async (event, context) => {
         created_at: new Date().toISOString()
       };
       store.staff = [...(store.staff || []), newStaff];
-      await saveShopStore(shopKey, store);
+      await saveCafeStore(shopKey, store);
       return { statusCode: 200, headers, body: JSON.stringify(newStaff) };
     }
 
@@ -4095,12 +4256,12 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
 
       const parts = path.split("/");
       const staffId = parts[2];
       store.staff = (store.staff || []).filter(s => s.id !== staffId);
-      await saveShopStore(shopKey, store);
+      await saveCafeStore(shopKey, store);
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true, id: staffId }) };
     }
 
@@ -4111,9 +4272,9 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
 
-      const currentCafe = store.cafe || { id: "cafe_main", name: "Nexora Café", is_pro: true };
+      const currentCafe = store.cafe || { id: "cafe_" + shopKey, name: user?.cafe_name || user?.store_name || "My Café", is_pro: true };
       return {
         statusCode: 200,
         headers,
@@ -4144,7 +4305,7 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
 
       const newCafe = {
         id: 'cafe_' + Date.now(),
@@ -4154,7 +4315,7 @@ exports.handler = async (event, context) => {
         is_pro: true
       };
       store.cafe = newCafe;
-      await saveShopStore(shopKey, store);
+      await saveCafeStore(shopKey, store);
       return { statusCode: 200, headers, body: JSON.stringify(newCafe) };
     }
 
@@ -4162,10 +4323,10 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
 
       store.cafe = { ...(store.cafe || {}), ...body, updated_at: new Date().toISOString() };
-      await saveShopStore(shopKey, store);
+      await saveCafeStore(shopKey, store);
       return { statusCode: 200, headers, body: JSON.stringify(store.cafe) };
     }
 
@@ -4184,7 +4345,7 @@ exports.handler = async (event, context) => {
             expires_at: new Date(Date.now() + 365 * 86400000).toISOString(),
             is_pro: true,
             max_cafes: 3,
-            features: ["All café operations", "Unlimited orders", "Up to 3 café locations", "KDS & QR Ordering", "Dukaan Pro 2-Month Free Membership Included"]
+            features: ["All café operations", "Unlimited orders", "Up to 3 café locations", "KDS & QR Ordering", "Priority 24/7 Support"]
           },
           invoices: [
             { id: "inv_sub_1", order_no: "SUB-8821", plan: "pro_monthly", amount: 149, date: new Date().toISOString(), status: "paid" }
@@ -4214,7 +4375,7 @@ exports.handler = async (event, context) => {
         headers,
         body: JSON.stringify({
           ok: true,
-          message: "Subscription activated successfully! Enjoy 2-month complimentary Dukaan Pro membership."
+          message: "Subscription activated successfully! Enjoy full access to NexoraOS Café Suite."
         })
       };
     }
@@ -4226,7 +4387,7 @@ exports.handler = async (event, context) => {
       const authHeader = event.headers.authorization || event.headers.Authorization || "";
       const user = parseToken(authHeader);
       const shopKey = getShopKey(event, user);
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
 
       const rangeDays = parseInt(event.queryStringParameters?.range || "7", 10);
       const cutoff = Date.now() - (rangeDays * 86400000);
@@ -4299,7 +4460,7 @@ exports.handler = async (event, context) => {
       const cafeId = event.queryStringParameters?.cafe_id || event.queryStringParameters?.c;
       const tableId = event.queryStringParameters?.table_id || event.queryStringParameters?.t;
       const shopKey = cafeId ? String(cafeId).toLowerCase().trim().replace(/[^a-z0-9_]/g, '_') : 'default_store';
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
 
       const table = (store.tables || []).find(t => t.id === tableId || String(t.number) === tableId);
       const availableProducts = (store.products || []).filter(p => p.available !== false);
@@ -4308,7 +4469,7 @@ exports.handler = async (event, context) => {
         statusCode: 200,
         headers,
         body: JSON.stringify({
-          cafe: store.cafe || { id: cafeId || "cafe_main", name: "Nexora Café", tax_rate: 5, upi_enabled: true },
+          cafe: store.cafe || { id: cafeId || "cafe_main", name: "My Café", tax_rate: 5, upi_enabled: true },
           table: table || null,
           categories: store.categories || [],
           products: availableProducts
@@ -4320,7 +4481,7 @@ exports.handler = async (event, context) => {
       const cafeId = event.queryStringParameters?.cafe_id || event.queryStringParameters?.c;
       const tableId = event.queryStringParameters?.table_id || event.queryStringParameters?.t;
       const shopKey = cafeId ? String(cafeId).toLowerCase().trim().replace(/[^a-z0-9_]/g, '_') : 'default_store';
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
 
       let orders = (store.orders || []).filter(o => !["completed", "cancelled"].includes(o.status));
       if (tableId) {
@@ -4332,7 +4493,7 @@ exports.handler = async (event, context) => {
     if (path === "/public/order" && event.httpMethod === "POST") {
       const cafeId = body.cafe_id || event.queryStringParameters?.cafe_id || 'default_store';
       const shopKey = String(cafeId).toLowerCase().trim().replace(/[^a-z0-9_]/g, '_');
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
 
       const items = Array.isArray(body.items) ? body.items : [];
       const subtotal = items.reduce((acc, it) => acc + (Number(it.price || 0) * Number(it.qty || 1)), 0);
@@ -4368,21 +4529,21 @@ exports.handler = async (event, context) => {
       }
 
       store.orders = [newOrder, ...(store.orders || [])];
-      await saveShopStore(shopKey, store);
+      await saveCafeStore(shopKey, store);
       return { statusCode: 200, headers, body: JSON.stringify(newOrder) };
     }
 
     if (path === "/public/tv" && event.httpMethod === "GET") {
       const cafeId = event.queryStringParameters?.cafe_id || event.queryStringParameters?.c;
       const shopKey = cafeId ? String(cafeId).toLowerCase().trim().replace(/[^a-z0-9_]/g, '_') : 'default_store';
-      const store = await getShopStore(shopKey);
+      const store = await getCafeStore(shopKey);
 
       const active = (store.orders || []).filter(o => ["preparing", "almost_ready", "ready"].includes(o.status));
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
-          cafe_name: store.cafe?.name || "Nexora Café",
+          cafe_name: store.cafe?.name || "My Café",
           orders: active.slice(0, 30)
         })
       };

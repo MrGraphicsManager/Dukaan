@@ -12,7 +12,6 @@ export default function Landing() {
             <div className="font-display font-bold text-lg">NexoraOS</div>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/" className="text-sm font-medium text-[#6B5A52] hover:text-[#2D221E] px-3 py-1.5 rounded-lg hover:bg-[#F5ECE1]/60">← Dukaan Retail</Link>
             <Link to="/nexoraos/login" data-testid="landing-login-link" className="text-sm font-medium text-[#6B5A52] hover:text-[#2D221E]">Sign in</Link>
             <Link to="/nexoraos/signup" data-testid="landing-signup-link" className="btn-coffee text-sm">Get started</Link>
           </div>
@@ -33,7 +32,7 @@ export default function Landing() {
             <Link to="/nexoraos/signup" data-testid="landing-cta-signup" className="btn-coffee inline-flex items-center gap-2">Start free 14-day trial <ArrowRight className="w-4 h-4"/></Link>
             <Link to="/nexoraos/login" className="px-5 py-2.5 rounded-lg border border-[#E8DCCF] text-sm font-medium text-[#2D221E] hover:bg-[#F5ECE1]">Sign in</Link>
           </div>
-          <div className="mt-6 text-sm text-[#9C8A80]">No credit card required. ₹149/month or ₹1,199/year. <span className="text-[#C85A32] font-semibold">🎁 Includes 2 Months FREE Dukaan Pro!</span></div>
+          <div className="mt-6 text-sm text-[#9C8A80]">No credit card required. ₹149/month or ₹1,199/year. Includes full 14-day trial.</div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-20">
           {[

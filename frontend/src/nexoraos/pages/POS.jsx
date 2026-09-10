@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, money, formatApiErrorDetail } from "../lib/api";
@@ -145,7 +146,7 @@ export default function POS() {
               <div className="tabular text-sm text-[#C85A32] font-bold mt-1">{money(p.price)}</div>
             </button>
           ))}
-          {!filtered.length && <div className="col-span-full text-center text-sm text-[#9C8A80] py-12">No products. <a href="/menu" className="text-[#C85A32] font-medium">Add some →</a></div>}
+          {!filtered.length && <div className="col-span-full text-center text-sm text-[#9C8A80] py-12">No products. <Link to="/nexoraos/menu" className="text-[#C85A32] font-medium">Add some →</Link></div>}
         </div>
       </div>
 

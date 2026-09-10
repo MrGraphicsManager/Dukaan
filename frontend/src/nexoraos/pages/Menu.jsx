@@ -18,7 +18,14 @@ export default function Menu() {
 
   const saveProd = async () => {
     try {
-      const body = { name: prodForm.name, category_id: prodForm.category_id, description: prodForm.description || "",
+      let catId = prodForm.category_id;
+      if (!catId && prodForm.category) {
+        try {
+          const { data: newC } = await api.post("/categories", { name: prodForm.category });
+          catId = newC.id;
+        } catch (_) {}
+      }
+      const body = { name: prodForm.name, category_id: catId || "", category: prodForm.category || "", description: prodForm.description || "",
         price: +prodForm.price, tax_rate: +prodForm.tax_rate || 5, sku: prodForm.sku || "",
         prep_time: +prodForm.prep_time || 5, available: prodForm.available !== false };
       if (prodForm.id) await api.patch(`/products/${prodForm.id}`, body);
@@ -33,7 +40,7 @@ export default function Menu() {
         <div><h1 className="font-display text-2xl font-bold">Menu</h1><p className="text-sm text-[#6B5A52]">Manage categories and products.</p></div>
         <div className="flex gap-2">
           <button data-testid="menu-add-category-button" onClick={()=>setCatForm({open:true,name:""})} className="text-sm px-4 py-2.5 rounded-lg border border-[#E8DCCF] font-medium inline-flex items-center gap-2"><Plus className="w-4 h-4"/> Category</button>
-          <button data-testid="menu-add-product-button" onClick={()=>setProdForm({name:"",category_id:cats[0]?.id||"",price:0,tax_rate:5,prep_time:5,available:true})} disabled={!cats.length} className="btn-coffee text-sm inline-flex items-center gap-2 disabled:opacity-50"><Plus className="w-4 h-4"/> Product</button>
+          <button data-testid="menu-add-product-button" onClick={()=>setProdForm({name:"",category_id:cats[0]?.id||"",category:"",price:0,tax_rate:5,prep_time:5,available:true})} className="btn-coffee text-sm inline-flex items-center gap-2"><Plus className="w-4 h-4"/> Product</button>
         </div>
       </div>
 
@@ -85,9 +92,13 @@ export default function Menu() {
         <h3 className="font-display font-bold text-lg mb-4">{prodForm.id ? "Edit product" : "Add product"}</h3>
         <div className="space-y-3">
           <input data-testid="menu-product-name-input" placeholder="Name" value={prodForm.name} onChange={(e)=>setProdForm({...prodForm,name:e.target.value})} className="input"/>
-          <select value={prodForm.category_id} onChange={(e)=>setProdForm({...prodForm,category_id:e.target.value})} className="input">
-            {cats.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          {cats.length > 0 ? (
+            <select value={prodForm.category_id || cats[0]?.id} onChange={(e)=>setProdForm({...prodForm,category_id:e.target.value})} className="input">
+              {cats.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          ) : (
+            <input placeholder="Category (e.g. Hot Coffee)" value={prodForm.category||""} onChange={(e)=>setProdForm({...prodForm,category:e.target.value})} className="input"/>
+          )}
           <textarea placeholder="Description" value={prodForm.description||""} onChange={(e)=>setProdForm({...prodForm,description:e.target.value})} className="input" rows={2}/>
           <div className="grid grid-cols-3 gap-2">
             <input data-testid="menu-product-price-input" type="number" placeholder="Price" value={prodForm.price} onChange={(e)=>setProdForm({...prodForm,price:e.target.value})} className="input tabular"/>

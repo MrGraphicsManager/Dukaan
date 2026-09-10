@@ -10,7 +10,7 @@ export default function AdminInvoices() {
 
   const download = async () => {
     try {
-      const token = localStorage.getItem("nx_token") || localStorage.getItem("dukaan_token");
+      const token = localStorage.getItem("nx_token");
       const res = await fetch(`${API}/admin/invoices/export`, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error("Export failed");
       const blob = await res.blob();

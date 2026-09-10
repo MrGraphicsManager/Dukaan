@@ -6,8 +6,10 @@ export const API = rawBase ? `${rawBase}/api` : "/api";
 export const api = axios.create({ baseURL: API });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("nx_token") || localStorage.getItem("dukaan_token");
+  const token = localStorage.getItem("nx_token");
   if (token && token !== "undefined" && token !== "null") config.headers.Authorization = `Bearer ${token}`;
+  config.headers["X-App-Context"] = "nexoraos";
+  config.headers["X-Platform"] = "nexoraos";
   return config;
 });
 

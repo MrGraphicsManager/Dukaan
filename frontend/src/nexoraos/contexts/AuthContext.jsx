@@ -9,27 +9,10 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    let token = localStorage.getItem("nx_token") || localStorage.getItem("dukaan_token");
+    const token = localStorage.getItem("nx_token");
     if (!token || token === "undefined" || token === "null") {
-      // Check if dukaan_user is already logged in
-      const dukaanUserStr = localStorage.getItem("dukaan_user");
-      if (dukaanUserStr) {
-        try {
-          const du = JSON.parse(dukaanUserStr);
-          if (du && (du.email || du.id)) {
-            if (!du.role) du.role = du.is_admin ? "admin" : "owner";
-            setUser(du);
-            setCafe({
-              id: du.cafe_id || du.id || "cafe_main",
-              name: du.shop_name || (du.name ? `${du.name}'s Café` : "Nexora Café"),
-              is_pro: true
-            });
-            setLoading(false);
-            return;
-          }
-        } catch {}
-      }
       setUser(false);
+      setCafe(null);
       setLoading(false);
       return;
     }
@@ -42,7 +25,7 @@ export function AuthProvider({ children }) {
         setUser(u);
         const c = data?.cafe || {
           id: u.cafe_id || u.id || "cafe_main",
-          name: u.shop_name || u.cafe_name || (u.name ? `${u.name}'s Café` : "Nexora Café"),
+          name: u.cafe_name || u.store_name || (u.name ? `${u.name}'s Café` : "My Café"),
           is_pro: true
         };
         setCafe(c);
@@ -52,24 +35,27 @@ export function AuthProvider({ children }) {
         throw new Error("Invalid user payload");
       }
     } catch {
-      // Fallback to locally saved session if API fails or is offline
-      const savedUserStr = localStorage.getItem("nx_user") || localStorage.getItem("dukaan_user");
+      // Fallback strictly to locally saved Nexora session if offline
+      const savedUserStr = localStorage.getItem("nx_user");
       if (savedUserStr) {
         try {
           const u = JSON.parse(savedUserStr);
           if (!u.role) u.role = u.is_admin ? "admin" : "owner";
           setUser(u);
-          setCafe({
+          const c = localStorage.getItem("nx_cafe") ? JSON.parse(localStorage.getItem("nx_cafe")) : {
             id: u.cafe_id || u.id || "cafe_main",
-            name: u.shop_name || (u.name ? `${u.name}'s Café` : "Nexora Café"),
+            name: u.cafe_name || u.store_name || (u.name ? `${u.name}'s Café` : "My Café"),
             is_pro: true
-          });
+          };
+          setCafe(c);
         } catch {
           setUser(false);
+          setCafe(null);
           localStorage.removeItem("nx_token");
         }
       } else {
         setUser(false);
+        setCafe(null);
         localStorage.removeItem("nx_token");
       }
     } finally {
@@ -84,7 +70,6 @@ export function AuthProvider({ children }) {
     const token = data?.token || data?.access_token;
     if (token) {
       localStorage.setItem("nx_token", token);
-      localStorage.setItem("dukaan_token", token);
     }
     const u = data?.user || data;
     if (u && (u.email || u.id)) {
@@ -92,7 +77,7 @@ export function AuthProvider({ children }) {
       setUser(u);
       const c = data?.cafe || {
         id: u.cafe_id || u.id || "cafe_main",
-        name: u.shop_name || u.cafe_name || (u.name ? `${u.name}'s Café` : "Nexora Café"),
+        name: u.cafe_name || u.store_name || (u.name ? `${u.name}'s Café` : "My Café"),
         is_pro: true
       };
       setCafe(c);
