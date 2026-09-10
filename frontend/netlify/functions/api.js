@@ -923,17 +923,23 @@ exports.handler = async (event, context) => {
         };
       }
 
-      if (password.length < 8) {
-        return { statusCode: 422, headers, body: JSON.stringify({ detail: "Password must be at least 8 characters long." }) };
-      }
-      if (!/[A-Z]/.test(password)) {
-        return { statusCode: 422, headers, body: JSON.stringify({ detail: "Password must contain at least one capital letter (A-Z)." }) };
-      }
-      if (!/[0-9]/.test(password)) {
-        return { statusCode: 422, headers, body: JSON.stringify({ detail: "Password must contain at least one number (0-9)." }) };
-      }
-      if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-        return { statusCode: 422, headers, body: JSON.stringify({ detail: "Password must contain at least one special symbol (!@#$%...)." }) };
+      if (path === "/auth/signup") {
+        if (password.length < 6) {
+          return { statusCode: 400, headers, body: JSON.stringify({ detail: "Password must be at least 6 characters long." }) };
+        }
+      } else {
+        if (password.length < 8) {
+          return { statusCode: 422, headers, body: JSON.stringify({ detail: "Password must be at least 8 characters long." }) };
+        }
+        if (!/[A-Z]/.test(password)) {
+          return { statusCode: 422, headers, body: JSON.stringify({ detail: "Password must contain at least one capital letter (A-Z)." }) };
+        }
+        if (!/[0-9]/.test(password)) {
+          return { statusCode: 422, headers, body: JSON.stringify({ detail: "Password must contain at least one number (0-9)." }) };
+        }
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+          return { statusCode: 422, headers, body: JSON.stringify({ detail: "Password must contain at least one special symbol (!@#$%...)." }) };
+        }
       }
 
       const verification_code = String(Math.floor(100000 + Math.random() * 900000));
@@ -988,10 +994,27 @@ exports.handler = async (event, context) => {
         phone_verified: false,
         email_verified: false,
         is_verified: false,
+        role: "owner",
+        store_name: body.cafe_name || `${name || email.split("@")[0]}'s Café`,
         verification_code,
         verification_token,
         subscription: null
       };
+      if (body.cafe_name) {
+        try {
+          const cleanShopKey = email.replace(/[^a-z0-9_]/g, '_');
+          const userStore = await getShopStore(cleanShopKey);
+          userStore.cafe = {
+            ...(userStore.cafe || {}),
+            id: 'cafe_' + Date.now(),
+            name: body.cafe_name,
+            tax_rate: 5,
+            upi_enabled: true,
+            is_pro: true
+          };
+          await saveShopStore(cleanShopKey, userStore);
+        } catch (_) {}
+      }
       if (!globalPlatformConfig.email_verifications) globalPlatformConfig.email_verifications = {};
       globalPlatformConfig.email_verifications[email] = {
         code: String(verification_code),
