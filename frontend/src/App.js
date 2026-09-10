@@ -49,6 +49,7 @@ import ProStudioPage from "./pages/ProStudioPage";
 import StarterPlanPage from "./pages/StarterPlanPage";
 import BusinessPlanPage from "./pages/BusinessPlanPage";
 import PremiumPlanPage from "./pages/PremiumPlanPage";
+import NexoraRoutes from "./nexoraos/App";
 
 /* =========================================================
    PROTECTED ROUTES
@@ -289,6 +290,22 @@ function LaunchController() {
       <Route
         path="/stores"
         element={<PublicStoreDirectory />}
+      />
+
+      {/* ===================================================
+          NEXORAOS CAFÉ OPERATIONS SUITE (officialdukaan.in/nexoraos)
+      =================================================== */}
+      <Route
+        path="/nexoraos/*"
+        element={<NexoraRoutes />}
+      />
+      <Route
+        path="/order"
+        element={<Navigate to="/nexoraos/order" replace />}
+      />
+      <Route
+        path="/tv"
+        element={<Navigate to="/nexoraos/tv" replace />}
       />
 
       <Route

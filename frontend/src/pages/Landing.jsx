@@ -1305,10 +1305,19 @@ export default function Landing() {
 
             <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full sm:w-auto">
               <Button
-                onClick={() => nav("/subscribe?plan=cafe")}
-                className="w-full sm:w-auto h-12 px-7 rounded-full bg-gradient-to-r from-[#4E342E] to-[#6D4C41] hover:from-[#3E2723] hover:to-[#5D4037] text-white border border-[#8D6E63] font-bold text-xs sm:text-sm shadow-xl active:scale-95 transition-all"
+                onClick={() => nav("/nexoraos")}
+                className="w-full sm:w-auto h-12 px-6 rounded-full bg-white text-[#24140E] hover:bg-[#FAF7F5] font-extrabold text-xs sm:text-sm shadow-xl active:scale-95 transition-all"
               >
-                Pre-Register Cafe Plan (₹149)
+                <Coffee className="w-4 h-4 mr-1.5 text-[#3E2723]" />
+                Explore NexoraOS Suite →
+              </Button>
+
+              <Button
+                onClick={() => nav("/subscribe?plan=cafe")}
+                variant="outline"
+                className="w-full sm:w-auto h-12 px-6 rounded-full border border-[#8D6E63] text-white hover:bg-white/10 font-bold text-xs sm:text-sm active:scale-95 transition-all"
+              >
+                Pre-Register (₹149)
                 <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
 
@@ -1316,9 +1325,9 @@ export default function Landing() {
                 href="https://wa.me/919825100000?text=Hi%20Dukaan,%20I%20want%20to%20pre-register%20for%20Cafe%20Plan%20by%20NexoraOS%20and%20claim%202%20Months%20Free%20Pro"
                 target="_blank"
                 rel="noreferrer"
-                className="w-full sm:w-auto h-12 px-5 rounded-full border border-white/20 hover:bg-white/10 text-white font-bold text-xs flex items-center justify-center transition-colors"
+                className="w-full sm:w-auto h-12 px-4 rounded-full border border-white/20 hover:bg-white/10 text-white/80 font-semibold text-xs flex items-center justify-center transition-colors"
               >
-                Talk to Specialist
+                Specialist
               </a>
             </div>
           </div>

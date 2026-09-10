@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { api, money, API_BASE } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 import { t } from "@/lib/i18n";
@@ -15,6 +15,7 @@ import {
   Wallet,
   ClipboardList,
   BarChart3,
+  Coffee,
   TrendingUp,
   AlertTriangle,
   RefreshCw,
@@ -524,6 +525,36 @@ export default function Dashboard() {
           </div>
         </div>
       </section>
+
+      {/* =========================================================
+          NEXORAOS CAFÉ SUITE BANNER (officialdukaan.in/nexoraos)
+      ========================================================= */}
+      <div className="rounded-3xl p-5 sm:p-6 bg-gradient-to-r from-[#24140E] via-[#3E2723] to-[#2D1B15] text-[#FAF7F5] border-2 border-[#5D4037] shadow-xl flex flex-col md:flex-row items-center justify-between gap-5 relative overflow-hidden">
+        <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-[#8D6E63]/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="flex items-center gap-4 relative z-10">
+          <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-[#5D4037]/80 border border-[#8D6E63]/50 flex items-center justify-center shrink-0 shadow-inner">
+            <Coffee className="w-7 h-7 text-[#FAF7F5]" />
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#D7CCC8]">NexoraOS Café Operations</span>
+              <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-400/30">FLAGSHIP BY PEAN</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30">officialdukaan.in/nexoraos</span>
+            </div>
+            <h2 className="font-display text-lg sm:text-xl font-bold text-white">Dedicated Café POS, Live Tables & Kitchen KDS</h2>
+            <p className="text-xs text-[#D7CCC8]/90 max-w-xl mt-0.5">Dine-in floor layouts, instant KOT print chimes, contactless table QR menus & live TV order display.</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 w-full md:w-auto shrink-0 relative z-10">
+          <Link
+            to="/nexoraos/dashboard"
+            className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white text-[#24140E] font-extrabold text-sm hover:bg-[#FAF7F5] transition-all shadow-lg active:scale-95"
+          >
+            <span>Launch Café Operations</span>
+            <ArrowRight className="w-4 h-4 text-[#24140E]" />
+          </Link>
+        </div>
+      </div>
 
       {/* =========================================================
           ELEMENT 2: 4 VIBRANT NEW KPI METRIC CARDS
