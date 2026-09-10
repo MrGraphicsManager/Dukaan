@@ -1125,22 +1125,31 @@ async def admin_grant_subscription(payload: AdminGrantPayload, admin: dict = Dep
         "activated_at": now.isoformat(),
         "expires_at": expires.isoformat(),
     }
+    if plan_key == "cafe":
+        sub_doc["pro_bonus"] = True
+        sub_doc["pro_bonus_months"] = 2
+        sub_doc["is_pro"] = True
+
     inserted = await db.subscriptions.insert_one(sub_doc)
     sub_doc["_id"] = inserted.inserted_id
 
     # Update user active subscription
+    user_sub_data = {
+        "plan": plan_key,
+        "status": "active",
+        "is_trial": False,
+        "expires_at": expires.isoformat(),
+        "activated_at": now.isoformat(),
+        "granted_by": admin["email"]
+    }
+    if plan_key == "cafe":
+        user_sub_data["pro_bonus"] = True
+        user_sub_data["pro_bonus_months"] = 2
+        user_sub_data["is_pro"] = True
+
     await db.users.update_one(
         {"_id": user["_id"]},
-        {"$set": {
-            "subscription": {
-                "plan": plan_key,
-                "status": "active",
-                "is_trial": False,
-                "expires_at": expires.isoformat(),
-                "activated_at": now.isoformat(),
-                "granted_by": admin["email"]
-            }
-        }}
+        {"$set": {"subscription": user_sub_data, "is_pro": (plan_key in ["pro", "cafe"])}}
     )
     return clean(sub_doc)
 

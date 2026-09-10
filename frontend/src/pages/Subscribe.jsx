@@ -92,7 +92,7 @@ const PLANS = {
   cafe: {
     id: "cafe",
     name: "Cafe Plan",
-    tagline: "For Cafes, Bakeries, Food Trucks & Quick Bites",
+    tagline: "Dedicated Restaurant & Cafe Dashboard (Coming Soon)",
     setup: 0,
     monthly: 149,
     original_monthly: 199,
@@ -100,17 +100,19 @@ const PLANS = {
     original_annual: 1788,
     discount: "Save 33%",
     trial_days: 30,
-    badge: "NexoraOS",
+    badge: "Coming Soon",
     poweredBy: "Powered by NexoraOS (A Product by PEAN)",
     is_cafe: true,
+    pro_bonus: "Includes 2 Months FREE Dukaan Pro",
     features: [
+      "🎁 Bonus: 2 Months FREE Dukaan Pro Access",
+      "Dedicated Cafe Dashboard (Coming Soon)",
       "POS & Quick Table Billing",
       "Live Table Management & Status",
       "Kitchen Order Tickets (KOT)",
       "Digital Menu & QR Ordering",
       "Basic Stock & Recipe Inventory",
       "Staff Accounts & Waiter Roles",
-      "Daily Food Cost & Sales Reports",
       "Powered by NexoraOS · by PEAN"
     ],
     limitations: []
@@ -647,7 +649,8 @@ export default function Subscribe() {
             is_trial: true, 
             trial_days: trialDays,
             expires_at: newExpiry.toISOString(),
-            activated_at: new Date().toISOString()
+            activated_at: new Date().toISOString(),
+            ...(selected === "cafe" ? { pro_bonus: true, pro_bonus_months: 2, is_pro: true } : {})
           };
 
           commitSubscription(newSub);
@@ -897,11 +900,12 @@ export default function Subscribe() {
             status: "active", 
             is_annual: isAnnual, 
             expires_at: newExpiry.toISOString(),
-            activated_at: new Date().toISOString()
+            activated_at: new Date().toISOString(),
+            ...(selected === "cafe" ? { pro_bonus: true, pro_bonus_months: 2, is_pro: true } : {})
           };
           commitSubscription(fallbackSub, null);
           setDone({ status: "active", plan: selected, annual: isAnnual, expires_at: newExpiry.toISOString() });
-          toast.success(`${plan.name} Plan Activated!`);
+          toast.success(selected === "cafe" ? "Cafe Plan Pre-Registered! 2 Months FREE Dukaan Pro Activated!" : `${plan.name} Plan Activated!`);
         }
       }
     } catch (e) { 
@@ -924,11 +928,12 @@ export default function Subscribe() {
           duration_days: durationDays,
           amount_paid: amountToCharge,
           paid_at: new Date().toISOString(),
-          payment_method: "razorpay"
+          payment_method: "razorpay",
+          ...(selected === "cafe" ? { pro_bonus: true, pro_bonus_months: 2, is_pro: true } : {})
         };
         commitSubscription(curSub, upcomingSub);
         setDone({ status: "active", plan: selected, annual: isAnnual, expires_at: upcomingSub.expires_at, is_upcoming: true });
-        toast.success(`${plan.name} Plan scheduled for upcoming cycle!`);
+        toast.success(selected === "cafe" ? "Cafe Plan Pre-Registered! 2 Months FREE Dukaan Pro Scheduled!" : `${plan.name} Plan scheduled for upcoming cycle!`);
       } else {
         const newExpiry = new Date(Date.now() + (durationDays * 86400000));
         const fallbackSub = { 
@@ -936,11 +941,12 @@ export default function Subscribe() {
           status: "active", 
           is_annual: isAnnual, 
           expires_at: newExpiry.toISOString(),
-          activated_at: new Date().toISOString()
+          activated_at: new Date().toISOString(),
+          ...(selected === "cafe" ? { pro_bonus: true, pro_bonus_months: 2, is_pro: true } : {})
         };
         commitSubscription(fallbackSub, null);
         setDone({ status: "active", plan: selected, annual: isAnnual, expires_at: newExpiry.toISOString() });
-        toast.success(`${plan.name} Plan Activated!`);
+        toast.success(selected === "cafe" ? "Cafe Plan Pre-Registered! 2 Months FREE Dukaan Pro Activated!" : `${plan.name} Plan Activated!`);
       }
     } finally { 
       setBusy(false); 
@@ -1095,14 +1101,14 @@ export default function Subscribe() {
                     ? key === "pro"
                       ? "border-purple-600 bg-white shadow-2xl ring-2 ring-purple-500/30 cursor-pointer"
                       : key === "cafe"
-                      ? "border-amber-500 bg-white shadow-2xl ring-2 ring-amber-500/30 cursor-pointer"
+                      ? "border-[#6D4C41] bg-[#FAF7F5] shadow-2xl ring-2 ring-[#6D4C41]/30 cursor-pointer"
                       : "border-brand-terracotta bg-white shadow-xl ring-2 ring-brand-terracotta/20 cursor-pointer"
                     : isDowngrade
                     ? "border-amber-300 bg-gradient-to-b from-white via-white to-amber-50/20 shadow-xs hover:border-amber-400 cursor-pointer"
                     : key === "pro"
                     ? "border-purple-300 bg-gradient-to-b from-white via-white to-purple-50/30 shadow-md hover:border-purple-500 cursor-pointer"
                     : key === "cafe"
-                    ? "border-amber-300 bg-gradient-to-b from-white via-white to-amber-50/30 shadow-md hover:border-amber-500 cursor-pointer"
+                    ? "border-stone-300 bg-white shadow-xs hover:border-[#6D4C41]/60 cursor-pointer"
                     : isFeatured
                     ? "border-brand-indigo/30 bg-white shadow-md hover:border-brand-indigo cursor-pointer"
                     : "border-brand-mitti bg-white shadow-xs hover:border-brand-indigo/30 cursor-pointer"
@@ -1134,8 +1140,8 @@ export default function Subscribe() {
                 )}
 
                 {key === "cafe" && !isCurrentActivePlan && !isDowngrade && (
-                  <span className="absolute -top-3.5 right-4 inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-md border border-amber-300">
-                    ☕ NexoraOS
+                  <span className="absolute -top-3.5 right-4 inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider bg-gradient-to-r from-[#4E342E] to-[#6D4C41] text-[#FAF7F5] shadow-md border border-[#8D6E63]">
+                    <Sparkles className="w-3 h-3 text-purple-300" /> Coming Soon
                   </span>
                 )}
 
@@ -1147,7 +1153,7 @@ export default function Subscribe() {
 
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className={`text-xs uppercase tracking-widest font-extrabold ${key === "pro" ? "text-purple-700" : key === "cafe" ? "text-amber-700" : "text-brand-terracotta"}`}>
+                    <span className={`text-xs uppercase tracking-widest font-extrabold ${key === "pro" ? "text-purple-700" : key === "cafe" ? "text-[#4E342E]" : "text-brand-terracotta"}`}>
                       {value.name} Tier
                     </span>
                     {isSelected && !isDowngrade && (
@@ -1295,15 +1301,19 @@ export default function Subscribe() {
 
                     {/* Official NexoraOS Cafe Showcase */}
                     {key === "cafe" && (
-                      <div className="mt-3 p-3 rounded-2xl bg-gradient-to-br from-amber-50 via-orange-50/50 to-amber-100/40 border border-amber-300/70 shadow-xs">
+                      <div className="mt-3 p-3 rounded-2xl bg-[#EFEBE9] border border-[#D7CCC8] shadow-xs">
                         <div className="flex items-center justify-between gap-2 mb-1">
-                          <span className="text-[9px] font-mono font-extrabold uppercase tracking-wider text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <span className="text-[9px] font-mono font-extrabold uppercase tracking-wider text-[#4E342E] bg-[#D7CCC8] px-2 py-0.5 rounded-full flex items-center gap-1">
                             ☕ NexoraOS Suite
                           </span>
-                          <span className="text-[9px] font-bold text-amber-700">by PEAN</span>
+                          <span className="text-[9px] font-bold text-[#6D4C41]">by PEAN</span>
                         </div>
-                        <p className="text-[10px] text-amber-950 font-semibold text-center mt-1 leading-tight">
-                          Table management, KOTs, digital menu & staff roles.
+                        <div className="mt-1 p-2 rounded-xl bg-purple-100/70 border border-purple-200 text-purple-900 text-[10px] font-bold flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-purple-600 shrink-0" />
+                          <span>Special: Free 2 Months Dukaan Pro Access!</span>
+                        </div>
+                        <p className="text-[10px] text-[#4E342E] font-medium text-center mt-1 leading-tight">
+                          Dedicated cafe dashboard under active development.
                         </p>
                       </div>
                     )}
@@ -1349,14 +1359,14 @@ export default function Subscribe() {
                       className={`w-full h-12 rounded-2xl font-bold text-xs shadow-xs active:scale-95 transition-all ${
                         isSelected
                           ? key === "cafe"
-                            ? "bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white shadow-md"
+                            ? "bg-gradient-to-r from-[#4E342E] to-[#6D4C41] hover:from-[#3E2723] hover:to-[#5D4037] text-white shadow-md"
                             : key === "pro"
                             ? "bg-purple-700 hover:bg-purple-800 text-white shadow-md"
                             : "bg-brand-terracotta hover:bg-brand-terracotta/90 text-white shadow-md"
                           : "bg-brand-sand hover:bg-brand-mitti text-brand-indigo border border-brand-mitti"
                       }`}
                     >
-                      {isSelected ? `Selected (${value.name})` : `Choose ${value.name}`}
+                      {isSelected ? (key === "cafe" ? `Pre-Register (${value.name})` : `Selected (${value.name})`) : (key === "cafe" ? `Pre-Register ${value.name}` : `Choose ${value.name}`)}
                     </Button>
                   )}
                 </div>
@@ -1441,6 +1451,18 @@ export default function Subscribe() {
                     {plan.name} ({isAnnual ? "Annual" : "Monthly"})
                   </span>
                 </div>
+
+                {selected === "cafe" && (
+                  <div className="p-3 rounded-xl bg-purple-100/80 border border-purple-300 text-purple-950 font-medium text-xs space-y-1">
+                    <div className="flex items-center gap-1.5 font-bold text-purple-900 text-xs">
+                      <Sparkles className="w-4 h-4 text-purple-600 shrink-0" />
+                      <span>🎁 Pre-Order Bonus: 2 Months FREE Dukaan Pro!</span>
+                    </div>
+                    <p className="text-[11px] text-purple-800 leading-snug">
+                      The dedicated Cafe Dashboard UI is currently in development. By pre-registering Cafe Plan today, your account receives <strong>2 Months of Full Dukaan Pro Membership for FREE</strong> immediately!
+                    </p>
+                  </div>
+                )}
 
                 <div className="flex justify-between items-center">
                   <span className="text-brand-indigo/70 font-semibold">Free Trial Status:</span>

@@ -116,17 +116,20 @@ const PLANS = [
     yearlyPrice: 1199,
     yearlyMonthlyEffective: 99,
     setupFee: 0,
-    accentColor: "orange",
+    accentColor: "coffee",
     route: "/subscribe?plan=cafe",
-    badge: "NexoraOS",
+    badge: "Coming Soon",
     poweredBy: "Powered by NexoraOS · by PEAN",
+    proBonus: "Includes 2 Months FREE Dukaan Pro",
+    isComingSoon: true,
     popular: false,
     perks: [
-      "Table Management & Live Dine-In Status",
+      "🎁 Bonus: 2 Months FREE Dukaan Pro Access",
+      "Dedicated Cafe Dashboard (Coming Soon)",
+      "Table Management & Dine-In Status",
       "Instant Kitchen Order Tickets (KOT)",
       "Dynamic Digital Menu & Category Manager",
       "Sub-2s Touch POS Billing & UPI QR",
-      "Basic Stock & Recipe Inventory",
       "Staff & Waiter Accounts with Shifts"
     ]
   },
@@ -406,15 +409,15 @@ export default function Landing() {
       {/* =========================================================
           1. TOP ANNOUNCEMENT BANNER
       ========================================================= */}
-      <div className="relative z-30 bg-gradient-to-r from-orange-600 via-amber-600 to-blue-700 text-white text-[11px] sm:text-xs font-semibold px-4 py-2 text-center flex items-center justify-center gap-2 shadow-xs">
-        <span className="inline-flex items-center gap-1 bg-white text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+      <div className="relative z-30 bg-gradient-to-r from-[#24140E] via-[#3E2723] to-[#1E1B4B] text-white text-[11px] sm:text-xs font-semibold px-4 py-2 text-center flex items-center justify-center gap-2 shadow-xs">
+        <span className="inline-flex items-center gap-1 bg-[#D7CCC8] text-[#24140E] text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
           ☕ NexoraOS
         </span>
         <span className="truncate max-w-[280px] sm:max-w-none">
-          NEW: Cafe Plan is Live! Table Management, KOTs & Menu at ₹149/mo (by PEAN)
+          COMING SOON: Cafe Plan by NexoraOS (by PEAN)! Special: Get 2 Months FREE Dukaan Pro on Pre-Registration
         </span>
-        <a href="#cafe-suite" className="underline font-bold hover:text-amber-200 hidden xs:inline ml-1 shrink-0">
-          Explore Cafe Plan →
+        <a href="#cafe-suite" className="underline font-bold hover:text-[#D7CCC8] hidden xs:inline ml-1 shrink-0">
+          Preview & Pre-Register →
         </a>
       </div>
 
@@ -449,11 +452,11 @@ export default function Landing() {
             <a href="#categories" className="px-3.5 py-2 rounded-xl hover:text-blue-600 hover:bg-slate-100/80 transition-all">
               Store Types
             </a>
-            <a href="#cafe-suite" className="px-3.5 py-2 rounded-xl text-orange-600 hover:bg-orange-50 font-bold transition-all flex items-center gap-1">
-              <Coffee className="w-3.5 h-3.5 text-orange-500" />
+            <a href="#cafe-suite" className="px-3.5 py-2 rounded-xl text-[#4E342E] hover:bg-[#EFEBE9] font-bold transition-all flex items-center gap-1">
+              <Coffee className="w-3.5 h-3.5 text-[#6D4C41]" />
               <span>Cafe Plan</span>
-              <span className="text-[9px] bg-orange-500 text-white font-black px-1.5 py-0.2 rounded-full">
-                ₹149
+              <span className="text-[9px] bg-[#4E342E] text-[#FAF7F5] font-black px-1.5 py-0.2 rounded-full">
+                Coming Soon
               </span>
             </a>
             <a href="#pricing" className="px-3.5 py-2 rounded-xl hover:text-blue-600 hover:bg-slate-100/80 transition-all flex items-center gap-1">
@@ -526,18 +529,21 @@ export default function Landing() {
               <a
                 href="#cafe-suite"
                 onClick={() => setMobileMenuOpen(false)}
-                className="p-3.5 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 text-white flex items-center justify-between shadow-md shadow-orange-500/20"
+                className="p-3.5 rounded-2xl bg-gradient-to-r from-[#24140E] to-[#4E342E] text-white flex items-center justify-between shadow-md border border-[#6D4C41]"
               >
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
-                    <Coffee className="w-4 h-4 text-white" />
+                  <div className="w-8 h-8 rounded-xl bg-white/15 flex items-center justify-center">
+                    <Coffee className="w-4 h-4 text-[#D7CCC8]" />
                   </div>
                   <div>
-                    <div className="text-xs font-black">Cafe Plan (NexoraOS by PEAN)</div>
-                    <div className="text-[10px] text-orange-100">Tables, KOT & Kitchen Orders</div>
+                    <div className="text-xs font-black flex items-center gap-1.5">
+                      <span>Cafe Plan (by PEAN)</span>
+                      <span className="text-[9px] bg-purple-600 text-white font-bold px-1.5 py-0.2 rounded">Coming Soon</span>
+                    </div>
+                    <div className="text-[10px] text-[#D7CCC8]/90">🎁 Free 2 Mo Dukaan Pro Included</div>
                   </div>
                 </div>
-                <span className="text-xs font-black bg-white text-orange-950 px-2 py-0.5 rounded-md">
+                <span className="text-xs font-black bg-[#D7CCC8] text-[#24140E] px-2 py-0.5 rounded-md">
                   ₹149/mo
                 </span>
               </a>
@@ -1114,49 +1120,57 @@ export default function Landing() {
           NEXORAOS CAFE PLAN SPOTLIGHT (FULL PROMOTION)
           POWERED BY NEXORAOS · A PRODUCT BY PEAN
       ========================================================= */}
-      <section id="cafe-suite" className="py-16 sm:py-24 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white relative overflow-hidden border-t border-slate-800 scroll-mt-20">
+      <section id="cafe-suite" className="py-16 sm:py-24 bg-gradient-to-b from-[#18100C] via-[#221611] to-slate-950 text-white relative overflow-hidden border-t border-[#3E2723] scroll-mt-20">
         
-        {/* Ambient Warm Coffee Lighting */}
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-amber-600/10 rounded-full blur-3xl pointer-events-none" />
+        {/* Ambient Warm Coffee & Pro Purple Lighting */}
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#4E342E]/25 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-900/15 rounded-full blur-3xl pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
           
           {/* Header */}
-          <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/30 text-[11px] sm:text-xs font-black uppercase tracking-wider mb-4 shadow-sm">
-              <Coffee className="w-4 h-4" />
-              <span>NexoraOS Cafe Suite · A Flagship Product by PEAN</span>
+          <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-14">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#3E2723]/70 text-[#D7CCC8] border border-[#6D4C41] text-[11px] sm:text-xs font-black uppercase tracking-wider mb-4 shadow-sm">
+              <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+              <span>🚀 COMING SOON · DEDICATED RESTAURANT OS BY PEAN</span>
             </div>
 
             <h2 className="font-sans font-black text-2xl sm:text-5xl tracking-tight text-white leading-tight">
               Transform Your Cafe with <br className="hidden sm:inline" />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-amber-300 to-yellow-400">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#D7CCC8] via-[#EFEBE9] to-[#C5A880]">
                 NexoraOS for Restaurants.
               </span>
             </h2>
 
-            <p className="mt-4 text-xs sm:text-base text-slate-300 font-medium max-w-2xl mx-auto leading-relaxed">
-              Eliminate order chaos, slow food delivery, and messy paper tokens. NexoraOS brings live visual table management, kitchen KOT thermal printing, dynamic QR menus, and waiter mobile orders — starting at just <strong>₹149/month</strong>.
+            <p className="mt-4 text-xs sm:text-base text-[#D7CCC8]/90 font-medium max-w-2xl mx-auto leading-relaxed">
+              We are actively crafting a brand-new, dedicated restaurant & cafe dashboard with touch table management and live kitchen order routing! Pre-register today at <strong>₹149/month</strong> to get <strong>2 Months of Dukaan Pro Membership FREE</strong> right now.
             </p>
 
-            <div className="mt-3 inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono text-slate-300">
-              <span>Powered by <strong className="text-orange-400">NexoraOS</strong></span>
+            {/* Exclusive Pro Bonus Callout Banner */}
+            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-purple-950/70 border border-purple-500/40 text-xs text-purple-200 font-bold shadow-lg shadow-purple-950/40">
+              <Crown className="w-4 h-4 text-amber-300" />
+              <span>🎁 Exclusive Launch Bonus: 2 Months FREE Dukaan Pro Membership included on Pre-Registration!</span>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-[11px] font-mono text-[#BCAAA4]">
+              <span>Powered by <strong className="text-white">NexoraOS</strong></span>
               <span>•</span>
-              <span className="text-amber-300 font-bold">A Product by PEAN</span>
+              <span className="text-[#D7CCC8] font-bold">A Flagship Product by PEAN</span>
+              <span>•</span>
+              <span className="text-purple-300 font-bold">New UI in Active Development</span>
             </div>
           </div>
 
           {/* Interactive Live Cafe Counter Sandbox */}
-          <div className="max-w-4xl mx-auto bg-slate-900/90 rounded-3xl border border-orange-500/20 p-5 sm:p-8 shadow-2xl backdrop-blur-xl mb-12">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+          <div className="max-w-4xl mx-auto bg-[#221611]/90 rounded-3xl border border-[#4E342E] p-5 sm:p-8 shadow-2xl backdrop-blur-xl mb-12">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-[#3E2723]">
               <div>
                 <div className="flex items-center gap-2">
-                  <Utensils className="w-4 h-4 text-orange-400" />
+                  <Utensils className="w-4 h-4 text-[#D7CCC8]" />
                   <span className="font-bold text-sm text-white">The Blue Bean Cafe & Bistro</span>
-                  <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded-full">Floor 1 Live</span>
+                  <span className="text-[10px] bg-purple-500/20 text-purple-300 font-bold px-2 py-0.5 rounded-full">Interactive UI Preview</span>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-0.5">Click any table below to preview live dine-in & KOT actions</p>
+                <p className="text-[11px] text-[#A1887F] mt-0.5">Click any table below to preview live dine-in & KOT actions</p>
               </div>
 
               <Button
@@ -1165,9 +1179,9 @@ export default function Landing() {
                   setKotDispatched(true);
                   setTimeout(() => setKotDispatched(false), 4000);
                 }}
-                className="h-9 px-4 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-slate-950 font-black text-xs shadow-md shadow-orange-500/20 active:scale-95 transition-all flex items-center gap-1.5"
+                className="h-9 px-4 rounded-xl bg-[#3E2723] hover:bg-[#4E342E] text-[#FAF7F5] border border-[#6D4C41] font-bold text-xs shadow-md active:scale-95 transition-all flex items-center gap-1.5"
               >
-                <Printer className="w-3.5 h-3.5 text-slate-950" />
+                <Printer className="w-3.5 h-3.5 text-[#D7CCC8]" />
                 <span>Simulate Print KOT</span>
               </Button>
             </div>
@@ -1188,21 +1202,21 @@ export default function Landing() {
                     onClick={() => setActiveCafeTable(table.id)}
                     className={`p-3.5 rounded-2xl border text-left transition-all relative ${
                       isSelected
-                        ? "border-orange-500 bg-orange-500/10 ring-2 ring-orange-500/30"
-                        : "border-slate-800 bg-slate-800/50 hover:border-slate-700"
+                        ? "border-[#8D6E63] bg-[#3E2723]/60 ring-2 ring-[#8D6E63]/30"
+                        : "border-[#3E2723] bg-[#18100C]/70 hover:border-[#5D4037]"
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-mono text-xs font-black text-white">{table.name}</span>
                       <span className={`w-2 h-2 rounded-full ${
                         table.status === "occupied" ? "bg-red-500 animate-pulse" :
-                        table.status === "kot_sent" ? "bg-amber-400 animate-ping" :
+                        table.status === "kot_sent" ? "bg-purple-400 animate-ping" :
                         table.status === "ready" ? "bg-blue-400" : "bg-emerald-400"
                       }`} />
                     </div>
-                    <div className="text-[10px] text-slate-400">{table.pax}</div>
-                    <div className="mt-1 font-mono text-xs font-bold text-orange-300">{table.bill}</div>
-                    <div className="text-[9px] text-slate-500 truncate mt-0.5">{table.items}</div>
+                    <div className="text-[10px] text-[#A1887F]">{table.pax}</div>
+                    <div className="mt-1 font-mono text-xs font-bold text-[#D7CCC8]">{table.bill}</div>
+                    <div className="text-[9px] text-[#8D6E63] truncate mt-0.5">{table.items}</div>
                   </button>
                 );
               })}
@@ -1213,13 +1227,13 @@ export default function Landing() {
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="p-3 rounded-2xl bg-orange-500/20 border border-orange-500/40 text-xs text-orange-200 flex items-center justify-between gap-2"
+                className="p-3 rounded-2xl bg-[#3E2723]/80 border border-[#6D4C41] text-xs text-[#D7CCC8] flex items-center justify-between gap-2"
               >
                 <div className="flex items-center gap-2">
-                  <ChefHat className="w-4 h-4 text-orange-400 shrink-0" />
+                  <ChefHat className="w-4 h-4 text-[#D7CCC8] shrink-0" />
                   <span><strong>✓ Kitchen Order Ticket #108 Dispatched!</strong> Sent instantly to kitchen thermal printer.</span>
                 </div>
-                <Printer className="w-4 h-4 text-orange-400 animate-bounce" />
+                <Printer className="w-4 h-4 text-[#D7CCC8] animate-bounce" />
               </motion.div>
             )}
 
@@ -1231,7 +1245,7 @@ export default function Landing() {
               {
                 icon: Utensils,
                 title: "Live Table Management",
-                desc: "Visual color-coded floor map. Track dine-in guest orders, split bills, and shift tables in 1 click."
+                desc: "Visual floor map. Track dine-in guest orders, split bills, and shift tables in 1 click."
               },
               {
                 icon: ChefHat,
@@ -1250,24 +1264,24 @@ export default function Landing() {
               },
               {
                 icon: Package,
-                title: "Basic Stock & Ingredient Inventory",
-                desc: "Track daily dairy, bread, syrups, and packaging boxes with automated low-stock warnings."
+                title: "Stock & Ingredient Inventory",
+                desc: "Track daily dairy, coffee beans, syrups, and packaging boxes with automated low-stock warnings."
               },
               {
                 icon: BarChart3,
                 title: "Item Sales & Food Cost Reports",
-                desc: "Understand your highest-margin coffees, shakes, and meals. Daily EOD WhatsApp reports for the owner."
+                desc: "Understand highest-margin coffees, shakes, and meals. Daily EOD WhatsApp reports for the owner."
               }
             ].map((f, i) => {
               const Icon = f.icon;
               return (
-                <div key={i} className="p-5 sm:p-6 rounded-3xl bg-slate-900/60 border border-slate-800 hover:border-orange-500/40 transition-all flex flex-col justify-between">
+                <div key={i} className="p-5 sm:p-6 rounded-3xl bg-[#221611]/60 border border-[#3E2723] hover:border-[#6D4C41] transition-all flex flex-col justify-between">
                   <div>
-                    <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-400 grid place-items-center mb-3 border border-orange-500/20">
+                    <div className="w-10 h-10 rounded-xl bg-[#3E2723] text-[#D7CCC8] grid place-items-center mb-3 border border-[#4E342E]">
                       <Icon className="w-5 h-5" />
                     </div>
                     <h3 className="font-sans font-black text-base text-white mb-1.5">{f.title}</h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">{f.desc}</p>
+                    <p className="text-xs text-[#A1887F] leading-relaxed">{f.desc}</p>
                   </div>
                 </div>
               );
@@ -1275,35 +1289,36 @@ export default function Landing() {
           </div>
 
           {/* Promotional Pricing Strip */}
-          <div className="mt-10 p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-orange-950/70 via-slate-900 to-amber-950/70 border border-orange-500/30 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
+          <div className="mt-10 p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-[#24140E] via-[#3E2723] to-[#1E1B4B] border border-[#6D4C41] flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left shadow-2xl">
             <div>
-              <div className="text-[11px] font-mono uppercase tracking-widest text-orange-400 font-bold">
-                Affordable Cafe OS Pricing
+              <div className="text-[11px] font-mono uppercase tracking-widest text-purple-300 font-bold flex items-center gap-1.5 justify-center sm:justify-start">
+                <Sparkles className="w-3.5 h-3.5 text-purple-300" />
+                <span>Pre-Order Launch Offer · Includes 2 Months Free Dukaan Pro</span>
               </div>
               <div className="text-2xl sm:text-3xl font-black text-white mt-1">
-                Cafe Plan: ₹149/month <span className="text-xs font-normal text-slate-400">(or ₹1,199/year · ₹99/mo effective)</span>
+                Cafe Plan: ₹149/month <span className="text-xs font-normal text-[#D7CCC8]">(or ₹1,199/year · ₹99/mo effective)</span>
               </div>
-              <p className="text-xs text-slate-400 mt-1">
-                Includes POS, table management, KOTs, digital menu, staff roles, and zero hardware lock-in.
+              <p className="text-xs text-[#D7CCC8]/90 mt-1">
+                Coming Soon! Pre-register your cafe today and get full Dukaan Pro membership access immediately.
               </p>
             </div>
 
             <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full sm:w-auto">
               <Button
                 onClick={() => nav("/subscribe?plan=cafe")}
-                className="w-full sm:w-auto h-12 px-7 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-slate-950 font-black text-xs sm:text-sm shadow-xl shadow-orange-500/25 active:scale-95 transition-all"
+                className="w-full sm:w-auto h-12 px-7 rounded-full bg-gradient-to-r from-[#4E342E] to-[#6D4C41] hover:from-[#3E2723] hover:to-[#5D4037] text-white border border-[#8D6E63] font-bold text-xs sm:text-sm shadow-xl active:scale-95 transition-all"
               >
-                Start Cafe Plan (₹149)
+                Pre-Register Cafe Plan (₹149)
                 <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
 
               <a
-                href="https://wa.me/919825100000?text=Hi%20Dukaan,%20I%20want%20to%20learn%20more%20about%20Cafe%20Plan%20by%20NexoraOS"
+                href="https://wa.me/919825100000?text=Hi%20Dukaan,%20I%20want%20to%20pre-register%20for%20Cafe%20Plan%20by%20NexoraOS%20and%20claim%202%20Months%20Free%20Pro"
                 target="_blank"
                 rel="noreferrer"
                 className="w-full sm:w-auto h-12 px-5 rounded-full border border-white/20 hover:bg-white/10 text-white font-bold text-xs flex items-center justify-center transition-colors"
               >
-                Talk to Cafe Specialist
+                Talk to Specialist
               </a>
             </div>
           </div>
@@ -1370,7 +1385,7 @@ export default function Landing() {
                   key={plan.id}
                   className={`rounded-3xl p-5 sm:p-6 border-2 relative flex flex-col justify-between bg-white transition-all shadow-sm hover:shadow-xl ${
                     plan.id === "cafe"
-                      ? "border-orange-500 ring-4 ring-orange-500/10"
+                      ? "border-[#5D4037] ring-4 ring-[#8D6E63]/20"
                       : plan.popular
                       ? "border-blue-600 ring-4 ring-blue-500/10"
                       : plan.id === "pro"
@@ -1380,8 +1395,8 @@ export default function Landing() {
                 >
                   {/* Top Badge */}
                   {plan.id === "cafe" && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 text-[10px] font-black uppercase tracking-widest py-1 px-3 rounded-full shadow-md whitespace-nowrap flex items-center gap-1">
-                      <Coffee className="w-3 h-3 text-slate-950" /> NexoraOS Special
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#3E2723] to-[#5D4037] text-[#FAF7F5] border border-[#8D6E63] text-[10px] font-black uppercase tracking-widest py-1 px-3 rounded-full shadow-md whitespace-nowrap flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-purple-300" /> 🚀 COMING SOON
                     </div>
                   )}
                   {plan.popular && (
@@ -1401,16 +1416,24 @@ export default function Landing() {
                       <span className="text-xs font-black uppercase tracking-wider text-slate-400">
                         {plan.name}
                       </span>
-                      {plan.badge && !plan.popular && plan.id !== "pro" && plan.id !== "cafe" && (
+                      {plan.badge && !plan.popular && plan.id !== "pro" && (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                           {plan.badge}
                         </span>
                       )}
                     </div>
 
-                    <h3 className="font-sans text-sm font-black text-slate-900 mb-3 leading-snug">
+                    <h3 className="font-sans text-sm font-black text-slate-900 mb-2 leading-snug">
                       {plan.tagline}
                     </h3>
+
+                    {/* Pro Free Bonus Banner for Cafe */}
+                    {plan.id === "cafe" && (
+                      <div className="mb-3 p-2 rounded-xl bg-purple-50 border border-purple-200 text-purple-900 text-[10px] font-bold flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                        <span>🎁 Includes 2 Months FREE Dukaan Pro!</span>
+                      </div>
+                    )}
 
                     {/* Price Block */}
                     <div className="flex items-baseline gap-1 flex-wrap">
@@ -1436,7 +1459,7 @@ export default function Landing() {
 
                     {/* Lineage / Setup Fee Tag */}
                     {plan.poweredBy ? (
-                      <div className="mt-1.5 text-[9px] font-extrabold text-orange-800 bg-orange-50 px-2 py-0.5 rounded-md border border-orange-200">
+                      <div className="mt-1.5 text-[9px] font-extrabold text-[#4E342E] bg-[#EFEBE9] px-2 py-0.5 rounded-md border border-[#D7CCC8]">
                         {plan.poweredBy}
                       </div>
                     ) : (
@@ -1468,13 +1491,13 @@ export default function Landing() {
                         plan.id === "pro"
                           ? "bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-amber-400/20"
                           : plan.id === "cafe"
-                          ? "bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-slate-950 shadow-orange-500/20"
+                          ? "bg-gradient-to-r from-[#4E342E] to-[#6D4C41] hover:from-[#3E2723] hover:to-[#5D4037] text-white shadow-[#4E342E]/20"
                           : plan.popular
                           ? "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20"
                           : "bg-slate-900 hover:bg-slate-800 text-white"
                       }`}
                     >
-                      <span>Choose {plan.name}</span>
+                      <span>{plan.id === "cafe" ? "Pre-Register (₹149)" : `Choose ${plan.name}`}</span>
                       <ArrowRight className="w-3 h-3" />
                     </Button>
 

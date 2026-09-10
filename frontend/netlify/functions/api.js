@@ -1751,6 +1751,11 @@ exports.handler = async (event, context) => {
       user.subscription = subscription;
       if (plan === "premium" || plan === "pro") user.is_premium = true;
       if (plan === "pro") user.is_pro = true;
+      if (plan === "cafe") {
+        user.is_pro = true;
+        subscription.pro_bonus = true;
+        subscription.pro_bonus_months = 2;
+      }
       const new_token = makeToken(user);
 
       return {
@@ -1852,11 +1857,13 @@ exports.handler = async (event, context) => {
           razorpay_payment_id: body.razorpay_payment_id || `pay_rzp_${Date.now()}`,
           promo_code: body.promo_code || null,
           expires_at,
-          activated_at: new Date().toISOString()
+          activated_at: new Date().toISOString(),
+          ...(plan === "cafe" ? { pro_bonus: true, pro_bonus_months: 2, is_pro: true } : {})
         };
         if (email) {
           globalPlatformConfig.granted_subscriptions[email] = subscription;
           delete globalPlatformConfig.queued_subscriptions[email];
+          recordRegisteredUser({ email, subscription, is_pro: plan === "cafe" || plan === "pro" });
         }
         upcomingSub = null;
       }

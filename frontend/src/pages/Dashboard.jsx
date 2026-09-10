@@ -78,7 +78,7 @@ export default function Dashboard() {
   const [eodOpen, setEodOpen] = useState(false);
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const [proWidgets, setProWidgets] = useState(() => getProDashboardWidgets(user?.email));
-  const isPro = Boolean(user?.is_pro || user?.subscription?.plan === "pro" || sub?.plan === "pro" || user?.is_admin);
+  const isPro = Boolean(user?.is_pro || user?.subscription?.plan === "pro" || sub?.plan === "pro" || user?.subscription?.pro_bonus || sub?.pro_bonus || user?.subscription?.plan === "cafe" || sub?.plan === "cafe" || user?.is_admin);
 
   useEffect(() => {
     setProWidgets(getProDashboardWidgets(user?.email));

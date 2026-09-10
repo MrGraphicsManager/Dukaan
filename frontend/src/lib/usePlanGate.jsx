@@ -5,8 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Crown, ArrowRight } from "lucide-react";
 
-const TIER = { starter: 1, business: 2, premium: 3 };
-const NAMES = { business: "Business", premium: "Premium" };
+const TIER = { starter: 1, business: 2, cafe: 2.5, premium: 3, pro: 4 };
+const NAMES = { business: "Business", premium: "Premium", pro: "Dukaan Pro" };
 
 /**
  * Wrap a feature/link. If user's plan is below `requiredPlan`, clicks show an upgrade dialog
@@ -18,7 +18,8 @@ export function usePlanGate(requiredPlan) {
   const nav = useNavigate();
   const current = user?.subscription?.plan || "";
   const isAdmin = !!user?.is_admin;
-  const locked = !isAdmin && (TIER[current] || 0) < (TIER[requiredPlan] || 0);
+  const isProBonus = !!(user?.is_pro || user?.subscription?.pro_bonus || user?.subscription?.plan === "pro" || user?.subscription?.plan === "cafe");
+  const locked = !isAdmin && !isProBonus && (TIER[current] || 0) < (TIER[requiredPlan] || 0);
 
   const gate = (fn) => (e) => {
     if (locked) {
