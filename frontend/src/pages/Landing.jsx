@@ -50,7 +50,10 @@ import {
   MessageCircle, 
   Laptop, 
   Tablet, 
-  HardDrive
+  HardDrive,
+  Coffee,
+  Utensils,
+  ChefHat
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import InstallAppButton from "@/components/InstallAppButton";
@@ -59,7 +62,7 @@ import ThreeDBackground from "@/components/ThreeDBackground";
 import { playVoiceSoundbox } from "@/lib/soundbox";
 import useButterSmoothScroll from "@/lib/useButterSmoothScroll";
 
-// 4 Official Subscription Plans
+// 5 Official Subscription Plans
 const PLANS = [
   {
     id: "starter",
@@ -102,6 +105,29 @@ const PLANS = [
       "Dynamic UPI QR in WhatsApp Bills",
       "Automated Low-Stock Alerts",
       "Barcode Printing & Camera Scanning"
+    ]
+  },
+  {
+    id: "cafe",
+    name: "Cafe Plan",
+    tagline: "For Cafes, Bakeries & Food Counters",
+    monthlyPrice: 149,
+    originalMonthly: 199,
+    yearlyPrice: 1199,
+    yearlyMonthlyEffective: 99,
+    setupFee: 0,
+    accentColor: "orange",
+    route: "/subscribe?plan=cafe",
+    badge: "NexoraOS",
+    poweredBy: "Powered by NexoraOS · by PEAN",
+    popular: false,
+    perks: [
+      "Table Management & Live Dine-In Status",
+      "Instant Kitchen Order Tickets (KOT)",
+      "Dynamic Digital Menu & Category Manager",
+      "Sub-2s Touch POS Billing & UPI QR",
+      "Basic Stock & Recipe Inventory",
+      "Staff & Waiter Accounts with Shifts"
     ]
   },
   {
@@ -278,6 +304,10 @@ const FAQS = [
     a: "100% safe. Aapka pura stock, sales aur customer data enterprise-grade 256-bit encryption ke sath cloud me secure rehta hai. Roz automated cloud backups hote hain taaki phone khone par bhi hisab surakshit rahe."
   },
   {
+    q: "Cafe Plan me Table Management aur KOT kaise kaam karta hai?",
+    a: "Cafe Plan (Powered by NexoraOS, a product by PEAN) me aap apne cafe ke sabhi tables ka live status dekh sakte hain (Occupied, Free, KOT Sent). Order lete hi kitchen thermal printer par KOT slip chali jati hai, staff accounts alag hote hain, aur digital menu 1-click me update ho jata hai."
+  },
+  {
     q: "Kya Free Trial ke baad turant paise katenge?",
     a: "Nahi. Free trial lene ke liye koi credit card ya advance payment nahi chahiye. Aap pehle trial me counter chala kar dekhein, pasand aane par hi ₹79/month se shuru karein."
   }
@@ -302,6 +332,10 @@ export default function Landing() {
   const [paymentMode, setPaymentMode] = useState("upi"); // "upi" | "cash" | "khata"
   const [billPrinted, setBillPrinted] = useState(false);
   const [soundboxLanguage, setSoundboxLanguage] = useState("hi");
+
+  // NexoraOS Cafe Simulator State
+  const [activeCafeTable, setActiveCafeTable] = useState(1);
+  const [kotDispatched, setKotDispatched] = useState(false);
 
   // ROI Calculator State
   const [dailyCustomers, setDailyCustomers] = useState(120);
@@ -372,15 +406,15 @@ export default function Landing() {
       {/* =========================================================
           1. TOP ANNOUNCEMENT BANNER
       ========================================================= */}
-      <div className="relative z-30 bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 text-white text-[11px] sm:text-xs font-semibold px-4 py-2 text-center flex items-center justify-center gap-2 shadow-xs">
-        <span className="inline-flex items-center gap-1 bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-          Offer
+      <div className="relative z-30 bg-gradient-to-r from-orange-600 via-amber-600 to-blue-700 text-white text-[11px] sm:text-xs font-semibold px-4 py-2 text-center flex items-center justify-center gap-2 shadow-xs">
+        <span className="inline-flex items-center gap-1 bg-white text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+          ☕ NexoraOS
         </span>
         <span className="truncate max-w-[280px] sm:max-w-none">
-          Special: 2 Months Free on Annual Plans + Zero Setup Assistance!
+          NEW: Cafe Plan is Live! Table Management, KOTs & Menu at ₹149/mo (by PEAN)
         </span>
-        <a href="#pricing" className="underline font-bold hover:text-amber-300 hidden xs:inline ml-1 shrink-0">
-          View Plans →
+        <a href="#cafe-suite" className="underline font-bold hover:text-amber-200 hidden xs:inline ml-1 shrink-0">
+          Explore Cafe Plan →
         </a>
       </div>
 
@@ -414,6 +448,13 @@ export default function Landing() {
             </a>
             <a href="#categories" className="px-3.5 py-2 rounded-xl hover:text-blue-600 hover:bg-slate-100/80 transition-all">
               Store Types
+            </a>
+            <a href="#cafe-suite" className="px-3.5 py-2 rounded-xl text-orange-600 hover:bg-orange-50 font-bold transition-all flex items-center gap-1">
+              <Coffee className="w-3.5 h-3.5 text-orange-500" />
+              <span>Cafe Plan</span>
+              <span className="text-[9px] bg-orange-500 text-white font-black px-1.5 py-0.2 rounded-full">
+                ₹149
+              </span>
             </a>
             <a href="#pricing" className="px-3.5 py-2 rounded-xl hover:text-blue-600 hover:bg-slate-100/80 transition-all flex items-center gap-1">
               <span>Plans</span>
@@ -481,6 +522,26 @@ export default function Landing() {
               transition={{ duration: 0.2 }}
               className="lg:hidden border-b border-slate-200 bg-white/98 backdrop-blur-2xl shadow-xl overflow-hidden px-4 py-5 space-y-4"
             >
+              {/* Highlighted Cafe Suite Banner in Drawer */}
+              <a
+                href="#cafe-suite"
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-3.5 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 text-white flex items-center justify-between shadow-md shadow-orange-500/20"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                    <Coffee className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-black">Cafe Plan (NexoraOS by PEAN)</div>
+                    <div className="text-[10px] text-orange-100">Tables, KOT & Kitchen Orders</div>
+                  </div>
+                </div>
+                <span className="text-xs font-black bg-white text-orange-950 px-2 py-0.5 rounded-md">
+                  ₹149/mo
+                </span>
+              </a>
+
               <div className="grid grid-cols-2 gap-2 text-xs font-bold">
                 <a
                   href="#features"
@@ -504,7 +565,7 @@ export default function Landing() {
                   className="p-3 rounded-2xl bg-blue-50 border border-blue-200 text-blue-900 flex items-center gap-2"
                 >
                   <IndianRupee className="w-4 h-4 text-blue-600" />
-                  <span>Plans (from ₹79)</span>
+                  <span>All 5 Plans</span>
                 </a>
                 <a
                   href="#soundbox"
@@ -1050,6 +1111,207 @@ export default function Landing() {
       </section>
 
       {/* =========================================================
+          NEXORAOS CAFE PLAN SPOTLIGHT (FULL PROMOTION)
+          POWERED BY NEXORAOS · A PRODUCT BY PEAN
+      ========================================================= */}
+      <section id="cafe-suite" className="py-16 sm:py-24 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white relative overflow-hidden border-t border-slate-800 scroll-mt-20">
+        
+        {/* Ambient Warm Coffee Lighting */}
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-amber-600/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
+          
+          {/* Header */}
+          <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/30 text-[11px] sm:text-xs font-black uppercase tracking-wider mb-4 shadow-sm">
+              <Coffee className="w-4 h-4" />
+              <span>NexoraOS Cafe Suite · A Flagship Product by PEAN</span>
+            </div>
+
+            <h2 className="font-sans font-black text-2xl sm:text-5xl tracking-tight text-white leading-tight">
+              Transform Your Cafe with <br className="hidden sm:inline" />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-amber-300 to-yellow-400">
+                NexoraOS for Restaurants.
+              </span>
+            </h2>
+
+            <p className="mt-4 text-xs sm:text-base text-slate-300 font-medium max-w-2xl mx-auto leading-relaxed">
+              Eliminate order chaos, slow food delivery, and messy paper tokens. NexoraOS brings live visual table management, kitchen KOT thermal printing, dynamic QR menus, and waiter mobile orders — starting at just <strong>₹149/month</strong>.
+            </p>
+
+            <div className="mt-3 inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono text-slate-300">
+              <span>Powered by <strong className="text-orange-400">NexoraOS</strong></span>
+              <span>•</span>
+              <span className="text-amber-300 font-bold">A Product by PEAN</span>
+            </div>
+          </div>
+
+          {/* Interactive Live Cafe Counter Sandbox */}
+          <div className="max-w-4xl mx-auto bg-slate-900/90 rounded-3xl border border-orange-500/20 p-5 sm:p-8 shadow-2xl backdrop-blur-xl mb-12">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Utensils className="w-4 h-4 text-orange-400" />
+                  <span className="font-bold text-sm text-white">The Blue Bean Cafe & Bistro</span>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded-full">Floor 1 Live</span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-0.5">Click any table below to preview live dine-in & KOT actions</p>
+              </div>
+
+              <Button
+                size="sm"
+                onClick={() => {
+                  setKotDispatched(true);
+                  setTimeout(() => setKotDispatched(false), 4000);
+                }}
+                className="h-9 px-4 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-slate-950 font-black text-xs shadow-md shadow-orange-500/20 active:scale-95 transition-all flex items-center gap-1.5"
+              >
+                <Printer className="w-3.5 h-3.5 text-slate-950" />
+                <span>Simulate Print KOT</span>
+              </Button>
+            </div>
+
+            {/* Live Table Grid Simulator */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-5">
+              {[
+                { id: 1, name: "Table 01", pax: "4 Guests", status: "occupied", bill: "₹420", items: "Cold Coffee x2, Cheese Toast x1" },
+                { id: 2, name: "Table 02", pax: "2 Guests", status: "vacant", bill: "Vacant", items: "Ready to seat" },
+                { id: 3, name: "Table 03", pax: "6 Guests", status: "kot_sent", bill: "₹780", items: "Margherita Pizza, Cold Brew x3" },
+                { id: 4, name: "Parcel / QSR", pax: "Takeaway", status: "ready", bill: "₹180", items: "Paneer Burger Meal (Ready)" }
+              ].map((table) => {
+                const isSelected = activeCafeTable === table.id;
+                return (
+                  <button
+                    key={table.id}
+                    type="button"
+                    onClick={() => setActiveCafeTable(table.id)}
+                    className={`p-3.5 rounded-2xl border text-left transition-all relative ${
+                      isSelected
+                        ? "border-orange-500 bg-orange-500/10 ring-2 ring-orange-500/30"
+                        : "border-slate-800 bg-slate-800/50 hover:border-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-mono text-xs font-black text-white">{table.name}</span>
+                      <span className={`w-2 h-2 rounded-full ${
+                        table.status === "occupied" ? "bg-red-500 animate-pulse" :
+                        table.status === "kot_sent" ? "bg-amber-400 animate-ping" :
+                        table.status === "ready" ? "bg-blue-400" : "bg-emerald-400"
+                      }`} />
+                    </div>
+                    <div className="text-[10px] text-slate-400">{table.pax}</div>
+                    <div className="mt-1 font-mono text-xs font-bold text-orange-300">{table.bill}</div>
+                    <div className="text-[9px] text-slate-500 truncate mt-0.5">{table.items}</div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* KOT Dispatch Feedback */}
+            {kotDispatched && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="p-3 rounded-2xl bg-orange-500/20 border border-orange-500/40 text-xs text-orange-200 flex items-center justify-between gap-2"
+              >
+                <div className="flex items-center gap-2">
+                  <ChefHat className="w-4 h-4 text-orange-400 shrink-0" />
+                  <span><strong>✓ Kitchen Order Ticket #108 Dispatched!</strong> Sent instantly to kitchen thermal printer.</span>
+                </div>
+                <Printer className="w-4 h-4 text-orange-400 animate-bounce" />
+              </motion.div>
+            )}
+
+          </div>
+
+          {/* 6 Core NexoraOS Pillars */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[
+              {
+                icon: Utensils,
+                title: "Live Table Management",
+                desc: "Visual color-coded floor map. Track dine-in guest orders, split bills, and shift tables in 1 click."
+              },
+              {
+                icon: ChefHat,
+                title: "Kitchen Order Tickets (KOT)",
+                desc: "Print orders directly on kitchen thermal printers with custom chef notes (e.g. Less Spicy, No Onion)."
+              },
+              {
+                icon: QrCode,
+                title: "Dynamic Digital QR Menu",
+                desc: "Place smart QR codes on tables. Customers view photo menu, and waiters punch orders from mobile phones."
+              },
+              {
+                icon: Users,
+                title: "Waiter & Staff Accounts",
+                desc: "Assign separate logins for waiters, cashiers, and kitchen managers with shift reconciliation."
+              },
+              {
+                icon: Package,
+                title: "Basic Stock & Ingredient Inventory",
+                desc: "Track daily dairy, bread, syrups, and packaging boxes with automated low-stock warnings."
+              },
+              {
+                icon: BarChart3,
+                title: "Item Sales & Food Cost Reports",
+                desc: "Understand your highest-margin coffees, shakes, and meals. Daily EOD WhatsApp reports for the owner."
+              }
+            ].map((f, i) => {
+              const Icon = f.icon;
+              return (
+                <div key={i} className="p-5 sm:p-6 rounded-3xl bg-slate-900/60 border border-slate-800 hover:border-orange-500/40 transition-all flex flex-col justify-between">
+                  <div>
+                    <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-400 grid place-items-center mb-3 border border-orange-500/20">
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <h3 className="font-sans font-black text-base text-white mb-1.5">{f.title}</h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">{f.desc}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Promotional Pricing Strip */}
+          <div className="mt-10 p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-orange-950/70 via-slate-900 to-amber-950/70 border border-orange-500/30 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
+            <div>
+              <div className="text-[11px] font-mono uppercase tracking-widest text-orange-400 font-bold">
+                Affordable Cafe OS Pricing
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-white mt-1">
+                Cafe Plan: ₹149/month <span className="text-xs font-normal text-slate-400">(or ₹1,199/year · ₹99/mo effective)</span>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">
+                Includes POS, table management, KOTs, digital menu, staff roles, and zero hardware lock-in.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full sm:w-auto">
+              <Button
+                onClick={() => nav("/subscribe?plan=cafe")}
+                className="w-full sm:w-auto h-12 px-7 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-slate-950 font-black text-xs sm:text-sm shadow-xl shadow-orange-500/25 active:scale-95 transition-all"
+              >
+                Start Cafe Plan (₹149)
+                <ArrowRight className="w-4 h-4 ml-1.5" />
+              </Button>
+
+              <a
+                href="https://wa.me/919825100000?text=Hi%20Dukaan,%20I%20want%20to%20learn%20more%20about%20Cafe%20Plan%20by%20NexoraOS"
+                target="_blank"
+                rel="noreferrer"
+                className="w-full sm:w-auto h-12 px-5 rounded-full border border-white/20 hover:bg-white/10 text-white font-bold text-xs flex items-center justify-center transition-colors"
+              >
+                Talk to Cafe Specialist
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* =========================================================
           8. TRANSPARENT PRICING SUITE (CLEAN MOBILE SWITCHER)
       ========================================================= */}
       <section id="pricing" className="py-16 sm:py-24 bg-slate-100/70 border-t border-slate-200 scroll-mt-20">
@@ -1097,8 +1359,8 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* 4 Plan Cards Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
+          {/* 5 Plan Cards Grid */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 items-stretch">
             {PLANS.map((plan) => {
               const displayPrice = billingCycle === "yearly" ? plan.yearlyMonthlyEffective : plan.monthlyPrice;
               const totalAnnual = plan.yearlyPrice;
@@ -1106,8 +1368,10 @@ export default function Landing() {
               return (
                 <div
                   key={plan.id}
-                  className={`rounded-3xl p-6 sm:p-7 border-2 relative flex flex-col justify-between bg-white transition-all shadow-sm hover:shadow-xl ${
-                    plan.popular
+                  className={`rounded-3xl p-5 sm:p-6 border-2 relative flex flex-col justify-between bg-white transition-all shadow-sm hover:shadow-xl ${
+                    plan.id === "cafe"
+                      ? "border-orange-500 ring-4 ring-orange-500/10"
+                      : plan.popular
                       ? "border-blue-600 ring-4 ring-blue-500/10"
                       : plan.id === "pro"
                       ? "border-amber-400 ring-4 ring-amber-400/10"
@@ -1115,6 +1379,11 @@ export default function Landing() {
                   }`}
                 >
                   {/* Top Badge */}
+                  {plan.id === "cafe" && (
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 text-[10px] font-black uppercase tracking-widest py-1 px-3 rounded-full shadow-md whitespace-nowrap flex items-center gap-1">
+                      <Coffee className="w-3 h-3 text-slate-950" /> NexoraOS Special
+                    </div>
+                  )}
                   {plan.popular && (
                     <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest py-1 px-3.5 rounded-full shadow-md whitespace-nowrap">
                       ★ MOST POPULAR
@@ -1132,54 +1401,60 @@ export default function Landing() {
                       <span className="text-xs font-black uppercase tracking-wider text-slate-400">
                         {plan.name}
                       </span>
-                      {plan.badge && !plan.popular && plan.id !== "pro" && (
+                      {plan.badge && !plan.popular && plan.id !== "pro" && plan.id !== "cafe" && (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                           {plan.badge}
                         </span>
                       )}
                     </div>
 
-                    <h3 className="font-sans text-base font-black text-slate-900 mb-4 leading-snug">
+                    <h3 className="font-sans text-sm font-black text-slate-900 mb-3 leading-snug">
                       {plan.tagline}
                     </h3>
 
                     {/* Price Block */}
-                    <div className="flex items-baseline gap-1.5 flex-wrap">
-                      <span className="font-sans text-4xl sm:text-5xl font-black text-slate-950">
+                    <div className="flex items-baseline gap-1 flex-wrap">
+                      <span className="font-sans text-3xl sm:text-4xl font-black text-slate-950">
                         ₹{displayPrice}
                       </span>
                       <span className="text-xs font-bold text-slate-500">/month</span>
                     </div>
 
-                    <div className="mt-1 text-[11px] font-semibold text-slate-500">
+                    <div className="mt-1 text-[10px] font-semibold text-slate-500">
                       {billingCycle === "yearly" ? (
                         <span className="text-emerald-700 font-bold">
-                          Billed ₹{totalAnnual}/year (Save ₹{plan.monthlyPrice * 12 - totalAnnual})
+                          Billed ₹{totalAnnual}/yr (Save ₹{plan.monthlyPrice * 12 - totalAnnual})
                         </span>
                       ) : (
                         plan.originalMonthly && (
                           <span>
-                            Standard price <span className="line-through">₹{plan.originalMonthly}</span>
+                            Standard <span className="line-through">₹{plan.originalMonthly}</span>
                           </span>
                         )
                       )}
                     </div>
 
-                    {/* Setup Fee Tag */}
-                    <div className="mt-2 text-[11px] font-medium text-slate-400">
-                      {plan.setupFee > 0 ? `+ ₹${plan.setupFee} one-time onboarding` : "Zero setup fee"}
-                    </div>
+                    {/* Lineage / Setup Fee Tag */}
+                    {plan.poweredBy ? (
+                      <div className="mt-1.5 text-[9px] font-extrabold text-orange-800 bg-orange-50 px-2 py-0.5 rounded-md border border-orange-200">
+                        {plan.poweredBy}
+                      </div>
+                    ) : (
+                      <div className="mt-1.5 text-[10px] font-medium text-slate-400">
+                        {plan.setupFee > 0 ? `+ ₹${plan.setupFee} setup fee` : "Zero setup fee"}
+                      </div>
+                    )}
 
-                    <div className="my-5 h-px w-full bg-slate-100" />
+                    <div className="my-4 h-px w-full bg-slate-100" />
 
                     {/* Perks List */}
-                    <ul className="space-y-2.5 mb-6 text-xs text-slate-700 font-medium">
+                    <ul className="space-y-2 mb-5 text-[11px] text-slate-700 font-medium">
                       {plan.perks.map((perk, i) => (
-                        <li key={i} className="flex items-start gap-2">
+                        <li key={i} className="flex items-start gap-1.5">
                           <div className="mt-0.5 rounded-full p-0.5 bg-emerald-100 text-emerald-700 shrink-0">
-                            <Check className="w-3 h-3" />
+                            <Check className="w-2.5 h-2.5" />
                           </div>
-                          <span>{perk}</span>
+                          <span className="leading-tight">{perk}</span>
                         </li>
                       ))}
                     </ul>
@@ -1189,21 +1464,23 @@ export default function Landing() {
                   <div className="space-y-2 pt-2">
                     <Button
                       onClick={() => nav(`/subscribe?plan=${plan.id}`)}
-                      className={`w-full h-11 rounded-full text-xs font-black active:scale-95 transition-all shadow-md flex items-center justify-center gap-1.5 ${
+                      className={`w-full h-10 rounded-full text-xs font-black active:scale-95 transition-all shadow-md flex items-center justify-center gap-1.5 ${
                         plan.id === "pro"
                           ? "bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-amber-400/20"
+                          : plan.id === "cafe"
+                          ? "bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-slate-950 shadow-orange-500/20"
                           : plan.popular
                           ? "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20"
                           : "bg-slate-900 hover:bg-slate-800 text-white"
                       }`}
                     >
                       <span>Choose {plan.name}</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <ArrowRight className="w-3 h-3" />
                     </Button>
 
                     <Link
                       to={plan.route}
-                      className="w-full h-9 rounded-full text-[11px] font-bold text-slate-600 hover:text-blue-600 hover:bg-slate-100 flex items-center justify-center transition-colors"
+                      className="w-full h-8 rounded-full text-[10px] font-bold text-slate-600 hover:text-blue-600 hover:bg-slate-100 flex items-center justify-center transition-colors"
                     >
                       Plan Details →
                     </Link>

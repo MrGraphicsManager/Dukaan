@@ -27,6 +27,7 @@ import {
 export const PLAN_RANK = {
   starter: 1,
   business: 2,
+  cafe: 2.5,
   premium: 3,
   pro: 4,
 };
@@ -62,6 +63,26 @@ const TIER_PLANS = [
       "Udhaar & WhatsApp 1-Tap Reminders",
       "Low Stock Automated Alerts",
       "Daily & Monthly Sales Analytics"
+    ]
+  },
+  {
+    id: "cafe",
+    name: "Cafe Plan",
+    price: 149,
+    originalPrice: 199,
+    discount: "Save 25%",
+    setup: 0,
+    badge: "NexoraOS",
+    is_cafe: true,
+    features: [
+      "POS & Quick Table Billing",
+      "Table Management & Status",
+      "Kitchen Order Tickets (KOT)",
+      "Digital Menu & QR Ordering",
+      "Basic Stock & Recipe Inventory",
+      "Staff Accounts & Waiter Roles",
+      "Sales & Food Cost Reports",
+      "Powered by NexoraOS (by PEAN)"
     ]
   },
   {
@@ -529,7 +550,7 @@ export default function Billing() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
           {TIER_PLANS.map((plan) => {
             const isCurrent = currentPlanId === plan.id;
             const cardRank = PLAN_RANK[plan.id] || 0;
@@ -540,9 +561,11 @@ export default function Billing() {
             return (
               <div
                 key={plan.id}
-                className={`rounded-3xl p-6 sm:p-7 border-2 transition-all flex flex-col justify-between relative ${
+                className={`rounded-3xl p-5 sm:p-6 border-2 transition-all flex flex-col justify-between relative ${
                   plan.is_pro
                     ? "bg-gradient-to-br from-[#1E1B4B] via-[#2A2375] to-[#1E3A8A] text-white border-indigo-400/60 shadow-xl ring-2 ring-indigo-400/20"
+                    : plan.is_cafe
+                    ? "bg-gradient-to-br from-[#451a03] via-[#78350f] to-[#9a3412] text-white border-amber-500/60 shadow-xl ring-2 ring-amber-500/20"
                     : plan.featured 
                     ? "bg-brand-indigo text-white border-brand-indigo shadow-xl" 
                     : "bg-white text-brand-indigo border-brand-mitti shadow-xs"
@@ -553,6 +576,11 @@ export default function Billing() {
                     {plan.badge}
                   </div>
                 )}
+                {plan.is_cafe && (
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 text-[10px] font-black uppercase tracking-widest px-3.5 py-1 rounded-full shadow-md flex items-center gap-1 whitespace-nowrap">
+                    ☕ NexoraOS Special
+                  </div>
+                )}
                 {plan.is_pro && (
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 text-[10px] font-black uppercase tracking-widest px-3.5 py-1 rounded-full shadow-md flex items-center gap-1 whitespace-nowrap">
                     <Sparkles className="w-3 h-3 text-slate-950" /> Flagship Plan
@@ -561,7 +589,7 @@ export default function Billing() {
 
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <span className={`text-xs font-bold uppercase tracking-wider ${plan.is_pro ? "text-amber-300" : "text-brand-terracotta"}`}>
+                    <span className={`text-xs font-bold uppercase tracking-wider ${plan.is_pro ? "text-amber-300" : plan.is_cafe ? "text-amber-300" : "text-brand-terracotta"}`}>
                       {plan.name}
                     </span>
                     {isCurrent ? (
@@ -580,7 +608,7 @@ export default function Billing() {
                     {plan.originalPrice && (
                       <span className="text-sm line-through text-slate-400 font-semibold">₹{plan.originalPrice}</span>
                     )}
-                    <span className={`text-xs font-medium ${plan.is_pro ? "text-white/70" : plan.featured ? "text-white/60" : "text-brand-indigo/50"}`}>
+                    <span className={`text-xs font-medium ${plan.is_pro || plan.is_cafe ? "text-white/70" : plan.featured ? "text-white/60" : "text-brand-indigo/50"}`}>
                       /month
                     </span>
                   </div>
@@ -596,18 +624,18 @@ export default function Billing() {
                         {plan.offerBadge}
                       </span>
                     )}
-                    <span className={`text-[11px] font-medium ${plan.is_pro ? "text-white/70" : plan.featured ? "text-white/60" : "text-brand-indigo/50"}`}>
+                    <span className={`text-[11px] font-medium ${plan.is_pro || plan.is_cafe ? "text-white/70" : plan.featured ? "text-white/60" : "text-brand-indigo/50"}`}>
                       {plan.setup > 0 ? `+ ₹${plan.setup} setup` : "Zero setup fee"}
                     </span>
                   </div>
 
-                  <div className={`h-px w-full my-4 ${plan.is_pro ? "bg-white/15" : plan.featured ? "bg-white/15" : "bg-brand-mitti"}`} />
+                  <div className={`h-px w-full my-4 ${plan.is_pro || plan.is_cafe ? "bg-white/15" : plan.featured ? "bg-white/15" : "bg-brand-mitti"}`} />
 
                   <ul className="space-y-3 mb-8 text-xs font-medium">
                     {plan.features.map((feat, i) => (
                       <li key={i} className="flex items-start gap-2.5">
-                        <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${plan.is_pro ? "text-amber-300" : plan.featured ? "text-brand-terracotta" : "text-emerald-600"}`} />
-                        <span className={plan.is_pro ? "text-white/95" : plan.featured ? "text-white/90" : "text-brand-indigo/80"}>{feat}</span>
+                        <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${plan.is_pro || plan.is_cafe ? "text-amber-300" : plan.featured ? "text-brand-terracotta" : "text-emerald-600"}`} />
+                        <span className={plan.is_pro || plan.is_cafe ? "text-white/95" : plan.featured ? "text-white/90" : "text-brand-indigo/80"}>{feat}</span>
                       </li>
                     ))}
                   </ul>
@@ -619,6 +647,8 @@ export default function Billing() {
                   className={`w-full h-12 rounded-2xl font-bold text-xs shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1.5 ${
                     plan.is_pro
                       ? "bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-black"
+                      : plan.is_cafe
+                      ? "bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-500 hover:to-orange-500 text-slate-950 font-black"
                       : isCurrent
                       ? "bg-brand-terracotta hover:bg-brand-terracotta/90 text-white"
                       : isUpgrade

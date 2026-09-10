@@ -90,6 +90,7 @@ let globalPlatformConfig = {
   pricing: {
     starter: { monthly: 79, yearly: 799 },
     business: { monthly: 119, yearly: 1199 },
+    cafe: { monthly: 149, yearly: 1199 },
     premium: { monthly: 239, yearly: 2239 },
     pro: { monthly: 499, yearly: 4999 }
   },

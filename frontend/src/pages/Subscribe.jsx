@@ -36,6 +36,7 @@ import PremiumOnboarding, { EMPTY_PREMIUM_ONBOARDING } from "@/components/Premiu
 export const PLAN_RANK = {
   starter: 1,
   business: 2,
+  cafe: 2.5,
   premium: 3,
   pro: 4,
 };
@@ -87,6 +88,32 @@ const PLANS = {
     limitations: [
       "Single Shop Location only"
     ]
+  },
+  cafe: {
+    id: "cafe",
+    name: "Cafe Plan",
+    tagline: "For Cafes, Bakeries, Food Trucks & Quick Bites",
+    setup: 0,
+    monthly: 149,
+    original_monthly: 199,
+    annual: 1199,
+    original_annual: 1788,
+    discount: "Save 33%",
+    trial_days: 30,
+    badge: "NexoraOS",
+    poweredBy: "Powered by NexoraOS (A Product by PEAN)",
+    is_cafe: true,
+    features: [
+      "POS & Quick Table Billing",
+      "Live Table Management & Status",
+      "Kitchen Order Tickets (KOT)",
+      "Digital Menu & QR Ordering",
+      "Basic Stock & Recipe Inventory",
+      "Staff Accounts & Waiter Roles",
+      "Daily Food Cost & Sales Reports",
+      "Powered by NexoraOS · by PEAN"
+    ],
+    limitations: []
   },
   premium: { 
     id: "premium",
@@ -216,6 +243,12 @@ export default function Subscribe() {
         monthly: base.business.monthly,
         annual: (cfgPricing.business?.yearly && cfgPricing.business.yearly !== 9990) ? cfgPricing.business.yearly : base.business.annual,
         trial_days: base.business.trial_days
+      },
+      cafe: {
+        ...base.cafe,
+        monthly: (cfgPricing.cafe?.monthly) ? cfgPricing.cafe.monthly : base.cafe.monthly,
+        annual: (cfgPricing.cafe?.yearly) ? cfgPricing.cafe.yearly : base.cafe.annual,
+        trial_days: base.cafe.trial_days
       },
       premium: {
         ...base.premium,
@@ -1030,9 +1063,9 @@ export default function Subscribe() {
         </motion.div>
 
         {/* =========================================================
-            4 PLAN TIERS GRID (September 2026 Updated)
+            5 PLAN TIERS GRID (September 2026 Updated)
         ========================================================= */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 items-stretch">
           {Object.entries(effectivePlans).map(([key, value], index) => {
             const isSelected = selected === key;
             const isFeatured = value.featured;
@@ -1057,15 +1090,19 @@ export default function Subscribe() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.08, duration: 0.4 }}
                 whileHover={{ y: -6 }}
-                className={`relative rounded-3xl p-6 md:p-7 border-2 transition-all flex flex-col justify-between ${
+                className={`relative rounded-3xl p-5 md:p-6 border-2 transition-all flex flex-col justify-between ${
                   isSelected
                     ? key === "pro"
                       ? "border-purple-600 bg-white shadow-2xl ring-2 ring-purple-500/30 cursor-pointer"
+                      : key === "cafe"
+                      ? "border-amber-500 bg-white shadow-2xl ring-2 ring-amber-500/30 cursor-pointer"
                       : "border-brand-terracotta bg-white shadow-xl ring-2 ring-brand-terracotta/20 cursor-pointer"
                     : isDowngrade
                     ? "border-amber-300 bg-gradient-to-b from-white via-white to-amber-50/20 shadow-xs hover:border-amber-400 cursor-pointer"
                     : key === "pro"
                     ? "border-purple-300 bg-gradient-to-b from-white via-white to-purple-50/30 shadow-md hover:border-purple-500 cursor-pointer"
+                    : key === "cafe"
+                    ? "border-amber-300 bg-gradient-to-b from-white via-white to-amber-50/30 shadow-md hover:border-amber-500 cursor-pointer"
                     : isFeatured
                     ? "border-brand-indigo/30 bg-white shadow-md hover:border-brand-indigo cursor-pointer"
                     : "border-brand-mitti bg-white shadow-xs hover:border-brand-indigo/30 cursor-pointer"
@@ -1096,6 +1133,12 @@ export default function Subscribe() {
                   </span>
                 )}
 
+                {key === "cafe" && !isCurrentActivePlan && !isDowngrade && (
+                  <span className="absolute -top-3.5 right-4 inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-md border border-amber-300">
+                    ☕ NexoraOS
+                  </span>
+                )}
+
                 {key === "premium" && !isCurrentActivePlan && !isDowngrade && (
                   <span className="absolute -top-3.5 right-4 inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider bg-amber-500 text-white shadow-sm">
                     <Crown className="w-3 h-3" /> Multi-Shop
@@ -1104,7 +1147,7 @@ export default function Subscribe() {
 
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className={`text-xs uppercase tracking-widest font-extrabold ${key === "pro" ? "text-purple-700" : "text-brand-terracotta"}`}>
+                    <span className={`text-xs uppercase tracking-widest font-extrabold ${key === "pro" ? "text-purple-700" : key === "cafe" ? "text-amber-700" : "text-brand-terracotta"}`}>
                       {value.name} Tier
                     </span>
                     {isSelected && !isDowngrade && (
@@ -1249,6 +1292,21 @@ export default function Subscribe() {
                         </p>
                       </div>
                     )}
+
+                    {/* Official NexoraOS Cafe Showcase */}
+                    {key === "cafe" && (
+                      <div className="mt-3 p-3 rounded-2xl bg-gradient-to-br from-amber-50 via-orange-50/50 to-amber-100/40 border border-amber-300/70 shadow-xs">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-[9px] font-mono font-extrabold uppercase tracking-wider text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            ☕ NexoraOS Suite
+                          </span>
+                          <span className="text-[9px] font-bold text-amber-700">by PEAN</span>
+                        </div>
+                        <p className="text-[10px] text-amber-950 font-semibold text-center mt-1 leading-tight">
+                          Table management, KOTs, digital menu & staff roles.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1290,7 +1348,11 @@ export default function Subscribe() {
                       onClick={handleCardClick}
                       className={`w-full h-12 rounded-2xl font-bold text-xs shadow-xs active:scale-95 transition-all ${
                         isSelected
-                          ? "bg-brand-terracotta hover:bg-brand-terracotta/90 text-white"
+                          ? key === "cafe"
+                            ? "bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white shadow-md"
+                            : key === "pro"
+                            ? "bg-purple-700 hover:bg-purple-800 text-white shadow-md"
+                            : "bg-brand-terracotta hover:bg-brand-terracotta/90 text-white shadow-md"
                           : "bg-brand-sand hover:bg-brand-mitti text-brand-indigo border border-brand-mitti"
                       }`}
                     >

@@ -159,7 +159,7 @@ async def get_current_user(request: Request) -> dict:
     return await _get_current_user(request)
 
 
-PLAN_TIER = {"starter": 1, "business": 2, "premium": 3}
+PLAN_TIER = {"starter": 1, "business": 2, "cafe": 2.5, "premium": 3, "pro": 4}
 
 
 async def _active_sub(user_id: str) -> Optional[dict]:
@@ -357,13 +357,13 @@ class UdhaarPaymentIn(BaseModel):
     note: Optional[str] = ""
 
 class SubscriptionSubmitIn(BaseModel):
-    plan: Literal["starter", "business", "premium"]
+    plan: Literal["starter", "business", "cafe", "premium", "pro"]
     upi_ref: str = Field(min_length=3)
     payer_name: Optional[str] = ""
     screenshot_data_url: Optional[str] = ""
 
 class RazorpayOrderIn(BaseModel):
-    plan: Literal["starter","business","premium"]
+    plan: Literal["starter", "business", "cafe", "premium", "pro"]
     renew: bool = False
 
 class RazorpayVerifyIn(BaseModel):
@@ -386,7 +386,7 @@ class GSTReviewIn(BaseModel):
 
 
 class TrialStartIn(BaseModel):
-    plan: Literal["starter", "business", "premium"]
+    plan: Literal["starter", "business", "cafe", "premium", "pro"]
 
 class PremiumSettingsIn(BaseModel):
     gst_enabled: bool = False
@@ -395,9 +395,11 @@ class PremiumSettingsIn(BaseModel):
     store_active: bool = True
 
 PLANS = {
-    "starter":  {"name": "Starter",  "setup": 299, "monthly": 99, "trial_days": 90},
-    "business": {"name": "Business", "setup": 499, "monthly": 149, "trial_days": 60},
-    "premium":  {"name": "Premium",  "setup": 999, "monthly": 299, "trial_days": 30},
+    "starter":  {"name": "Starter",   "setup": 299, "monthly": 79,  "trial_days": 90},
+    "business": {"name": "Business",  "setup": 499, "monthly": 119, "trial_days": 60},
+    "cafe":     {"name": "Cafe Plan", "setup": 0,   "monthly": 149, "trial_days": 30},
+    "premium":  {"name": "Premium",   "setup": 999, "monthly": 239, "trial_days": 30},
+    "pro":      {"name": "Dukaan Pro","setup": 0,   "monthly": 499, "trial_days": 14},
 }
 
 
@@ -1101,8 +1103,8 @@ async def admin_grant_subscription(payload: AdminGrantPayload, admin: dict = Dep
         raise HTTPException(404, f"No user found with email {email}")
 
     plan_key = payload.plan.lower()
-    if plan_key not in ["starter", "business", "premium"]:
-        raise HTTPException(400, "Invalid plan. Choose starter, business, or premium.")
+    if plan_key not in ["starter", "business", "cafe", "premium", "pro"]:
+        raise HTTPException(400, "Invalid plan. Choose starter, business, cafe, premium, or pro.")
 
     days = max(1, min(payload.days, 3650))
     now = datetime.now(timezone.utc)
