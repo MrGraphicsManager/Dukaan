@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { t } from "@/lib/i18n";
-import { LayoutDashboard, Receipt, Package, Warehouse, Users, Wallet, ClipboardList, BarChart3, Settings as Cog, LogOut, Store, CreditCard, ShieldCheck, ShieldAlert, Lock, Monitor, Bell, CheckCheck, AlertTriangle, X, RotateCw, Eye, Menu, ChevronRight, Sparkles, Sun, Moon, ShoppingBag, Search, ChevronDown } from "lucide-react";
+import { LayoutDashboard, Receipt, Package, Warehouse, Users, Wallet, ClipboardList, BarChart3, Settings as Cog, LogOut, Store, CreditCard, ShieldCheck, ShieldAlert, Lock, Monitor, Bell, CheckCheck, AlertTriangle, X, RotateCw, Eye, Menu, ChevronRight, Sparkles, Sun, Moon, ShoppingBag, Search, ChevronDown, Headphones } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { PLAN_TIER, ROUTE_PLAN } from "@/components/SubGate";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
@@ -590,15 +590,15 @@ export default function AppLayout() {
           )}
         </nav>
 
-        {/* Bottom Store Card (Matching Screenshot) */}
-        <div className="p-3 border-t border-slate-100 dark:border-slate-800">
+        {/* Bottom Store Card & Need Help Card (Matching Screenshot) */}
+        <div className="p-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
           <div className="flex items-center gap-3 p-2 rounded-xl bg-slate-50/70 dark:bg-slate-800/40">
             <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center text-white shrink-0">
               <Store className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                {activeShop?.name || user?.store_name || user?.name || "Shree Kirana Store"}
+                {activeShop?.name || user?.store_name || user?.name || "Priyen's Store"}
               </div>
               <button
                 onClick={() => nav("/app/settings?tab=shop")}
@@ -607,6 +607,23 @@ export default function AppLayout() {
                 <span>View Profile</span>
                 <span>→</span>
               </button>
+            </div>
+          </div>
+
+          <div
+            onClick={() => nav("/app/settings?tab=support")}
+            className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+          >
+            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <Headphones className="w-4 h-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
+                Need Help?
+              </div>
+              <div className="text-[11px] text-slate-400 font-medium">
+                Chat with support
+              </div>
             </div>
           </div>
         </div>

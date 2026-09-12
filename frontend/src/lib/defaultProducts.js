@@ -7,7 +7,8 @@ export const DEFAULT_PRODUCTS = [
     purchase_price: 210,
     stock: 24,
     min_stock: 5,
-    unlimited_stock: false
+    unlimited_stock: false,
+    image_url: "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=400&q=80"
   },
   {
     id: "prod_2",
@@ -17,7 +18,8 @@ export const DEFAULT_PRODUCTS = [
     purchase_price: 128,
     stock: 18,
     min_stock: 6,
-    unlimited_stock: false
+    unlimited_stock: false,
+    image_url: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=400&q=80"
   },
   {
     id: "prod_3",
@@ -27,7 +29,8 @@ export const DEFAULT_PRODUCTS = [
     purchase_price: 24,
     stock: 35,
     min_stock: 10,
-    unlimited_stock: false
+    unlimited_stock: false,
+    image_url: "https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=400&q=80"
   },
   {
     id: "prod_4",
@@ -37,7 +40,8 @@ export const DEFAULT_PRODUCTS = [
     purchase_price: 22,
     stock: 40,
     min_stock: 8,
-    unlimited_stock: false
+    unlimited_stock: false,
+    image_url: "https://images.unsplash.com/photo-1518110925495-5fe2fda0442c?auto=format&fit=crop&w=400&q=80"
   },
   {
     id: "prod_5",
@@ -47,7 +51,8 @@ export const DEFAULT_PRODUCTS = [
     purchase_price: 25,
     stock: 50,
     min_stock: 10,
-    unlimited_stock: false
+    unlimited_stock: false,
+    image_url: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=400&q=80"
   },
   {
     id: "prod_6",
@@ -57,7 +62,8 @@ export const DEFAULT_PRODUCTS = [
     purchase_price: 11,
     stock: 60,
     min_stock: 15,
-    unlimited_stock: false
+    unlimited_stock: false,
+    image_url: "https://images.unsplash.com/photo-1612927601601-6638404737ce?auto=format&fit=crop&w=400&q=80"
   },
   {
     id: "prod_7",
@@ -67,7 +73,8 @@ export const DEFAULT_PRODUCTS = [
     purchase_price: 72,
     stock: 15,
     min_stock: 4,
-    unlimited_stock: false
+    unlimited_stock: false,
+    image_url: "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&w=400&q=80"
   },
   {
     id: "prod_8",
@@ -77,7 +84,8 @@ export const DEFAULT_PRODUCTS = [
     purchase_price: 225,
     stock: 12,
     min_stock: 5,
-    unlimited_stock: false
+    unlimited_stock: false,
+    image_url: "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=400&q=80"
   },
   {
     id: "prod_9",

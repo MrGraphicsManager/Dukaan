@@ -66,9 +66,11 @@ import {
   Bell,
   Play,
   Crown,
+  Image as ImageIcon,
   X
 } from "lucide-react";
 import { playVoiceSoundbox } from "@/lib/soundbox";
+import { getLibraryImages, saveLibraryImage, deleteLibraryImage } from "@/lib/productImageLibrary";
 
 /* =========================================================
    AUDIO & SYNTHESIS HELPERS (Features #2 & #6)
@@ -239,6 +241,18 @@ export default function AdminSubscriptions() {
   const [proVoiceTesting, setProVoiceTesting] = useState(false);
   const [proVoiceLang, setProVoiceLang] = useState("hi");
   const [proPinDemo, setProPinDemo] = useState(["5", "2", "9", "1"]);
+
+  // Feature #46: Master Product Image Library (Admin Catalog Management)
+  const [adminImages, setAdminImages] = useState(() => getLibraryImages());
+  const [adminImageSearch, setAdminImageSearch] = useState("");
+  const [adminImageCategory, setAdminImageCategory] = useState("all");
+  const [adminImageModal, setAdminImageModal] = useState({
+    open: false,
+    name: "",
+    category: "Kirana & Grains",
+    url: "",
+    tags: ""
+  });
 
   // Feature #6: Hardware Soundbox & Standees
   const [soundboxDevices, setSoundboxDevices] = useState([]);
@@ -2431,6 +2445,7 @@ export default function AdminSubscriptions() {
             {[
               { id: "overview", label: "Executive Overview & Pulse", icon: Activity },
               { id: "pro", label: `Dukaan Pro Studio (${rows.filter(r => (r.plan || "").toLowerCase() === "pro" || (r.status === "active" && r.plan === "pro")).length})`, icon: Sparkles },
+              { id: "library", label: `Product Image Library (${adminImages.length})`, icon: ImageIcon },
               { id: "users", label: `Merchants & Leaderboard (${usersList.length})`, icon: Users },
               { id: "monetization", label: `Monetization, Plans & Coupons (${rows.length})`, icon: CreditCard },
               { id: "careers", label: `Hiring & Job Applications (${jobApplications.length})`, icon: Briefcase },
@@ -3184,6 +3199,183 @@ export default function AdminSubscriptions() {
                 </div>
 
               </div>
+
+            </div>
+          )}
+
+          {/* TAB 1.6: DUKAAN MASTER PRODUCT IMAGE LIBRARY (ADMIN CONTROL) */}
+          {activeTab === "library" && (
+            <div className="space-y-6 animate-fade-up">
+              
+              {/* Header Card */}
+              <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
+                      <ImageIcon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold font-display text-white flex items-center gap-2">
+                        <span>Master Product Image Library</span>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                          PRO MERCHANTS EXCLUSIVE
+                        </span>
+                      </h2>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Curate and publish official FMCG packaging images. Pro merchants use these images for instant visual POS checkout.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Button
+                    onClick={() => setAdminImageModal({
+                      open: true,
+                      name: "",
+                      category: "Kirana & Grains",
+                      url: "",
+                      tags: ""
+                    })}
+                    className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs h-10 px-4 shadow-md flex items-center gap-1.5"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add New Product Image</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Filter & Search Bar */}
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
+                  <Input
+                    value={adminImageSearch}
+                    onChange={(e) => setAdminImageSearch(e.target.value)}
+                    placeholder="Search images by name, brand, or tag (e.g. Atta, Fortune, Amul, Parle)..."
+                    className="pl-9 h-10 rounded-xl bg-slate-900 border-slate-800 text-xs text-white placeholder:text-slate-500"
+                  />
+                </div>
+
+                <Select value={adminImageCategory} onValueChange={setAdminImageCategory}>
+                  <SelectTrigger className="w-full sm:w-56 h-10 rounded-xl bg-slate-900 border-slate-800 text-xs text-slate-300">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                    <SelectItem value="all">All Categories ({adminImages.length})</SelectItem>
+                    <SelectItem value="Kirana & Grains">Kirana & Grains</SelectItem>
+                    <SelectItem value="Edible Oil & Ghee">Edible Oil & Ghee</SelectItem>
+                    <SelectItem value="Dairy & Eggs">Dairy & Eggs</SelectItem>
+                    <SelectItem value="Biscuits & Snacks">Biscuits & Snacks</SelectItem>
+                    <SelectItem value="Spices & Masala">Spices & Masala</SelectItem>
+                    <SelectItem value="Beverages & Tea">Beverages & Tea</SelectItem>
+                    <SelectItem value="Personal Care & Household">Personal Care & Household</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Images Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {adminImages
+                  .filter(img => {
+                    const matchesCategory = adminImageCategory === "all" || img.category === adminImageCategory;
+                    if (!matchesCategory) return false;
+                    if (!adminImageSearch.trim()) return true;
+                    const query = adminImageSearch.toLowerCase().trim();
+                    return (
+                      img.name.toLowerCase().includes(query) ||
+                      img.category?.toLowerCase().includes(query) ||
+                      (img.tags || []).some(t => t.toLowerCase().includes(query))
+                    );
+                  })
+                  .map(img => (
+                    <div
+                      key={img.id}
+                      className="group relative rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-blue-500/50 p-3.5 flex flex-col justify-between transition-all duration-200 hover:shadow-lg"
+                    >
+                      <div className="space-y-2.5">
+                        {/* Image Preview Box */}
+                        <div className="w-full h-32 rounded-xl bg-slate-950 p-2 border border-slate-800/80 flex items-center justify-center overflow-hidden">
+                          <img
+                            src={img.url}
+                            alt={img.name}
+                            className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = "https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&auto=format&fit=crop&q=60";
+                            }}
+                          />
+                        </div>
+
+                        <div>
+                          <h4 className="font-bold text-xs text-white line-clamp-1 group-hover:text-blue-400 transition-colors" title={img.name}>
+                            {img.name}
+                          </h4>
+                          <span className="inline-block mt-1 text-[10px] font-medium text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/50">
+                            {img.category}
+                          </span>
+                        </div>
+
+                        {img.tags && img.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {img.tags.slice(0, 3).map(tag => (
+                              <span key={tag} className="text-[9px] text-slate-500 font-mono">
+                                #{tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(img.url);
+                            toast.success("Image URL copied to clipboard!");
+                          }}
+                          className="text-[10px] text-slate-400 hover:text-blue-400 transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <Copy className="w-3 h-3" />
+                          <span>Copy URL</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm(`Delete "${img.name}" from the master image library?`)) {
+                              deleteLibraryImage(img.id);
+                              setAdminImages(getLibraryImages());
+                              toast.success(`Removed ${img.name} from library`);
+                            }
+                          }}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 transition-colors cursor-pointer"
+                          title="Delete image"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+
+              {adminImages.filter(img => {
+                const matchesCategory = adminImageCategory === "all" || img.category === adminImageCategory;
+                if (!matchesCategory) return false;
+                if (!adminImageSearch.trim()) return true;
+                const query = adminImageSearch.toLowerCase().trim();
+                return (
+                  img.name.toLowerCase().includes(query) ||
+                  img.category?.toLowerCase().includes(query) ||
+                  (img.tags || []).some(t => t.toLowerCase().includes(query))
+                );
+              }).length === 0 && (
+                <div className="py-16 text-center rounded-3xl bg-slate-950 border border-slate-800 text-slate-500 text-xs">
+                  No images found matching your search. Click "+ Add New Product Image" above to upload or link an image.
+                </div>
+              )}
 
             </div>
           )}
@@ -5291,6 +5483,126 @@ export default function AdminSubscriptions() {
       <footer className="border-t border-slate-800 bg-slate-950 py-4 px-6 text-center text-xs font-mono text-slate-500">
         Dukaan OS Master Executive Console • Authorized Access Only • Single Approved ID: {ADMIN_EMAIL}
       </footer>
+
+      {/* MODAL: MASTER PRODUCT IMAGE LIBRARY - ADD IMAGE */}
+      <Dialog open={adminImageModal.open} onOpenChange={(open) => setAdminImageModal(prev => ({ ...prev, open }))}>
+        <DialogContent className="max-w-lg rounded-3xl p-6 bg-slate-950 border-2 border-slate-800 text-white">
+          <DialogHeader>
+            <DialogTitle className="font-display text-lg text-white flex items-center gap-2">
+              <ImageIcon className="w-5 h-5 text-blue-400" />
+              <span>Add New Image to Master Library</span>
+            </DialogTitle>
+            <p className="text-xs text-slate-400">
+              Publish authentic FMCG brand packaging photos accessible to all Dukaan Pro merchants.
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-4 my-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-300">Product / Brand Name *</Label>
+              <Input
+                value={adminImageModal.name}
+                onChange={(e) => setAdminImageModal(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g. Tata Tea Premium 500g, MDH Haldi Powder 100g..."
+                className="h-10 rounded-xl bg-slate-900 border-slate-800 text-xs text-white"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-300">Category *</Label>
+              <Select
+                value={adminImageModal.category}
+                onValueChange={(cat) => setAdminImageModal(prev => ({ ...prev, category: cat }))}
+              >
+                <SelectTrigger className="h-10 rounded-xl bg-slate-900 border-slate-800 text-xs text-slate-300">
+                  <SelectValue placeholder="Select Category" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                  <SelectItem value="Kirana & Grains">Kirana & Grains</SelectItem>
+                  <SelectItem value="Edible Oil & Ghee">Edible Oil & Ghee</SelectItem>
+                  <SelectItem value="Dairy & Eggs">Dairy & Eggs</SelectItem>
+                  <SelectItem value="Biscuits & Snacks">Biscuits & Snacks</SelectItem>
+                  <SelectItem value="Spices & Masala">Spices & Masala</SelectItem>
+                  <SelectItem value="Beverages & Tea">Beverages & Tea</SelectItem>
+                  <SelectItem value="Personal Care & Household">Personal Care & Household</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-300">Image URL (Direct link to PNG, WebP or JPG) *</Label>
+              <Input
+                value={adminImageModal.url}
+                onChange={(e) => setAdminImageModal(prev => ({ ...prev, url: e.target.value }))}
+                placeholder="https://images.unsplash.com/... or https://..."
+                className="h-10 rounded-xl bg-slate-900 border-slate-800 text-xs text-white"
+              />
+            </div>
+
+            {/* Live Preview */}
+            {adminImageModal.url && (
+              <div className="p-3 rounded-2xl bg-slate-900 border border-slate-800 flex items-center gap-3">
+                <div className="w-16 h-16 rounded-xl bg-slate-950 p-1 flex items-center justify-center border border-slate-800 overflow-hidden shrink-0">
+                  <img
+                    src={adminImageModal.url}
+                    alt="Preview"
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                    }}
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-bold text-white truncate">{adminImageModal.name || "Product Name"}</div>
+                  <div className="text-[10px] text-slate-400">{adminImageModal.category}</div>
+                  <div className="text-[10px] text-emerald-400 font-mono mt-0.5">Live image preview ready</div>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-300">Tags (comma-separated)</Label>
+              <Input
+                value={adminImageModal.tags}
+                onChange={(e) => setAdminImageModal(prev => ({ ...prev, tags: e.target.value }))}
+                placeholder="e.g. tea, tata, beverage, 500g"
+                className="h-10 rounded-xl bg-slate-900 border-slate-800 text-xs text-white"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="mt-4 gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => setAdminImageModal(prev => ({ ...prev, open: false }))}
+              className="rounded-xl text-xs text-slate-400 hover:text-white"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!adminImageModal.name.trim() || !adminImageModal.url.trim()) {
+                  toast.error("Please provide both Product Name and Image URL.");
+                  return;
+                }
+                const tagsArr = adminImageModal.tags.split(",").map(t => t.trim()).filter(Boolean);
+                saveLibraryImage({
+                  name: adminImageModal.name.trim(),
+                  category: adminImageModal.category,
+                  url: adminImageModal.url.trim(),
+                  tags: tagsArr
+                });
+                setAdminImages(getLibraryImages());
+                setAdminImageModal({ open: false, name: "", category: "Kirana & Grains", url: "", tags: "" });
+                toast.success(`Published "${adminImageModal.name}" to Master Library!`);
+              }}
+              className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs h-10 px-5 shadow-md"
+            >
+              Save & Publish Image
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* MODAL: FEATURE #3 CREATE PROMO / COUPON CODE */}
       <Dialog open={promoModal.open} onOpenChange={o => !o && setPromoModal(prev => ({ ...prev, open: false }))}>
