@@ -445,36 +445,43 @@ export default function Settings({ initialTab }) {
   const referralCode = `DUK-${(user?.name || "SHOP").replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 4) || "DUK"}${String(user?.id || "99").slice(-3)}`;
 
   return (
-    <div className="space-y-8 animate-fade-up max-w-[1200px] mx-auto pb-16 font-sans selection:bg-brand-terracotta/20">
+    <div className="space-y-8 animate-fade-up max-w-[1200px] mx-auto pb-16 font-sans">
       
       {/* =========================================================
-          HERO BANNER
+          HERO BANNER (DUKAAN 3.0 MODERN DARK GRADIENT)
       ========================================================= */}
-      <div className="bg-gradient-to-r from-brand-indigo via-[#261E7A] to-brand-indigo text-white p-7 md:p-8 rounded-3xl shadow-lg border-2 border-brand-indigo/40 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
-        <div className="absolute -right-16 -top-16 w-64 h-64 bg-brand-terracotta/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 dark:from-slate-950 dark:via-indigo-950/80 dark:to-slate-950 border border-slate-800 p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xl">
+        <div className="absolute -right-16 -top-16 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-brand-terracotta flex items-center justify-center shrink-0 shadow-md">
+          <div className="w-13 h-13 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shrink-0 text-blue-400">
             {activeTab === "account" ? (
-              <User className="w-7 h-7 text-white" />
+              <User className="w-7 h-7" />
             ) : activeTab === "pro" ? (
               <Sparkles className="w-7 h-7 text-amber-300" />
             ) : (
-              <Store className="w-7 h-7 text-white" />
+              <Store className="w-7 h-7" />
             )}
           </div>
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs uppercase tracking-widest text-white/60 font-semibold font-mono">
+              <span className="text-[11px] uppercase tracking-wider text-slate-400 font-bold font-mono">
                 {activeTab === "account" ? "MERCHANT ACCOUNT" : activeTab === "pro" ? "DUKAAN PRO STUDIO" : "STORE MANAGEMENT"}
               </span>
-              <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-xs font-bold text-white">
+              <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-[11px] font-bold text-blue-300 border border-blue-500/30">
                 {user?.is_admin ? "Admin Account" : isPro ? "Dukaan Pro Merchant" : "Verified Account"}
               </span>
             </div>
             <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight text-white">
               {activeTab === "account" ? "My Account & Profile" : activeTab === "pro" ? "Dukaan Pro Flagship Studio" : "Shop & Business Settings"}
             </h1>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {activeTab === "account" 
+                ? "Manage personal profile, login security, referral rewards, and membership."
+                : activeTab === "pro"
+                ? "Customize your brand logo, invoice templates, and store aesthetics."
+                : "Manage branch locations, UPI QR stand, custom domain, and GST compliance."}
+            </p>
           </div>
         </div>
 
@@ -484,7 +491,7 @@ export default function Settings({ initialTab }) {
             <Button
               disabled={busyShop}
               onClick={saveShop}
-              className="h-12 px-7 rounded-2xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-sm shadow-md active:scale-95 transition-all flex items-center gap-2"
+              className="h-11 px-6 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
             >
               <Save className="w-4 h-4" />
               <span>{busyShop ? "Saving…" : "Save Shop Changes"}</span>
@@ -492,7 +499,7 @@ export default function Settings({ initialTab }) {
           ) : activeTab === "pro" ? (
             <Button
               onClick={() => nav("/subscribe?plan=pro")}
-              className="h-12 px-7 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-extrabold text-sm shadow-md active:scale-95 transition-all flex items-center gap-2"
+              className="h-11 px-6 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs shadow-md active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
             >
               <Crown className="w-4 h-4" />
               <span>{isPro ? "Manage Pro Plan" : "14-Day Free Pro Upgrade"}</span>
@@ -501,7 +508,7 @@ export default function Settings({ initialTab }) {
             <Button
               disabled={savingProfile}
               onClick={handleSaveProfile}
-              className="h-12 px-7 rounded-2xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-sm shadow-md active:scale-95 transition-all flex items-center gap-2"
+              className="h-11 px-6 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
             >
               <Save className="w-4 h-4" />
               <span>{savingProfile ? "Saving…" : "Save Profile"}</span>
@@ -513,13 +520,13 @@ export default function Settings({ initialTab }) {
       {/* =========================================================
           TAB NAVIGATION SWITCHER
       ========================================================= */}
-      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-white border-2 border-brand-mitti shadow-xs max-w-2xl overflow-x-auto">
+      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs max-w-2xl overflow-x-auto scrollbar-none">
         <button
           onClick={() => setTab("account")}
-          className={`flex-1 py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 ${
+          className={`flex-1 py-2 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
             activeTab === "account"
-              ? "bg-brand-indigo text-white shadow-xs"
-              : "text-brand-indigo/60 hover:text-brand-indigo hover:bg-brand-sand/50"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
           }`}
         >
           <User className="w-3.5 h-3.5" />
@@ -527,10 +534,10 @@ export default function Settings({ initialTab }) {
         </button>
         <button
           onClick={() => setTab("shop")}
-          className={`flex-1 py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 ${
+          className={`flex-1 py-2 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
             activeTab === "shop"
-              ? "bg-brand-indigo text-white shadow-xs"
-              : "text-brand-indigo/60 hover:text-brand-indigo hover:bg-brand-sand/50"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
           }`}
         >
           <Store className="w-3.5 h-3.5" />
@@ -538,21 +545,21 @@ export default function Settings({ initialTab }) {
         </button>
         <button
           onClick={() => setTab("pro")}
-          className={`flex-1 py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 ${
+          className={`flex-1 py-2 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
             activeTab === "pro"
-              ? "bg-gradient-to-r from-purple-700 to-indigo-700 text-white shadow-md border border-purple-400"
-              : "text-purple-700 hover:text-purple-900 hover:bg-purple-50 font-extrabold"
+              ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md"
+              : "text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40"
           }`}
         >
-          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
           <span>Dukaan Pro Studio</span>
         </button>
         <button
           onClick={() => setTab("support")}
-          className={`flex-1 py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 ${
+          className={`flex-1 py-2 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer ${
             activeTab === "support"
-              ? "bg-brand-indigo text-white shadow-xs"
-              : "text-brand-indigo/60 hover:text-brand-indigo hover:bg-brand-sand/50"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
           }`}
         >
           <HelpCircle className="w-3.5 h-3.5" />
@@ -565,19 +572,19 @@ export default function Settings({ initialTab }) {
       ========================================================= */}
       {activeTab === "account" && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             
             {/* Card 1: User Profile */}
-            <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-xs space-y-5">
-              <div className="flex items-center gap-2 pb-3 border-b border-brand-mitti">
-                <User className="w-4 h-4 text-brand-terracotta" />
-                <h3 className="font-heading font-bold text-base text-brand-indigo">Personal Profile Details</h3>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-heading font-bold text-base text-slate-900 dark:text-white">Personal Profile Details</h3>
               </div>
 
               {/* Avatar section */}
               <div className="flex items-center gap-4">
                 <div className="relative">
-                  <div className="w-20 h-20 rounded-2xl bg-brand-sand border-2 border-brand-mitti overflow-hidden grid place-items-center font-heading font-bold text-2xl text-brand-indigo shadow-xs">
+                  <div className="w-20 h-20 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden grid place-items-center font-heading font-bold text-2xl text-slate-900 dark:text-white shadow-xs">
                     {profileAvatar ? (
                       <img src={profileAvatar} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
@@ -587,7 +594,7 @@ export default function Settings({ initialTab }) {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-brand-terracotta text-white grid place-items-center shadow-md hover:bg-brand-terracotta/90 transition-all cursor-pointer"
+                    className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-blue-600 text-white grid place-items-center shadow-md hover:bg-blue-500 transition-all cursor-pointer"
                     title="Upload Photo"
                   >
                     <Camera className="w-3.5 h-3.5" />
@@ -602,13 +609,13 @@ export default function Settings({ initialTab }) {
                 </div>
 
                 <div>
-                  <div className="font-heading font-bold text-sm text-brand-indigo">Profile Photo</div>
-                  <div className="text-xs text-brand-indigo/50 mt-0.5">Click the camera icon to upload a picture</div>
+                  <div className="font-heading font-bold text-sm text-slate-900 dark:text-white">Profile Photo</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Click camera icon to change avatar</div>
                   {profileAvatar && (
                     <button
                       type="button"
                       onClick={() => setProfileAvatar("")}
-                      className="text-[11px] text-red-600 font-semibold hover:underline mt-1 block"
+                      className="text-[11px] text-rose-600 font-semibold hover:underline mt-1 block cursor-pointer"
                     >
                       Remove photo
                     </button>
@@ -617,39 +624,39 @@ export default function Settings({ initialTab }) {
               </div>
 
               <div>
-                <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Full Name *</Label>
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Full Name *</Label>
                 <Input
                   value={profileName}
                   onChange={(e) => setProfileName(e.target.value)}
                   placeholder="e.g. Ramesh Kumar"
-                  className="mt-1 h-11 rounded-xl border-brand-mitti font-semibold"
+                  className="mt-1 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-semibold"
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Registered Email</Label>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Registered Email</Label>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                     <CheckCircle2 className="w-3 h-3" /> Verified
                   </span>
                 </div>
                 <Input
                   value={user?.email || ""}
                   disabled
-                  className="mt-1 h-11 rounded-xl border-brand-mitti bg-slate-50 font-mono text-xs text-slate-600 cursor-not-allowed"
+                  className="mt-1 h-10 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 font-mono text-xs text-slate-500 cursor-not-allowed"
                 />
-                <span className="text-[11px] text-brand-indigo/50 mt-1 block">
+                <span className="text-[11px] text-slate-400 mt-1 block">
                   Email is your unique login credential and cannot be changed directly.
                 </span>
               </div>
 
               <div>
-                <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Phone Number</Label>
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Phone Number</Label>
                 <Input
                   value={profilePhone}
                   onChange={(e) => setProfilePhone(e.target.value)}
                   placeholder="e.g. 9825100000"
-                  className="mt-1 h-11 rounded-xl border-brand-mitti font-mono"
+                  className="mt-1 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono"
                 />
               </div>
 
@@ -657,7 +664,7 @@ export default function Settings({ initialTab }) {
                 <Button
                   disabled={savingProfile}
                   onClick={handleSaveProfile}
-                  className="w-full h-11 rounded-xl bg-brand-indigo hover:bg-brand-indigo/90 text-white font-bold text-xs shadow-xs"
+                  className="w-full h-10 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-xs cursor-pointer"
                 >
                   {savingProfile ? "Saving Profile…" : "Save Profile Details"}
                 </Button>
@@ -665,26 +672,26 @@ export default function Settings({ initialTab }) {
             </div>
 
             {/* Card 2: Security & Password */}
-            <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-xs space-y-5">
-              <div className="flex items-center gap-2 pb-3 border-b border-brand-mitti">
-                <KeyRound className="w-4 h-4 text-brand-terracotta" />
-                <h3 className="font-heading font-bold text-base text-brand-indigo">Account Security & Password</h3>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <KeyRound className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-heading font-bold text-base text-slate-900 dark:text-white">Account Security & Password</h3>
               </div>
 
               <div>
-                <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Current Password *</Label>
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Current Password *</Label>
                 <div className="relative mt-1">
                   <Input
                     type={showCurrentPw ? "text" : "password"}
                     value={currentPw}
                     onChange={(e) => setCurrentPw(e.target.value)}
                     placeholder="Enter your current password"
-                    className="h-11 rounded-xl border-brand-mitti pr-10 font-mono"
+                    className="h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white pr-10 font-mono"
                   />
                   <button
                     type="button"
                     onClick={() => setShowCurrentPw(!showCurrentPw)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-indigo/40 hover:text-brand-indigo"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                   >
                     {showCurrentPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -692,19 +699,19 @@ export default function Settings({ initialTab }) {
               </div>
 
               <div>
-                <Label className="text-xs font-bold text-brand-indigo/70 uppercase">New Password *</Label>
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">New Password *</Label>
                 <div className="relative mt-1">
                   <Input
                     type={showNewPw ? "text" : "password"}
                     value={newPw}
                     onChange={(e) => setNewPw(e.target.value)}
                     placeholder="Minimum 8 characters with symbol & number"
-                    className="h-11 rounded-xl border-brand-mitti pr-10 font-mono"
+                    className="h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white pr-10 font-mono"
                   />
                   <button
                     type="button"
                     onClick={() => setShowNewPw(!showNewPw)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-indigo/40 hover:text-brand-indigo"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                   >
                     {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -712,31 +719,31 @@ export default function Settings({ initialTab }) {
               </div>
 
               <div>
-                <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Confirm New Password *</Label>
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Confirm New Password *</Label>
                 <Input
                   type="password"
                   value={confirmPw}
                   onChange={(e) => setConfirmPw(e.target.value)}
                   placeholder="Re-enter new password"
-                  className="mt-1 h-11 rounded-xl border-brand-mitti font-mono"
+                  className="mt-1 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono"
                 />
               </div>
 
               {/* Password strength checklist */}
-              <div className="p-3.5 rounded-2xl bg-brand-sand/50 border border-brand-mitti/60 text-xs space-y-1 text-brand-indigo/80 font-medium">
-                <div className="font-bold text-[11px] uppercase tracking-wider text-brand-indigo/60 mb-1">
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs space-y-1 font-medium">
+                <div className="font-bold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
                   Password Requirements:
                 </div>
-                <div className={`flex items-center gap-1.5 ${newPw.length >= 8 ? "text-emerald-600 font-bold" : "text-brand-indigo/50"}`}>
+                <div className={`flex items-center gap-1.5 ${newPw.length >= 8 ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-slate-400"}`}>
                   <CheckCircle2 className="w-3 h-3" /> Minimum 8 characters
                 </div>
-                <div className={`flex items-center gap-1.5 ${/[A-Z]/.test(newPw) ? "text-emerald-600 font-bold" : "text-brand-indigo/50"}`}>
+                <div className={`flex items-center gap-1.5 ${/[A-Z]/.test(newPw) ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-slate-400"}`}>
                   <CheckCircle2 className="w-3 h-3" /> At least 1 uppercase letter (A-Z)
                 </div>
-                <div className={`flex items-center gap-1.5 ${/[0-9]/.test(newPw) ? "text-emerald-600 font-bold" : "text-brand-indigo/50"}`}>
+                <div className={`flex items-center gap-1.5 ${/[0-9]/.test(newPw) ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-slate-400"}`}>
                   <CheckCircle2 className="w-3 h-3" /> At least 1 number (0-9)
                 </div>
-                <div className={`flex items-center gap-1.5 ${/[!@#$%^&*(),.?":{}|<>\-_+=\[\]\\/`~]/.test(newPw) ? "text-emerald-600 font-bold" : "text-brand-indigo/50"}`}>
+                <div className={`flex items-center gap-1.5 ${/[!@#$%^&*(),.?":{}|<>\-_+=\[\]\\/`~]/.test(newPw) ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-slate-400"}`}>
                   <CheckCircle2 className="w-3 h-3" /> At least 1 special symbol (!@#$...)
                 </div>
               </div>
@@ -745,7 +752,7 @@ export default function Settings({ initialTab }) {
                 <Button
                   disabled={savingPw}
                   onClick={handleChangePassword}
-                  className="w-full h-11 rounded-xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-xs shadow-xs"
+                  className="w-full h-10 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-xs cursor-pointer"
                 >
                   {savingPw ? "Updating Password…" : "Update Password"}
                 </Button>
@@ -755,15 +762,15 @@ export default function Settings({ initialTab }) {
           </div>
 
           {/* Card 3: Membership & Subscription Overview */}
-          <div className="bg-gradient-to-br from-amber-50/80 via-white to-amber-50/40 rounded-3xl p-6 md:p-8 border-2 border-amber-300/60 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div className="space-y-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-200/80 text-amber-900 text-xs font-bold uppercase tracking-wider">
-                <Crown className="w-3.5 h-3.5 text-amber-800" /> Active Membership
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-bold uppercase tracking-wider border border-amber-500/20">
+                <Crown className="w-3.5 h-3.5 text-amber-500" /> Active Membership
               </div>
-              <h3 className="font-display text-2xl font-bold text-brand-indigo">
+              <h3 className="font-display text-2xl font-bold text-slate-900 dark:text-white">
                 {sub?.plan ? `${sub.plan.toUpperCase()} PLAN` : "STARTER PLAN"} {sub?.is_trial ? "(Free Trial)" : ""}
               </h3>
-              <p className="text-xs text-brand-indigo/70 max-w-xl leading-relaxed">
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xl leading-relaxed">
                 {isSubActive ? (
                   <span>
                     Your subscription is currently <b>active</b>. 
@@ -771,7 +778,7 @@ export default function Settings({ initialTab }) {
                     {sub?.expires_at && ` Renews / expires on ${new Date(sub.expires_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}.`}
                   </span>
                 ) : (
-                  <span>You are currently on the trial or free tier. Upgrade to unlock full multi-shop, khata, and WhatsApp soundbox features.</span>
+                  <span>You are currently on the trial or free tier. Upgrade to unlock full multi-shop, khata, and soundbox features.</span>
                 )}
               </p>
             </div>
@@ -780,42 +787,42 @@ export default function Settings({ initialTab }) {
               <Button
                 variant="outline"
                 onClick={() => nav("/app/billing")}
-                className="rounded-xl border-brand-mitti text-brand-indigo font-bold text-xs h-11 px-5 hover:bg-white"
+                className="rounded-xl border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs h-10 px-4 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >
                 View Invoices & Billing
               </Button>
               <Button
                 onClick={() => nav("/subscribe")}
-                className="rounded-xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-xs h-11 px-6 shadow-sm flex items-center gap-1.5"
+                className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs h-10 px-5 shadow-xs flex items-center gap-1.5 cursor-pointer"
               >
-                <Sparkles className="w-3.5 h-3.5" />
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                 <span>Upgrade / Change Plan</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Button>
             </div>
           </div>
 
-          {/* Card 4: Merchant Partner & Referral Program (Feature #20) */}
-          <div className="bg-gradient-to-br from-amber-500/10 via-amber-100/30 to-amber-500/10 rounded-3xl p-6 border-2 border-amber-300 shadow-xs space-y-4">
+          {/* Card 4: Merchant Partner & Referral Program */}
+          <div className="bg-amber-50/60 dark:bg-amber-950/20 rounded-2xl p-6 border border-amber-300/60 dark:border-amber-700/40 shadow-2xs space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white grid place-items-center shadow-sm">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-white grid place-items-center shadow-xs">
                   <Gift className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-heading font-bold text-base text-amber-950">Merchant Partner & Referral Program (Feature #20)</h3>
-                  <p className="text-xs text-amber-800">Earn 30 days of free subscription for every retail store you refer to Dukaan!</p>
+                  <h3 className="font-heading font-bold text-base text-slate-900 dark:text-white">Merchant Referral Program</h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">Earn 30 days of free subscription for every retail store you refer to Dukaan!</p>
                 </div>
               </div>
-              <span className="text-[11px] font-mono font-bold bg-amber-200 text-amber-900 px-3 py-1 rounded-full border border-amber-300">
+              <span className="text-[11px] font-mono font-bold bg-amber-200/80 dark:bg-amber-900/50 text-amber-900 dark:text-amber-300 px-3 py-1 rounded-full border border-amber-300 dark:border-amber-700">
                 30 Days Free / Referral
               </span>
             </div>
 
-            <div className="p-4 bg-white rounded-2xl border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-amber-200 dark:border-amber-700/50 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
                 <div className="text-[10px] uppercase font-bold text-slate-400">Your Exclusive Merchant Referral Code</div>
-                <div className="text-2xl font-black font-mono tracking-widest text-brand-indigo">{referralCode}</div>
+                <div className="text-2xl font-black font-mono tracking-widest text-slate-900 dark:text-white">{referralCode}</div>
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -825,7 +832,7 @@ export default function Settings({ initialTab }) {
                     navigator.clipboard.writeText(referralCode);
                     toast.success("Referral code copied to clipboard!");
                   }}
-                  className="rounded-xl border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs h-10 px-4 flex items-center gap-1.5"
+                  className="rounded-xl border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 text-amber-900 dark:text-amber-200 font-bold text-xs h-9 px-3 flex items-center gap-1.5 cursor-pointer"
                 >
                   <Copy className="w-3.5 h-3.5" /> Copy Code
                 </Button>
@@ -836,7 +843,7 @@ export default function Settings({ initialTab }) {
                 >
                   <Button
                     size="sm"
-                    className="rounded-xl bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold text-xs h-10 px-4 flex items-center gap-1.5 shadow-sm"
+                    className="rounded-xl bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold text-xs h-9 px-4 flex items-center gap-1.5 shadow-xs cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5" /> Share on WhatsApp
                   </Button>
@@ -846,10 +853,10 @@ export default function Settings({ initialTab }) {
           </div>
 
           {/* Logout / Session Box */}
-          <div className="bg-white rounded-3xl p-6 border-2 border-red-200 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-rose-500/20 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <div className="font-heading font-bold text-sm text-red-900">Sign Out of Account</div>
-              <div className="text-xs text-red-700/70 mt-0.5">End your current session on this device safely.</div>
+              <div className="font-heading font-bold text-sm text-slate-900 dark:text-white">Sign Out of Account</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">End your current session on this device safely.</div>
             </div>
             <Button
               variant="outline"
@@ -857,7 +864,7 @@ export default function Settings({ initialTab }) {
                 await logout();
                 nav("/");
               }}
-              className="border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400 font-bold text-xs rounded-xl h-10 px-5 flex items-center gap-1.5"
+              className="border-rose-300 dark:border-rose-800/60 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 font-bold text-xs rounded-xl h-9 px-4 flex items-center gap-1.5 cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>Log Out</span>
@@ -873,16 +880,16 @@ export default function Settings({ initialTab }) {
         <div className="space-y-6">
           
           {/* Multi-shop branch switcher */}
-          <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xs">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <span className="text-xs uppercase font-bold tracking-wider text-brand-indigo/50">Branches</span>
-                <h3 className="font-display text-xl font-bold text-brand-indigo mt-0.5">Your Dukaan Locations</h3>
+                <span className="text-xs uppercase font-bold tracking-wider text-slate-400">Branches</span>
+                <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white mt-0.5">Your Dukaan Locations</h3>
               </div>
               <Button
                 variant="outline"
                 onClick={() => setCreating(prev => !prev)}
-                className="rounded-full border-brand-mitti hover:border-brand-indigo text-brand-indigo text-xs font-bold h-9"
+                className="rounded-xl border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold h-9 px-3 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5 mr-1" /> {creating ? "Close" : "Add Branch"}
               </Button>
@@ -896,26 +903,26 @@ export default function Settings({ initialTab }) {
                   <div
                     key={s.id}
                     onClick={() => setActiveShop(s.id)}
-                    className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${
+                    className={`p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
                       isActive 
-                        ? "bg-brand-sand border-brand-terracotta shadow-xs" 
-                        : "bg-white border-brand-mitti hover:border-brand-indigo/30"
+                        ? "bg-blue-50/80 dark:bg-blue-950/30 border-blue-500/60 shadow-xs" 
+                        : "bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 hover:border-slate-300"
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-xl grid place-items-center font-bold text-xs ${
-                        isActive ? "bg-brand-terracotta text-white" : "bg-brand-sand text-brand-indigo"
+                        isActive ? "bg-blue-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
                       }`}>
                         <Store className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="font-heading font-bold text-sm text-brand-indigo">{s.name}</div>
-                        <div className="text-[11px] text-brand-indigo/50">{s.phone || "No phone"}</div>
+                        <div className="font-heading font-bold text-sm text-slate-900 dark:text-white">{s.name}</div>
+                        <div className="text-[11px] text-slate-400">{s.phone || "No phone"}</div>
                       </div>
                     </div>
 
                     {isActive && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-terracotta text-white">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-600 text-white">
                         Active
                       </span>
                     )}
@@ -926,26 +933,26 @@ export default function Settings({ initialTab }) {
 
             {/* Create new shop branch inline */}
             {creating && (
-              <div className="mt-5 p-5 rounded-2xl bg-brand-sand border border-brand-mitti space-y-3">
-                <h4 className="font-heading font-bold text-sm text-brand-indigo">Create New Shop Location</h4>
+              <div className="mt-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+                <h4 className="font-heading font-bold text-sm text-slate-900 dark:text-white">Create New Shop Location</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Input
                     placeholder="New Shop Name (e.g. Dukaan Branch 2)"
                     value={newForm.name}
                     onChange={(e) => setNewForm({ ...newForm, name: e.target.value })}
-                    className="bg-white border-brand-mitti rounded-xl"
+                    className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl"
                   />
                   <Input
                     placeholder="Phone Number"
                     value={newForm.phone}
                     onChange={(e) => setNewForm({ ...newForm, phone: e.target.value })}
-                    className="bg-white border-brand-mitti rounded-xl"
+                    className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl"
                   />
                 </div>
                 <Button 
                   disabled={busyShop}
                   onClick={createShop} 
-                  className="rounded-xl bg-brand-terracotta text-white text-xs font-bold"
+                  className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 cursor-pointer"
                 >
                   {busyShop ? "Saving…" : "Save New Branch"}
                 </Button>
@@ -954,34 +961,34 @@ export default function Settings({ initialTab }) {
           </div>
 
           {/* Shop Details Forms */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             
             {/* Card 1: Identity & Contact */}
-            <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-xs space-y-4">
-              <div className="flex items-center gap-2 pb-3 border-b border-brand-mitti">
-                <Building2 className="w-4 h-4 text-brand-terracotta" />
-                <h3 className="font-heading font-bold text-base text-brand-indigo">Shop Profile</h3>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <Building2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-heading font-bold text-base text-slate-900 dark:text-white">Shop Profile</h3>
               </div>
 
               <div>
-                <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Shop Name *</Label>
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Shop Name *</Label>
                 <Input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="mt-1 h-11 rounded-xl border-brand-mitti font-semibold"
+                  className="mt-1 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-semibold"
                 />
               </div>
 
               <div>
-                <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Store Category & Industry</Label>
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Store Category & Industry</Label>
                 <Select
                   value={form.store_category || "General Departmental Store"}
                   onValueChange={(val) => setForm({ ...form, store_category: val })}
                 >
-                  <SelectTrigger className="mt-1 h-11 rounded-xl border-brand-mitti font-semibold bg-white">
+                  <SelectTrigger className="mt-1 h-10 rounded-xl border-slate-200 dark:border-slate-700 font-semibold bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white">
                     <SelectValue placeholder="Select Business Type" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                     {STORE_CATEGORIES.map(cat => (
                       <SelectItem key={cat} value={cat}>
                         {cat}
@@ -990,84 +997,84 @@ export default function Settings({ initialTab }) {
                   </SelectContent>
                 </Select>
                 {((form.store_category || "").toLowerCase().includes("medical") || (form.store_category || "").toLowerCase().includes("pharmacy")) && (
-                  <div className="mt-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-start gap-2">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <div className="mt-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-700 dark:text-emerald-300 flex items-start gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                     <span>
-                      <b>Medical Store & Pharmacy detected:</b> With Dukaan Premium, Batch Number & Expiry Date Alert Guard (Feature #45) is activated for your inventory & POS.
+                      <b>Medical Store & Pharmacy detected:</b> Batch Number & Expiry Date Alert Guard is activated for your inventory & POS.
                     </span>
                   </div>
                 )}
               </div>
 
               <div>
-                <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Owner Name</Label>
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Owner Name</Label>
                 <Input
                   value={form.owner_name}
                   onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
-                  className="mt-1 h-11 rounded-xl border-brand-mitti font-semibold"
+                  className="mt-1 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-semibold"
                 />
               </div>
 
               <div>
-                <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Contact Phone Number</Label>
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Contact Phone Number</Label>
                 <Input
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  className="mt-1 h-11 rounded-xl border-brand-mitti font-mono"
+                  className="mt-1 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono"
                 />
               </div>
 
               <div>
-                <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Shop Address & City</Label>
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Shop Address & City</Label>
                 <Textarea
                   value={form.address}
                   onChange={(e) => setForm({ ...form, address: e.target.value })}
                   rows={3}
                   placeholder="e.g. Shop #12, Market Yard, Ahmedabad"
-                  className="mt-1 rounded-xl border-brand-mitti resize-none text-sm"
+                  className="mt-1 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white resize-none text-sm"
                 />
               </div>
             </div>
 
             {/* Card 2: UPI QR & Invoicing */}
-            <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-xs space-y-4">
-              <div className="flex items-center gap-2 pb-3 border-b border-brand-mitti">
-                <QrCode className="w-4 h-4 text-brand-terracotta" />
-                <h3 className="font-heading font-bold text-base text-brand-indigo">UPI & Billing Settings</h3>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <QrCode className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-heading font-bold text-base text-slate-900 dark:text-white">UPI & Billing Settings</h3>
               </div>
 
               <div>
-                <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Shop UPI ID (for QR Generation)</Label>
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Shop UPI ID (for QR Generation)</Label>
                 <Input
                   value={form.upi_id}
                   onChange={(e) => setForm({ ...form, upi_id: e.target.value })}
                   placeholder="e.g. 9825100000@okaxis"
-                  className="mt-1 h-11 rounded-xl border-brand-mitti font-mono font-bold"
+                  className="mt-1 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono font-bold"
                 />
-                <span className="text-[11px] text-brand-indigo/50 mt-1 block">
+                <span className="text-[11px] text-slate-400 mt-1 block">
                   This UPI ID will appear on counter QR stands for instant customer payments.
                 </span>
               </div>
 
               <div>
-                <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Invoice Footer Note</Label>
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Invoice Footer Note</Label>
                 <Input
                   value={form.invoice_footer}
                   onChange={(e) => setForm({ ...form, invoice_footer: e.target.value })}
                   placeholder="Thank you for shopping with us!"
-                  className="mt-1 h-11 rounded-xl border-brand-mitti"
+                  className="mt-1 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
                 />
               </div>
 
               <div>
-                <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Default Low Stock Alert Threshold</Label>
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Default Low Stock Alert Threshold</Label>
                 <Input
                   type="number"
                   value={form.min_stock_default}
                   onChange={(e) => setForm({ ...form, min_stock_default: e.target.value })}
-                  className="mt-1 h-11 rounded-xl border-brand-mitti font-mono"
+                  className="mt-1 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono"
                 />
-                <span className="text-[11px] text-brand-indigo/50 mt-1 block">
+                <span className="text-[11px] text-slate-400 mt-1 block">
                   Items will trigger low stock warning when remaining count reaches this number.
                 </span>
               </div>
@@ -1076,7 +1083,7 @@ export default function Settings({ initialTab }) {
                 <Button
                   disabled={busyShop}
                   onClick={saveShop}
-                  className="w-full h-12 rounded-2xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
+                  className="w-full h-11 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Save className="w-4 h-4" />
                   <span>{busyShop ? "Saving…" : "Save All Changes"}</span>
@@ -1086,94 +1093,94 @@ export default function Settings({ initialTab }) {
 
           </div>
 
-          {/* Card: Custom Domain & White-Label DNS (Feature #33) */}
-          <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-brand-mitti">
+          {/* Card: Custom Domain & White-Label DNS */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <Globe className="w-4 h-4 text-brand-terracotta" />
-                <h3 className="font-heading font-bold text-base text-brand-indigo">Custom Domain & White-Label DNS (Feature #33)</h3>
+                <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-heading font-bold text-base text-slate-900 dark:text-white">Custom Domain & White-Label DNS</h3>
               </div>
               <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase ${
-                domainStatus === "active" ? "bg-emerald-100 text-emerald-800" :
-                domainStatus === "pending_dns" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"
+                domainStatus === "active" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" :
+                domainStatus === "pending_dns" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
               }`}>
                 {domainStatus === "active" ? "Active (SSL Live)" :
                  domainStatus === "pending_dns" ? "Pending DNS" : "Not Connected"}
               </span>
             </div>
 
-            <p className="text-xs text-brand-indigo/70">
-              Connect your brand's custom domain (e.g. <span className="font-mono font-bold text-brand-indigo">shop.yourbrand.in</span>) so customers order directly under your private store domain with zero marketplace branding.
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Connect your brand's custom domain (e.g. <span className="font-mono font-bold text-slate-900 dark:text-white">shop.yourbrand.in</span>) so customers order directly under your private store domain with zero marketplace branding.
             </p>
 
             <div className="space-y-3">
               <div>
-                <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Your Store Domain</Label>
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Your Store Domain</Label>
                 <div className="mt-1 flex items-center gap-2">
                   <Input
                     value={customDomain}
                     onChange={(e) => setCustomDomain(e.target.value)}
                     placeholder="e.g. shop.sharmagrocery.in"
-                    className="h-11 rounded-xl border-brand-mitti font-mono text-sm"
+                    className="h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono text-sm"
                   />
                   <Button
                     disabled={savingDomain}
                     onClick={handleSaveDomain}
-                    className="h-11 px-5 rounded-xl bg-brand-indigo hover:bg-brand-indigo/90 text-white font-bold text-xs shrink-0"
+                    className="h-10 px-5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shrink-0 cursor-pointer"
                   >
                     {savingDomain ? "Saving…" : "Connect Domain"}
                   </Button>
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-brand-sand border border-brand-mitti text-[11px] text-brand-indigo/80 space-y-1 font-mono">
-                <div className="font-bold text-brand-indigo">Required DNS Settings (GoDaddy / Cloudflare / Hostinger):</div>
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-600 dark:text-slate-400 space-y-1 font-mono">
+                <div className="font-bold text-slate-900 dark:text-white">Required DNS Settings (GoDaddy / Cloudflare / Hostinger):</div>
                 <div>Type: <span className="font-bold">CNAME</span></div>
                 <div>Host / Subdomain: <span className="font-bold">shop</span> (or @)</div>
-                <div>Points to / Target: <span className="font-bold text-brand-terracotta">custom.officialdukaan.in</span></div>
+                <div>Points to / Target: <span className="font-bold text-blue-600 dark:text-blue-400">custom.officialdukaan.in</span></div>
               </div>
             </div>
           </div>
 
           {/* Card: GSTIN Compliance & Tax Invoicing */}
-          <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-brand-mitti">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-brand-terracotta" />
-                <h3 className="font-heading font-bold text-base text-brand-indigo">GST Compliance & Tax Invoicing</h3>
+                <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-heading font-bold text-base text-slate-900 dark:text-white">GST Compliance & Tax Invoicing</h3>
               </div>
               <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase ${
-                gstStatus === "approved" ? "bg-emerald-100 text-emerald-800" :
-                gstStatus === "pending" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"
+                gstStatus === "approved" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" :
+                gstStatus === "pending" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
               }`}>
                 {gstStatus === "approved" ? "Verified GSTIN 🟢" :
                  gstStatus === "pending" ? "Pending Admin Verification 🟡" : "Not Registered"}
               </span>
             </div>
 
-            <p className="text-xs text-brand-indigo/70">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Provide your 15-digit GSTIN to enable B2B tax invoicing, HSN summaries, and verified GST badge on customer bills.
             </p>
 
             <form onSubmit={handleSubmitGst} className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Legal Entity Name</Label>
+                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Legal Entity Name</Label>
                   <Input
                     value={gstLegalName}
                     onChange={(e) => setGstLegalName(e.target.value)}
                     placeholder="e.g. Ramesh Retail Traders Private Limited"
-                    className="mt-1 h-11 rounded-xl border-brand-mitti text-xs font-semibold"
+                    className="mt-1 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-semibold"
                   />
                 </div>
                 <div>
-                  <Label className="text-xs font-bold text-brand-indigo/70 uppercase">15-Digit GSTIN *</Label>
+                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">15-Digit GSTIN *</Label>
                   <Input
                     value={gstin}
                     onChange={(e) => setGstin(e.target.value.toUpperCase())}
                     placeholder="e.g. 24ABCDE1234F1Z5"
                     maxLength={15}
-                    className="mt-1 h-11 rounded-xl border-brand-mitti font-mono text-xs font-bold uppercase"
+                    className="mt-1 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono text-xs font-bold uppercase"
                   />
                 </div>
               </div>
@@ -1181,50 +1188,50 @@ export default function Settings({ initialTab }) {
               <Button
                 type="submit"
                 disabled={submittingGst || gstStatus === "approved"}
-                className="h-11 px-5 rounded-xl bg-brand-indigo hover:bg-brand-indigo/90 text-white font-bold text-xs"
+                className="h-10 px-5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs cursor-pointer"
               >
                 {submittingGst ? "Submitting Request…" : gstStatus === "approved" ? "GSTIN Verified & Locked" : "Submit for Official Verification"}
               </Button>
             </form>
           </div>
 
-          {/* Card: Hardware Soundbox Status (Feature #6) */}
-          <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-brand-mitti">
+          {/* Card: Hardware Soundbox Status */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <Radio className="w-4 h-4 text-brand-terracotta" />
-                <h3 className="font-heading font-bold text-base text-brand-indigo">Assigned Hardware Soundbox (Feature #6)</h3>
+                <Radio className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-heading font-bold text-base text-slate-900 dark:text-white">Assigned Hardware Soundbox</h3>
               </div>
               <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase ${
-                pairedSoundbox ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"
+                pairedSoundbox ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
               }`}>
                 {pairedSoundbox ? "Paired & Active 🟢" : "No Hardware Paired"}
               </span>
             </div>
 
             {pairedSoundbox ? (
-              <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <div className="text-xs font-bold text-emerald-950 flex items-center gap-2">
+                  <div className="text-xs font-bold text-emerald-950 dark:text-emerald-200 flex items-center gap-2">
                     <span>{pairedSoundbox.model || "4G 3W Audio Soundbox"}</span>
-                    <span className="text-[10px] bg-emerald-200/80 text-emerald-900 px-2 py-0.5 rounded-md font-mono">{pairedSoundbox.sim || "Jio IoT 4G"}</span>
+                    <span className="text-[10px] bg-emerald-200/80 dark:bg-emerald-900/50 text-emerald-900 dark:text-emerald-300 px-2 py-0.5 rounded-md font-mono">{pairedSoundbox.sim || "Jio IoT 4G"}</span>
                   </div>
-                  <div className="text-[11px] text-emerald-800/80 font-mono mt-0.5">
+                  <div className="text-[11px] text-emerald-800/80 dark:text-emerald-400/80 font-mono mt-0.5">
                     Serial: {pairedSoundbox.serial} · Battery: {pairedSoundbox.battery || "100%"} · Status: {pairedSoundbox.status || "Online"}
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] font-bold text-emerald-700 bg-white px-2.5 py-1 rounded-full border border-emerald-300">
+                  <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-full border border-emerald-300 dark:border-emerald-700">
                     Instant Voice Chime Ready
                   </span>
                 </div>
               </div>
             ) : (
-              <div className="p-4 rounded-2xl bg-brand-sand/50 border border-brand-mitti text-xs text-brand-indigo/70 flex items-center justify-between">
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
                 <span>No physical 4G soundbox registered yet. Contact admin support or order via Dukaan Hardware Desk.</span>
                 <a
                   href="mailto:contact@officialdukaan.in?subject=Order%20Dukaan%204G%20Soundbox"
-                  className="px-3.5 py-1.5 bg-brand-indigo text-white font-bold rounded-xl text-[11px] hover:bg-brand-indigo/90 shrink-0 ml-3"
+                  className="px-3.5 py-1.5 bg-blue-600 text-white font-bold rounded-xl text-[11px] hover:bg-blue-500 shrink-0 ml-3"
                 >
                   Order Soundbox
                 </a>
@@ -1235,49 +1242,49 @@ export default function Settings({ initialTab }) {
       )}
 
       {/* =========================================================
-          TAB 3: SUPPORT DESK & NPS FEEDBACK (Features #8 & #29)
+          TAB 3: SUPPORT DESK & NPS FEEDBACK
       ========================================================= */}
       {activeTab === "support" && (
         <div className="space-y-6 animate-fade-up">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             
-            {/* Card 1: Submit New Support Ticket (Feature #8) */}
-            <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-xs space-y-5">
-              <div className="flex items-center justify-between pb-3 border-b border-brand-mitti">
+            {/* Card 1: Submit New Support Ticket */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-brand-terracotta" />
-                  <h3 className="font-heading font-bold text-base text-brand-indigo">In-App Customer Support Desk</h3>
+                  <MessageSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <h3 className="font-heading font-bold text-base text-slate-900 dark:text-white">Customer Support Desk</h3>
                 </div>
-                <span className="text-[10px] bg-brand-indigo/10 text-brand-indigo font-bold px-2 py-0.5 rounded-full uppercase">
-                  Feature #8
+                <span className="text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold px-2 py-0.5 rounded-full uppercase border border-blue-500/20">
+                  Priority Desk
                 </span>
               </div>
 
-              <p className="text-xs text-brand-indigo/70">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Direct priority ticket channel to our master admin engineering desk. Response guaranteed within 2 hours.
               </p>
 
-              <form onSubmit={handleCreateTicket} className="space-y-4">
+              <form onSubmit={handleCreateTicket} className="space-y-3">
                 <div>
-                  <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Ticket Subject *</Label>
+                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Ticket Subject *</Label>
                   <Input
                     value={ticketForm.subject}
                     onChange={(e) => setTicketForm({ ...ticketForm, subject: e.target.value })}
                     placeholder="e.g. Printer margin adjustment in 58mm..."
-                    className="mt-1 h-11 rounded-xl border-brand-mitti text-sm"
+                    className="mt-1 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm"
                   />
                 </div>
 
                 <div>
-                  <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Urgency / Priority</Label>
+                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Urgency / Priority</Label>
                   <Select
                     value={ticketForm.priority}
                     onValueChange={(p) => setTicketForm({ ...ticketForm, priority: p })}
                   >
-                    <SelectTrigger className="mt-1 h-11 rounded-xl border-brand-mitti text-xs font-bold bg-white">
+                    <SelectTrigger className="mt-1 h-10 rounded-xl border-slate-200 dark:border-slate-700 text-xs font-bold bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white">
                       <SelectValue placeholder="Priority" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                       <SelectItem value="low">Low (General Query)</SelectItem>
                       <SelectItem value="medium">Medium (Standard Issue)</SelectItem>
                       <SelectItem value="high">High (Counter / POS Blocked)</SelectItem>
@@ -1287,64 +1294,64 @@ export default function Settings({ initialTab }) {
                 </div>
 
                 <div>
-                  <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Issue Description *</Label>
+                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Issue Description *</Label>
                   <Textarea
                     value={ticketForm.message}
                     onChange={(e) => setTicketForm({ ...ticketForm, message: e.target.value })}
                     placeholder="Describe what happened or what help you need..."
                     rows={4}
-                    className="mt-1 rounded-xl border-brand-mitti text-xs"
+                    className="mt-1 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs"
                   />
                 </div>
 
                 <Button
                   type="submit"
                   disabled={submittingTicket}
-                  className="w-full h-11 rounded-xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-xs shadow-xs"
+                  className="w-full h-10 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-xs cursor-pointer"
                 >
                   {submittingTicket ? "Submitting Ticket…" : "Submit Support Ticket"}
                 </Button>
               </form>
             </div>
 
-            {/* Card 2: Merchant Feedback & NPS Rating Wall (Feature #29) */}
-            <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-xs space-y-5">
-              <div className="flex items-center justify-between pb-3 border-b border-brand-mitti">
+            {/* Card 2: Merchant Feedback & NPS Rating Wall */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-2">
                   <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                  <h3 className="font-heading font-bold text-base text-brand-indigo">Merchant NPS Feedback Wall</h3>
+                  <h3 className="font-heading font-bold text-base text-slate-900 dark:text-white">Merchant NPS Feedback Wall</h3>
                 </div>
-                <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full uppercase">
-                  Feature #29
+                <span className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold px-2 py-0.5 rounded-full uppercase border border-amber-500/20">
+                  Reviews
                 </span>
               </div>
 
-              <p className="text-xs text-brand-indigo/70">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Rate your daily billing experience on Dukaan. Your feedback shapes our next software releases!
               </p>
 
               {feedbackSubmitted ? (
-                <div className="p-8 text-center bg-emerald-50 rounded-2xl border border-emerald-200 space-y-2">
-                  <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
-                  <div className="font-bold text-emerald-900 text-sm">Feedback Received!</div>
-                  <p className="text-xs text-emerald-700">Thank you for rating Official Dukaan. We read every review.</p>
+                <div className="p-8 text-center bg-emerald-500/10 rounded-xl border border-emerald-500/20 space-y-2">
+                  <CheckCircle2 className="w-10 h-10 text-emerald-600 dark:text-emerald-400 mx-auto" />
+                  <div className="font-bold text-slate-900 dark:text-white text-sm">Feedback Received!</div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Thank you for rating Official Dukaan. We read every review.</p>
                 </div>
               ) : (
-                <form onSubmit={handleSendFeedback} className="space-y-4">
+                <form onSubmit={handleSendFeedback} className="space-y-3">
                   <div>
-                    <Label className="text-xs font-bold text-brand-indigo/70 uppercase">How satisfied are you with Dukaan?</Label>
+                    <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">How satisfied are you with Dukaan?</Label>
                     <div className="flex items-center gap-2 mt-2">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
                           type="button"
                           key={star}
                           onClick={() => setFeedbackRating(star)}
-                          className="p-2 rounded-xl border border-brand-mitti transition-transform hover:scale-110"
+                          className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 transition-transform hover:scale-110 cursor-pointer"
                         >
-                          <Star className={`w-6 h-6 ${star <= feedbackRating ? "fill-amber-400 text-amber-400" : "text-slate-300"}`} />
+                          <Star className={`w-5 h-5 ${star <= feedbackRating ? "fill-amber-400 text-amber-400" : "text-slate-300 dark:text-slate-600"}`} />
                         </button>
                       ))}
-                      <span className="text-xs font-bold text-brand-indigo ml-2">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white ml-2">
                         {feedbackRating === 5 ? "⭐️ 5 - Exceptional" :
                          feedbackRating === 4 ? "⭐️ 4 - Very Good" :
                          feedbackRating === 3 ? "⭐️ 3 - Good" :
@@ -1354,20 +1361,20 @@ export default function Settings({ initialTab }) {
                   </div>
 
                   <div>
-                    <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Your Comments or Feature Request</Label>
+                    <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Your Comments or Feature Request</Label>
                     <Textarea
                       value={feedbackComment}
                       onChange={(e) => setFeedbackComment(e.target.value)}
                       placeholder="What do you love? What features would make your daily store operations even smoother?..."
                       rows={4}
-                      className="mt-1 rounded-xl border-brand-mitti text-xs"
+                      className="mt-1 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs"
                     />
                   </div>
 
                   <Button
                     type="submit"
                     disabled={submittingFeedback}
-                    className="w-full h-11 rounded-xl bg-brand-indigo hover:bg-brand-indigo/90 text-white font-bold text-xs shadow-xs"
+                    className="w-full h-10 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-xs cursor-pointer"
                   >
                     {submittingFeedback ? "Submitting Review…" : "Publish Feedback Review"}
                   </Button>
@@ -1378,25 +1385,25 @@ export default function Settings({ initialTab }) {
           </div>
 
           {/* Submitted Tickets History */}
-          <div className="bg-white rounded-3xl p-6 border-2 border-brand-mitti shadow-xs space-y-4">
-            <h3 className="font-heading font-bold text-base text-brand-indigo">My Support Tickets History</h3>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
+            <h3 className="font-heading font-bold text-base text-slate-900 dark:text-white">My Support Tickets History</h3>
             {tickets.length === 0 ? (
-              <div className="text-center py-8 text-xs text-brand-indigo/50">No support tickets submitted yet.</div>
+              <div className="text-center py-8 text-xs text-slate-400">No support tickets submitted yet.</div>
             ) : (
               <div className="space-y-2.5">
                 {tickets.map(t => (
-                  <div key={t.id} className="p-4 rounded-2xl bg-brand-sand/50 border border-brand-mitti flex items-start justify-between gap-4">
+                  <div key={t.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-start justify-between gap-4">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-xs text-brand-indigo">{t.id}</span>
-                        <span className="font-bold text-sm text-brand-indigo">{t.subject}</span>
+                        <span className="font-mono font-bold text-xs text-blue-600 dark:text-blue-400">{t.id}</span>
+                        <span className="font-bold text-sm text-slate-900 dark:text-white">{t.subject}</span>
                       </div>
-                      <p className="text-xs text-brand-indigo/70">{t.message}</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-300">{t.message}</p>
                       <div className="text-[10px] text-slate-400">Submitted: {new Date(t.created_at).toLocaleString("en-IN")}</div>
                     </div>
                     <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase shrink-0 ${
-                      t.status === "resolved" ? "bg-emerald-100 text-emerald-800" :
-                      t.status === "in_progress" ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800"
+                      t.status === "resolved" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" :
+                      t.status === "in_progress" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20" : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
                     }`}>
                       {t.status.replace("_", " ")}
                     </span>

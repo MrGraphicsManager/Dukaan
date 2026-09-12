@@ -55,7 +55,6 @@ import {
   FileText,
   Bookmark
 } from "lucide-react";
-import { getProductLetterBadge, findLibraryImage } from "@/lib/productImageLibrary";
 import { useTheme } from "@/contexts/ThemeContext";
 import VoiceBillingModal from "@/components/pos/VoiceBillingModal";
 import CustomerDisplayModal from "@/components/pos/CustomerDisplayModal";
@@ -63,14 +62,7 @@ import SplitPaymentModal from "@/components/pos/SplitPaymentModal";
 import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
 import { getStoredCustomers, saveStoredCustomers } from "@/pages/Customers";
 import { useAuth } from "@/lib/AuthContext";
-import { playVoiceSoundbox } from "@/lib/soundbox";
-import { findFMCGByBarcode } from "@/lib/fmcgMasterCatalog";
-import { 
-  getProBillingSettings, 
-  getProThemeSettings, 
-  saveProThemeSettings, 
-  getProLabsSettings 
-} from "@/lib/proCustomizations";
+import { getProThemeSettings } from "@/lib/proCustomizations";
 import { 
   isCashierModeActive, 
   getActiveCashierName, 
@@ -79,48 +71,48 @@ import {
 } from "@/lib/proStaffPermissions";
 
 function ProductCard({ product, inCart, isOutOfStock, onAdd, onUpdateQty }) {
-  const [imgError, setImgError] = useState(false);
-  const letterBadge = useMemo(() => getProductLetterBadge(product.name), [product.name]);
-  const displayImg = product.image_url || findLibraryImage(product.name);
-
   return (
     <div
       data-testid={`pos-product-${product.id}`}
-      className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-3 sm:p-3.5 flex flex-col justify-between hover:border-blue-200 dark:hover:border-slate-700 hover:shadow-md transition-all group select-none"
+      className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-3 sm:p-3.5 flex flex-col justify-between hover:border-blue-300 dark:hover:border-slate-700 hover:shadow-md transition-all group select-none"
     >
-      <div className="flex items-start gap-2.5">
-        {/* Product Image or Letter Badge */}
-        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700/80 p-1 flex items-center justify-center shrink-0 overflow-hidden">
-          {displayImg && !imgError ? (
-            <img
-              src={displayImg}
-              alt={product.name}
-              className="w-full h-full object-contain group-hover:scale-105 transition-transform"
-              onError={() => setImgError(true)}
-            />
-          ) : (
-            <div className={`w-full h-full rounded-lg border flex items-center justify-center font-extrabold text-lg sm:text-xl shadow-2xs ${letterBadge.bg} ${letterBadge.text} ${letterBadge.border}`}>
-              {letterBadge.letter}
-            </div>
+      <div className="space-y-1.5">
+        {/* Category Pill */}
+        <div className="flex items-center justify-between gap-1">
+          <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider truncate">
+            {product.category || "General"}
+          </span>
+          {product.barcode && (
+            <span className="text-[9px] font-mono text-slate-400 dark:text-slate-500">
+              #{product.barcode.slice(-4)}
+            </span>
           )}
         </div>
 
-        {/* Title, Price, Stock */}
-        <div className="min-w-0 flex-1">
-          <h3 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-2 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-            {product.name}
-          </h3>
-          <div className="text-sm font-extrabold text-slate-900 dark:text-white mt-1">
+        {/* Product Name */}
+        <h3 className="text-sm font-bold text-slate-900 dark:text-white line-clamp-2 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+          {product.name}
+        </h3>
+
+        {/* Price & Stock */}
+        <div className="flex items-baseline justify-between pt-1">
+          <div className="text-base font-extrabold text-slate-900 dark:text-white">
             {money(product.selling_price)}
           </div>
-          <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">
-            {product.unlimited_stock ? "In stock" : `${product.stock} left`}
-          </div>
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+            isOutOfStock
+              ? "bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400"
+              : product.stock <= (product.min_stock || 5) && !product.unlimited_stock
+              ? "bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400"
+              : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400"
+          }`}>
+            {isOutOfStock ? "Out of stock" : product.unlimited_stock ? "In stock" : `${product.stock} in stock`}
+          </span>
         </div>
       </div>
 
       {/* Action: + Add or Qty Counter */}
-      <div className="mt-3 pt-1">
+      <div className="mt-3 pt-1 border-t border-slate-100 dark:border-slate-800/80">
         {inCart ? (
           <div className="w-full h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 p-1 flex items-center justify-between text-xs font-bold text-blue-700 dark:text-blue-300">
             <button
@@ -140,15 +132,15 @@ function ProductCard({ product, inCart, isOutOfStock, onAdd, onUpdateQty }) {
             </button>
           </div>
         ) : (
-          <button
+          <Button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onAdd(); }}
+            size="sm"
             disabled={isOutOfStock}
-            className="w-full h-8 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50/70 hover:bg-blue-600 hover:text-white dark:bg-blue-950/40 dark:hover:bg-blue-600 dark:hover:text-white border border-blue-100 dark:border-blue-900/50 flex items-center justify-center gap-1 active:scale-95 transition-all disabled:opacity-40"
+            onClick={(e) => { e.stopPropagation(); onAdd(); }}
+            className="w-full h-8 rounded-xl bg-slate-900 hover:bg-blue-600 dark:bg-slate-800 dark:hover:bg-blue-600 text-white font-bold text-xs shadow-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add</span>
-          </button>
+            <span>+ Add</span>
+          </Button>
         )}
       </div>
     </div>

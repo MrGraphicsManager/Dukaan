@@ -7,6 +7,8 @@
  * 4. Shift Handover & Drawer Cash Reconciliation
  */
 
+export { getProThemeSettings } from "./proCustomizations";
+
 export const DEFAULT_STAFF_SETTINGS = {
   enabled: true,
   owner_pin: "1234",

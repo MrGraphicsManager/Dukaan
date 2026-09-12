@@ -322,37 +322,41 @@ export default function Billing() {
   const currentRank = PLAN_RANK[currentPlanId] || 2;
 
   return (
-    <div className="space-y-8 animate-fade-up max-w-[1400px] mx-auto pb-16 font-sans selection:bg-brand-terracotta/20">
+    <div className="space-y-8 animate-fade-up max-w-[1400px] mx-auto pb-16 font-sans">
       
       {/* =========================================================
-          HERO BANNER
+          HERO BANNER (DUKAAN 3.0 MODERN DARK GRADIENT)
       ========================================================= */}
-      <div className="bg-gradient-to-r from-brand-indigo via-[#261E7A] to-brand-indigo text-white p-7 md:p-8 rounded-3xl shadow-lg border-2 border-brand-indigo/40 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
-        <div className="absolute -right-16 -top-16 w-64 h-64 bg-brand-terracotta/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 dark:from-slate-950 dark:via-indigo-950/80 dark:to-slate-950 border border-slate-800 p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xl">
+        <div className="absolute -right-16 -top-16 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-brand-terracotta flex items-center justify-center shrink-0 shadow-md">
-            <CreditCard className="w-7 h-7 text-white" />
+          <div className="w-13 h-13 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shrink-0 text-blue-400">
+            <CreditCard className="w-7 h-7" />
           </div>
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs uppercase tracking-widest text-white/60 font-semibold font-mono">MEMBERSHIP</span>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-xs font-bold text-emerald-300 border border-emerald-400/30">
+              <span className="text-[11px] uppercase tracking-wider text-slate-400 font-bold font-mono">STORE MEMBERSHIP</span>
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-[11px] font-bold text-emerald-300 border border-emerald-500/30">
                 Active Subscription
               </span>
             </div>
             <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight text-white">
               Billing & Subscription Plans
             </h1>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Manage your active store license, scheduled renewals, and upgrade tier anytime.
+            </p>
           </div>
         </div>
 
         <div className="relative z-10">
           <Button
             onClick={() => nav(`/subscribe?plan=${currentPlanId}`)}
-            className="h-11 px-6 rounded-2xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-xs shadow-md active:scale-95 transition-all flex items-center gap-2"
+            className="h-11 px-5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
           >
-            <Crown className="w-4 h-4" /> Manage Subscription
+            <Crown className="w-4 h-4" />
+            <span>Manage Subscription</span>
           </Button>
         </div>
       </div>
@@ -363,15 +367,15 @@ export default function Billing() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-display text-xl font-bold text-brand-indigo flex items-center gap-2">
+            <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <span>Your Store Membership</span>
               {upcomingSub && (
-                <span className="text-xs font-mono font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                <span className="text-xs font-mono font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                   2 Plans Active & Queued
                 </span>
               )}
             </h2>
-            <p className="text-xs text-brand-indigo/60 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               {upcomingSub 
                 ? "Your currently running plan and next scheduled cycle are both confirmed below."
                 : "Active subscription details and renewal lifecycle."}
@@ -379,24 +383,24 @@ export default function Billing() {
           </div>
         </div>
 
-        <div className={`grid grid-cols-1 ${upcomingSub ? "lg:grid-cols-2" : "grid-cols-1"} gap-6`}>
+        <div className={`grid grid-cols-1 ${upcomingSub ? "lg:grid-cols-2" : "grid-cols-1"} gap-4 sm:gap-6`}>
           
           {/* -------------------------------------------------------
               CARD 1: CURRENT RUNNING PLAN
           ------------------------------------------------------- */}
-          <div className="bg-white rounded-3xl p-7 md:p-8 border-2 border-brand-mitti shadow-sm flex flex-col justify-between relative overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col justify-between relative overflow-hidden">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <Crown className="w-4 h-4 text-brand-terracotta" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-brand-terracotta">
+                  <Crown className="w-4 h-4 text-amber-500" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
                     Currently Running Plan
                   </span>
                 </div>
-                <h3 className="font-display text-3xl font-extrabold text-brand-indigo capitalize">
+                <h3 className="font-display text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white capitalize">
                   {currentPlanId} Plan
                 </h3>
-                <p className="text-xs text-brand-indigo/60 mt-1 max-w-md">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md">
                   Unlimited POS billing, customer khata ledger, and real-time inventory management active.
                 </p>
               </div>
@@ -409,20 +413,20 @@ export default function Billing() {
 
                   if (isExpired) {
                     return (
-                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-rose-100 text-rose-800 text-xs font-bold border border-rose-200">
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-bold border border-rose-500/20">
                         <AlertCircle className="w-3.5 h-3.5 text-rose-600" /> Expired
                       </span>
                     );
                   }
                   if (isExpiringSoon) {
                     return (
-                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-bold border border-amber-300">
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-bold border border-amber-500/20">
                         <Clock className="w-3.5 h-3.5 text-amber-600" /> Expiring in {daysLeft} {daysLeft === 1 ? "day" : "days"}
                       </span>
                     );
                   }
                   return (
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200">
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold border border-emerald-500/20">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Verified Active
                     </span>
                   );
@@ -430,22 +434,22 @@ export default function Billing() {
               </div>
             </div>
 
-            <div className="mt-6 pt-5 border-t border-brand-mitti grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 sm:grid-cols-3 gap-4">
               <div>
-                <div className="text-[10px] uppercase font-bold text-brand-indigo/50">Renews / Ends On</div>
-                <div className="font-heading font-extrabold text-base text-brand-indigo mt-0.5">
+                <div className="text-[10px] uppercase font-bold text-slate-400">Renews / Ends On</div>
+                <div className="font-heading font-extrabold text-base text-slate-900 dark:text-white mt-0.5">
                   {(sub?.expires_at || "2027-03-31").slice(0, 10)}
                 </div>
               </div>
               <div>
-                <div className="text-[10px] uppercase font-bold text-brand-indigo/50">Billing Cycle</div>
-                <div className="font-heading font-extrabold text-base text-brand-indigo mt-0.5 capitalize">
+                <div className="text-[10px] uppercase font-bold text-slate-400">Billing Cycle</div>
+                <div className="font-heading font-extrabold text-base text-slate-900 dark:text-white mt-0.5 capitalize">
                   {sub?.is_annual ? "Annual (365d)" : "Monthly (30d)"}
                 </div>
               </div>
               <div>
-                <div className="text-[10px] uppercase font-bold text-brand-indigo/50">Status</div>
-                <div className="font-heading font-extrabold text-base text-emerald-700 mt-0.5 flex items-center gap-1">
+                <div className="text-[10px] uppercase font-bold text-slate-400">Status</div>
+                <div className="font-heading font-extrabold text-base text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center gap-1">
                   <Check className="w-3.5 h-3.5 text-emerald-600" /> Live Serving
                 </div>
               </div>
@@ -456,30 +460,30 @@ export default function Billing() {
               CARD 2: UPCOMING SCHEDULED PLAN (PAID & CONFIRMED)
           ------------------------------------------------------- */}
           {upcomingSub && (
-            <div className="rounded-3xl p-7 md:p-8 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-emerald-500/10 border-2 border-amber-400/80 shadow-md flex flex-col justify-between relative overflow-hidden">
-              <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-amber-400/15 rounded-full blur-2xl pointer-events-none" />
+            <div className="rounded-2xl p-6 bg-amber-50/50 dark:bg-amber-950/20 border-2 border-amber-400/80 shadow-2xs flex flex-col justify-between relative overflow-hidden">
+              <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-amber-400/10 rounded-full blur-2xl pointer-events-none" />
 
               <div>
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-wider text-amber-900 bg-amber-200/80 px-2.5 py-0.5 rounded-full border border-amber-300 shadow-xs">
-                        <Clock className="w-3.5 h-3.5 text-amber-800" /> Upcoming Scheduled Plan
+                      <span className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 bg-amber-200/80 dark:bg-amber-900/50 px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-700 shadow-xs">
+                        <Clock className="w-3.5 h-3.5 text-amber-600" /> Upcoming Scheduled Plan
                       </span>
-                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
                         Paid & Confirmed
                       </span>
                     </div>
-                    <h3 className="font-display text-3xl font-extrabold text-brand-indigo capitalize">
+                    <h3 className="font-display text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white capitalize">
                       {upcomingSub.plan_name || upcomingSub.plan} Plan
                     </h3>
-                    <p className="text-xs text-brand-indigo/70 mt-1 max-w-md">
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 max-w-md">
                       Next cycle scheduled to start automatically when your current plan completes.
                     </p>
                   </div>
 
                   <div className="text-right shrink-0">
-                    <span className="text-xs font-mono font-extrabold text-brand-indigo px-3 py-1 rounded-full bg-white border border-brand-mitti shadow-xs block">
+                    <span className="text-xs font-mono font-extrabold text-slate-900 dark:text-white px-3 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs block">
                       ₹{upcomingSub.amount_paid || 499} Paid
                     </span>
                   </div>
@@ -495,22 +499,22 @@ export default function Billing() {
                   const cycles = upcomingSub.cycle_count || Math.max(1, Math.round(upcomingDays / (upcomingSub.plan === "pro" ? 60 : 30)));
 
                   return (
-                    <div className="mt-6 pt-5 border-t border-amber-300/60 grid grid-cols-2 sm:grid-cols-3 gap-4 text-left">
+                    <div className="mt-6 pt-5 border-t border-amber-300/40 grid grid-cols-2 sm:grid-cols-3 gap-4 text-left">
                       <div>
-                        <div className="text-[10px] uppercase font-bold text-brand-indigo/60">Starts On</div>
-                        <div className="font-heading font-extrabold text-base text-brand-indigo mt-0.5">
+                        <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Starts On</div>
+                        <div className="font-heading font-extrabold text-base text-slate-900 dark:text-white mt-0.5">
                           {effectiveStartsOn}
                         </div>
                       </div>
                       <div>
-                        <div className="text-[10px] uppercase font-bold text-brand-indigo/60">Valid Until</div>
-                        <div className="font-heading font-extrabold text-base text-emerald-800 mt-0.5">
+                        <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Valid Until</div>
+                        <div className="font-heading font-extrabold text-base text-emerald-600 dark:text-emerald-400 mt-0.5">
                           {effectiveValidUntil}
                         </div>
                       </div>
                       <div>
-                        <div className="text-[10px] uppercase font-bold text-brand-indigo/60">Duration</div>
-                        <div className="font-heading font-extrabold text-base text-brand-indigo mt-0.5">
+                        <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Duration</div>
+                        <div className="font-heading font-extrabold text-base text-slate-900 dark:text-white mt-0.5">
                           {cycles > 1 ? `${upcomingDays} Days (${cycles} Cycles Stacked)` : `${upcomingDays} Days`}
                         </div>
                       </div>
@@ -520,14 +524,14 @@ export default function Billing() {
               </div>
 
               {/* Instant Activation Button */}
-              <div className="mt-6 pt-5 border-t border-amber-300/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="text-[11px] text-brand-indigo/70 font-medium leading-tight">
+              <div className="mt-6 pt-5 border-t border-amber-300/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="text-[11px] text-slate-600 dark:text-slate-300 font-medium leading-tight">
                   <b>Want benefits immediately?</b> Activate now and roll over your remaining days with zero loss.
                 </div>
                 <Button
                   disabled={activating}
                   onClick={() => handleActivateNow(false)}
-                  className="h-11 px-5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-slate-950 font-black text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 shrink-0"
+                  className="h-10 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
                 >
                   <Zap className="w-4 h-4 fill-slate-950" />
                   <span>{activating ? "Activating Plan..." : "⚡ Activate Instantly Now"}</span>
@@ -546,12 +550,12 @@ export default function Billing() {
       <div>
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h2 className="font-display text-2xl font-bold text-brand-indigo">Available Subscription Tiers</h2>
-            <p className="text-sm text-brand-indigo/60 mt-0.5">Upgrade, renew, or downgrade your store plan anytime.</p>
+            <h2 className="font-display text-2xl font-bold text-slate-900 dark:text-white">Available Subscription Tiers</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Upgrade, renew, or adjust your store plan anytime.</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {TIER_PLANS.map((plan) => {
             const isCurrent = currentPlanId === plan.id;
             const cardRank = PLAN_RANK[plan.id] || 0;
@@ -562,39 +566,39 @@ export default function Billing() {
             return (
               <div
                 key={plan.id}
-                className={`rounded-3xl p-5 sm:p-6 border-2 transition-all flex flex-col justify-between relative ${
+                className={`rounded-2xl p-5 border transition-all flex flex-col justify-between relative ${
                   plan.is_pro
-                    ? "bg-gradient-to-br from-[#1E1B4B] via-[#2A2375] to-[#1E3A8A] text-white border-indigo-400/60 shadow-xl ring-2 ring-indigo-400/20"
+                    ? "bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white border-amber-400/50 shadow-xl ring-1 ring-amber-400/20"
                     : plan.is_cafe
-                    ? "bg-gradient-to-br from-[#2D1B15] via-[#3E2723] to-[#4E342E] text-white border-[#8D6E63]/60 shadow-xl ring-2 ring-[#8D6E63]/20"
+                    ? "bg-slate-900 text-white border-orange-500/30 shadow-xl"
                     : plan.featured 
-                    ? "bg-brand-indigo text-white border-brand-indigo shadow-xl" 
-                    : "bg-white text-brand-indigo border-brand-mitti shadow-xs"
+                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-2 border-blue-600 dark:border-blue-500 shadow-xl" 
+                    : "bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-200 dark:border-slate-800 shadow-2xs"
                 }`}
               >
                 {plan.featured && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-brand-terracotta text-white text-[10px] font-extrabold uppercase tracking-widest px-3.5 py-1 rounded-full shadow-sm whitespace-nowrap">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] font-extrabold uppercase tracking-widest px-3 py-0.5 rounded-full shadow-sm whitespace-nowrap">
                     {plan.badge}
                   </div>
                 )}
                 {plan.is_cafe && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#4E342E] to-[#6D4C41] text-[#FAF7F5] border border-[#8D6E63] text-[10px] font-black uppercase tracking-widest px-3.5 py-1 rounded-full shadow-md flex items-center gap-1 whitespace-nowrap">
-                    <Sparkles className="w-3 h-3 text-purple-300" /> Coming Soon · NexoraOS
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-orange-600 text-white text-[10px] font-black uppercase tracking-widest px-3 py-0.5 rounded-full shadow-md flex items-center gap-1 whitespace-nowrap">
+                    <Sparkles className="w-3 h-3" /> Coming Soon
                   </div>
                 )}
                 {plan.is_pro && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 text-[10px] font-black uppercase tracking-widest px-3.5 py-1 rounded-full shadow-md flex items-center gap-1 whitespace-nowrap">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 text-[10px] font-black uppercase tracking-widest px-3 py-0.5 rounded-full shadow-md flex items-center gap-1 whitespace-nowrap">
                     <Sparkles className="w-3 h-3 text-slate-950" /> Flagship Plan
                   </div>
                 )}
 
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <span className={`text-xs font-bold uppercase tracking-wider ${plan.is_pro ? "text-amber-300" : plan.is_cafe ? "text-[#D7CCC8]" : "text-brand-terracotta"}`}>
+                    <span className={`text-xs font-bold uppercase tracking-wider ${plan.is_pro ? "text-amber-300" : plan.is_cafe ? "text-orange-300" : "text-blue-600 dark:text-blue-400"}`}>
                       {plan.name}
                     </span>
                     {isCurrent ? (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-400/40">
                         Current Plan
                       </span>
                     ) : isQueuedNext ? (
@@ -605,38 +609,38 @@ export default function Billing() {
                   </div>
 
                   <div className="flex items-baseline gap-2 mb-1 flex-wrap">
-                    <span className="font-display text-4xl font-extrabold">₹{plan.price}</span>
+                    <span className="font-display text-3xl font-extrabold">₹{plan.price}</span>
                     {plan.originalPrice && (
                       <span className="text-sm line-through text-slate-400 font-semibold">₹{plan.originalPrice}</span>
                     )}
-                    <span className={`text-xs font-medium ${plan.is_pro || plan.is_cafe ? "text-white/70" : plan.featured ? "text-white/60" : "text-brand-indigo/50"}`}>
+                    <span className={`text-xs font-medium ${plan.is_pro || plan.is_cafe ? "text-slate-300" : "text-slate-400"}`}>
                       /month
                     </span>
                   </div>
 
                   <div className="flex items-center gap-1.5 mb-4 flex-wrap">
                     {plan.discount && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                         {plan.discount}
                       </span>
                     )}
                     {plan.offerBadge && (
-                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-purple-100 text-purple-900 border border-purple-200">
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
                         {plan.offerBadge}
                       </span>
                     )}
-                    <span className={`text-[11px] font-medium ${plan.is_pro || plan.is_cafe ? "text-white/70" : plan.featured ? "text-white/60" : "text-brand-indigo/50"}`}>
+                    <span className={`text-[11px] font-medium ${plan.is_pro || plan.is_cafe ? "text-slate-300" : "text-slate-400"}`}>
                       {plan.setup > 0 ? `+ ₹${plan.setup} setup` : "Zero setup fee"}
                     </span>
                   </div>
 
-                  <div className={`h-px w-full my-4 ${plan.is_pro || plan.is_cafe ? "bg-white/15" : plan.featured ? "bg-white/15" : "bg-brand-mitti"}`} />
+                  <div className={`h-px w-full my-4 ${plan.is_pro || plan.is_cafe ? "bg-slate-800" : "bg-slate-100 dark:bg-slate-800"}`} />
 
-                  <ul className="space-y-3 mb-8 text-xs font-medium">
+                  <ul className="space-y-2.5 mb-6 text-xs font-medium">
                     {plan.features.map((feat, i) => (
-                      <li key={i} className="flex items-start gap-2.5">
-                        <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${plan.is_pro ? "text-amber-300" : plan.is_cafe ? "text-[#D7CCC8]" : plan.featured ? "text-brand-terracotta" : "text-emerald-600"}`} />
-                        <span className={plan.is_pro || plan.is_cafe ? "text-white/95" : plan.featured ? "text-white/90" : "text-brand-indigo/80"}>{feat}</span>
+                      <li key={i} className="flex items-start gap-2">
+                        <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${plan.is_pro ? "text-amber-400" : plan.is_cafe ? "text-orange-400" : "text-blue-600 dark:text-blue-400"}`} />
+                        <span className={plan.is_pro || plan.is_cafe ? "text-slate-200" : "text-slate-700 dark:text-slate-300"}>{feat}</span>
                       </li>
                     ))}
                   </ul>
@@ -645,16 +649,16 @@ export default function Billing() {
                 {/* Dynamic Tier CTA Buttons */}
                 <Button
                   onClick={() => nav(`/subscribe?plan=${plan.id}${isCurrent ? "&renew=1" : ""}`)}
-                  className={`w-full h-12 rounded-2xl font-bold text-xs shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1.5 ${
+                  className={`w-full h-11 rounded-xl font-bold text-xs shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     plan.is_pro
                       ? "bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-black"
                       : plan.is_cafe
-                      ? "bg-gradient-to-r from-[#4E342E] to-[#6D4C41] hover:from-[#3E2723] hover:to-[#5D4037] text-white font-bold"
+                      ? "bg-orange-600 hover:bg-orange-500 text-white font-bold"
                       : isCurrent
-                      ? "bg-brand-terracotta hover:bg-brand-terracotta/90 text-white"
+                      ? "bg-blue-600 hover:bg-blue-500 text-white"
                       : isUpgrade
-                      ? "bg-brand-indigo hover:bg-brand-indigo/90 text-white"
-                      : "bg-brand-sand hover:bg-brand-mitti text-brand-indigo border border-brand-mitti"
+                      ? "bg-blue-600 hover:bg-blue-500 text-white"
+                      : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700"
                   }`}
                 >
                   {isCurrent ? (

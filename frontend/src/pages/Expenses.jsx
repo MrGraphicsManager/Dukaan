@@ -1,11 +1,16 @@
-﻿import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { 
   Plus, 
   Search, 
   CreditCard, 
   Trash2, 
   ArrowDownRight, 
-  Wallet
+  Wallet,
+  Receipt,
+  TrendingDown,
+  Calendar,
+  Layers,
+  Filter
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -18,6 +23,28 @@ const DEFAULT_EXPENSES = [
   { id: "exp-4", title: "Plastic Bags and Carry Packs", category: "Inventory", amount: 650, date: "2026-08-29", mode: "Cash", notes: "500 carry bags" },
   { id: "exp-5", title: "High-Speed Internet WiFi", category: "Utilities", amount: 799, date: "2026-08-25", mode: "UPI", notes: "Airtel fiber" },
 ];
+
+const getCategoryBadgeClass = (category) => {
+  switch (category) {
+    case "Rent": return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20";
+    case "Salary": return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20";
+    case "Inventory": return "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20";
+    case "Utilities": return "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20";
+    case "Tea / Snacks": return "bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20";
+    case "Maintenance": return "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20";
+    default: return "bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20";
+  }
+};
+
+const getPaymentModeBadgeClass = (mode) => {
+  switch (mode) {
+    case "UPI": return "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20";
+    case "Cash": return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20";
+    case "Bank Transfer": return "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20";
+    case "Card": return "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20";
+    default: return "bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20";
+  }
+};
 
 export default function Expenses() {
   const [expenses, setExpenses] = useState(() => {
@@ -105,96 +132,136 @@ export default function Expenses() {
       .reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
   }, [expenses]);
 
+  const topCategory = useMemo(() => {
+    if (expenses.length === 0) return "None";
+    const catCounts = {};
+    expenses.forEach(e => {
+      catCounts[e.category] = (catCounts[e.category] || 0) + (Number(e.amount) || 0);
+    });
+    let top = "Utilities";
+    let max = 0;
+    Object.entries(catCounts).forEach(([cat, sum]) => {
+      if (sum > max) {
+        max = sum;
+        top = cat;
+      }
+    });
+    return top;
+  }, [expenses]);
+
   return (
     <div className="space-y-6 animate-fade-up max-w-[1400px] mx-auto pb-16 font-sans">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-            Expenses & Outflow
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Track daily store expenses, rent, utilities, staff salaries, and supplier cash outflow.
-          </p>
+      {/* =========================================================
+          HERO BANNER (DUKAAN 3.0 MODERN DARK GRADIENT)
+      ========================================================= */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 dark:from-slate-950 dark:via-indigo-950/80 dark:to-slate-950 border border-slate-800 p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl">
+        <div className="absolute -right-16 -top-16 w-64 h-64 bg-rose-600/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex items-center gap-4">
+          <div className="w-13 h-13 rounded-2xl bg-rose-600/20 border border-rose-500/30 flex items-center justify-center shrink-0 text-rose-400">
+            <Receipt className="w-7 h-7" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[11px] uppercase tracking-wider text-slate-400 font-bold font-mono">STORE CASH OUTFLOW</span>
+              <span className="px-2.5 py-0.5 rounded-full bg-rose-500/20 text-[11px] font-bold text-rose-300 border border-rose-500/30">
+                Live Expenses
+              </span>
+            </div>
+            <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight text-white">
+              Expenses & Outflow
+            </h1>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Track daily store expenses, rent, utilities, staff salaries, and cash outflow with category breakdowns.
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Action Button */}
+        <div className="relative z-10 flex items-center gap-3">
           <Button
             onClick={() => setModalOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl px-4 py-2 text-sm shadow-md flex items-center gap-2"
+            className="h-11 px-5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Expense</span>
+            <span>Record Expense</span>
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-400">
-            <span>THIS MONTH EXPENSES</span>
-            <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950 text-rose-600 flex items-center justify-center">
+      {/* =========================================================
+          KPI METRIC CARDS
+      ========================================================= */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-semibold">
+            <span>This Month Expenses</span>
+            <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center">
               <ArrowDownRight className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-2">
+          <div className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">
             ₹ {thisMonthExpense.toLocaleString("en-IN")}
           </div>
-          <div className="text-xs text-rose-500 font-medium mt-1">
-            Total outflow for {new Date().toLocaleDateString("en-IN", { month: "long" })}
+          <div className="text-[11px] text-rose-500 font-semibold mt-0.5">
+            Total outflow in {new Date().toLocaleDateString("en-IN", { month: "long" })}
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-400">
-            <span>ALL-TIME RECORDED</span>
-            <div className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-950 text-purple-600 flex items-center justify-center">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-semibold">
+            <span>All-Time Recorded</span>
+            <div className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center">
               <CreditCard className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-2">
+          <div className="text-2xl font-extrabold text-purple-600 dark:text-purple-400 mt-1">
             ₹ {totalExpense.toLocaleString("en-IN")}
           </div>
-          <div className="text-xs text-slate-400 font-medium mt-1">
+          <div className="text-[11px] text-slate-400 mt-0.5">
             Across {expenses.length} recorded entries
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-400">
-            <span>TOP CATEGORY</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950 text-amber-600 flex items-center justify-center">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-semibold">
+            <span>Top Outflow Category</span>
+            <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
               <Wallet className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-2">
-            Rent & Utilities
+          <div className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">
+            {topCategory}
           </div>
-          <div className="text-xs text-slate-400 font-medium mt-1">
-            Largest monthly fixed overhead
+          <div className="text-[11px] text-slate-400 mt-0.5">
+            Highest expense category to date
           </div>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+      {/* =========================================================
+          SEARCH & CATEGORY FILTER BAR
+      ========================================================= */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
-            placeholder="Search by title or notes..."
+            placeholder="Search by title, category, notes..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+            className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
           />
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-none">
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-none">
           <button
             onClick={() => setCategoryFilter("all")}
-            className={"px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 " + (
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
               categoryFilter === "all"
-                ? "bg-blue-600 text-white"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-            )}
+                ? "bg-blue-600 text-white shadow-xs"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+            }`}
           >
             All Categories
           </button>
@@ -202,11 +269,11 @@ export default function Expenses() {
             <button
               key={c}
               onClick={() => setCategoryFilter(c)}
-              className={"px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 " + (
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 categoryFilter === c
-                  ? "bg-blue-600 text-white"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-              )}
+                  ? "bg-blue-600 text-white shadow-xs"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+              }`}
             >
               {c}
             </button>
@@ -214,34 +281,39 @@ export default function Expenses() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+      {/* =========================================================
+          EXPENSES TABLE
+      ========================================================= */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
-                <th className="py-3.5 px-5 text-xs font-semibold text-slate-400">Date</th>
-                <th className="py-3.5 px-5 text-xs font-semibold text-slate-400">Expense Title</th>
-                <th className="py-3.5 px-5 text-xs font-semibold text-slate-400">Category</th>
-                <th className="py-3.5 px-5 text-xs font-semibold text-slate-400">Payment Mode</th>
-                <th className="py-3.5 px-5 text-xs font-semibold text-slate-400">Amount</th>
-                <th className="py-3.5 px-5 text-xs font-semibold text-slate-400 text-right">Action</th>
+              <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60">
+                <th className="py-3.5 px-5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Date</th>
+                <th className="py-3.5 px-5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Expense Title</th>
+                <th className="py-3.5 px-5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Category</th>
+                <th className="py-3.5 px-5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Payment Mode</th>
+                <th className="py-3.5 px-5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Amount</th>
+                <th className="py-3.5 px-5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
               {filteredExpenses.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400 font-medium text-sm">
-                    No expense records found.
+                  <td colSpan={6} className="py-16 text-center text-slate-400">
+                    <Receipt className="w-10 h-10 mx-auto mb-2 text-slate-300 dark:text-slate-700" />
+                    <p className="font-semibold text-sm text-slate-600 dark:text-slate-400">No expense records found</p>
+                    <p className="text-xs text-slate-400 mt-1">Try another search or record a new expense.</p>
                   </td>
                 </tr>
               ) : (
                 filteredExpenses.map((exp) => (
                   <tr key={exp.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="py-3.5 px-5 text-xs text-slate-500 font-medium">
+                    <td className="py-3.5 px-5 text-xs text-slate-500 dark:text-slate-400 font-mono font-medium">
                       {exp.date}
                     </td>
                     <td className="py-3.5 px-5">
-                      <div className="font-semibold text-slate-900 dark:text-white text-sm">
+                      <div className="font-bold text-slate-900 dark:text-white text-sm">
                         {exp.title}
                       </div>
                       {exp.notes && (
@@ -251,20 +323,22 @@ export default function Expenses() {
                       )}
                     </td>
                     <td className="py-3.5 px-5">
-                      <span className="inline-block px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${getCategoryBadgeClass(exp.category)}`}>
                         {exp.category}
                       </span>
                     </td>
-                    <td className="py-3.5 px-5 text-xs text-slate-600 dark:text-slate-300 font-medium">
-                      {exp.mode}
+                    <td className="py-3.5 px-5">
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentModeBadgeClass(exp.mode)}`}>
+                        {exp.mode}
+                      </span>
                     </td>
-                    <td className="py-3.5 px-5 font-bold text-rose-600 dark:text-rose-400 text-sm">
-                      - ₹ {Number(exp.amount).toLocaleString("en-IN")}
+                    <td className="py-3.5 px-5 font-black text-rose-600 dark:text-rose-400 text-sm">
+                      - ₹{Number(exp.amount).toLocaleString("en-IN")}
                     </td>
                     <td className="py-3.5 px-5 text-right">
                       <button
                         onClick={() => handleDelete(exp.id)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors"
+                        className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
                         title="Delete expense entry"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -278,17 +352,20 @@ export default function Expenses() {
         </div>
       </div>
 
+      {/* =========================================================
+          RECORD EXPENSE MODAL
+      ========================================================= */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
+        <DialogContent className="sm:max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white">
-              Add New Store Expense
+              Record Store Expense
             </DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleAddExpense} className="space-y-4 py-2">
             <div>
-              <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                 Expense Title / Description *
               </label>
               <input
@@ -297,13 +374,13 @@ export default function Expenses() {
                 placeholder="e.g. Shop Electricity Bill, Staff Lunch, Packaging Bags"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                   Amount (₹) *
                 </label>
                 <input
@@ -314,32 +391,32 @@ export default function Expenses() {
                   placeholder="₹ 0"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                   Date
                 </label>
                 <input
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                   Category
                 </label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                 >
                   {categories.map((c) => (
                     <option key={c} value={c}>{c}</option>
@@ -348,13 +425,13 @@ export default function Expenses() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                   Payment Mode
                 </label>
                 <select
                   value={mode}
                   onChange={(e) => setMode(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                 >
                   <option value="UPI">UPI / GPay / PhonePe</option>
                   <option value="Cash">Cash at Counter</option>
@@ -365,7 +442,7 @@ export default function Expenses() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                 Notes / Reference (Optional)
               </label>
               <input
@@ -373,7 +450,7 @@ export default function Expenses() {
                 placeholder="e.g. Paid by Rohit, Receipt No #44"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
               />
             </div>
 
@@ -382,13 +459,13 @@ export default function Expenses() {
                 type="button"
                 variant="outline"
                 onClick={() => setModalOpen(false)}
-                className="rounded-xl"
+                className="rounded-xl border-slate-200 dark:border-slate-700 font-bold"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold"
+                className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold px-5"
               >
                 Save Expense
               </Button>

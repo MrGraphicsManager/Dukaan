@@ -348,67 +348,106 @@ export default function Udhaar() {
   }, [rows, q, filter]);
 
   return (
-    <div className="space-y-6 animate-fade-up max-w-[1400px] mx-auto pb-16 font-sans selection:bg-brand-terracotta/20">
+    <div className="space-y-6 animate-fade-up max-w-[1400px] mx-auto pb-16 font-sans">
       
       {/* =========================================================
-          HERO BANNER
+          HERO BANNER & TOP STATS
       ========================================================= */}
-      <div className="bg-gradient-to-r from-brand-indigo via-[#261E7A] to-brand-indigo text-white p-7 md:p-8 rounded-3xl shadow-lg border-2 border-brand-indigo/40 flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative overflow-hidden">
-        <div className="absolute -right-16 -top-16 w-64 h-64 bg-brand-terracotta/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 dark:from-slate-950 dark:via-indigo-950/80 dark:to-slate-950 text-white p-6 sm:p-8 rounded-3xl shadow-lg border border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative overflow-hidden">
+        <div className="absolute -right-16 -top-16 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-brand-terracotta flex items-center justify-center shrink-0 shadow-md">
-            <Wallet className="w-7 h-7 text-white" />
+          <div className="w-13 h-13 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shrink-0 text-blue-400">
+            <Wallet className="w-7 h-7" />
           </div>
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs uppercase tracking-widest text-white/60 font-semibold font-mono">CREDIT KHATA BOOK</span>
-              <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-xs font-bold text-amber-300">
-                {rows.length} Active Accounts
+              <span className="text-[11px] uppercase tracking-wider text-slate-400 font-bold font-mono">CREDIT KHATA BOOK</span>
+              <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-[11px] font-bold text-blue-300 border border-blue-500/30">
+                {rows.length} Active Debtors
               </span>
             </div>
             <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight text-white">
-              Udhaar & Khata Register
+              Udhaar & Credit Ledger
             </h1>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Track pending credit balances, collect partial or full settlements, and send 1-tap WhatsApp payment reminders.
+            </p>
           </div>
         </div>
 
-        {/* Summary Badges & Add Button */}
-        <div className="relative z-10 flex flex-wrap items-center gap-3">
-          <div className="bg-white/10 border border-white/15 px-4 py-2 rounded-2xl backdrop-blur-md">
-            <div className="text-[10px] uppercase font-bold text-white/60">Total Outstanding</div>
-            <div className="font-display text-2xl font-bold text-brand-terracotta">{money(totalPending)}</div>
-          </div>
-          <div className="bg-white/10 border border-white/15 px-4 py-2 rounded-2xl backdrop-blur-md">
-            <div className="text-[10px] uppercase font-bold text-amber-300">High Value (₹1k+)</div>
-            <div className="font-display text-2xl font-bold text-amber-300">{highValueDebtors.length} accounts</div>
-          </div>
+        {/* Action Button */}
+        <div className="relative z-10 flex items-center gap-3">
           <Button
             onClick={() => setAddModal({ open: true, customerId: "", newName: "", newPhone: "", amount: "", note: "" })}
-            className="rounded-2xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-xs h-11 px-5 shadow-md active:scale-95 transition-all flex items-center gap-2"
+            className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs h-11 px-5 shadow-md active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Add Udhaar Entry</span>
+            <span>Record Udhaar Entry</span>
           </Button>
+        </div>
+      </div>
+
+      {/* =========================================================
+          KPI METRIC CARDS
+      ========================================================= */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-semibold">
+            <span>Total Outstanding Udhaar</span>
+            <Wallet className="w-4 h-4 text-rose-500" />
+          </div>
+          <div className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 mt-1">
+            {money(totalPending)}
+          </div>
+          <div className="text-[11px] text-slate-400 mt-0.5">
+            Total market receivable credit
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-semibold">
+            <span>High Value Debtors (₹1k+)</span>
+            <AlertTriangle className="w-4 h-4 text-amber-500" />
+          </div>
+          <div className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 mt-1">
+            {highValueDebtors.length}
+          </div>
+          <div className="text-[11px] text-slate-400 mt-0.5">
+            Accounts with balance &gt; ₹1,000
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-semibold">
+            <span>Active Debtor Accounts</span>
+            <Clock className="w-4 h-4 text-blue-500" />
+          </div>
+          <div className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">
+            {rows.length}
+          </div>
+          <div className="text-[11px] text-slate-400 mt-0.5">
+            Customers with pending balance
+          </div>
         </div>
       </div>
 
       {/* =========================================================
           CONTROLS: SEARCH & FILTER TABS
       ========================================================= */}
-      <div className="bg-white p-4 rounded-3xl border-2 border-brand-mitti shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         
         <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-brand-indigo/40" />
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <Input 
             placeholder="Search by customer name or mobile number…" 
             value={q} 
             onChange={(e) => setQ(e.target.value)} 
-            className="pl-11 pr-4 h-11 rounded-2xl border-brand-mitti bg-brand-sand/50 text-sm font-medium text-brand-indigo" 
+            className="pl-10 pr-4 h-10 rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 text-xs font-medium text-slate-900 dark:text-white" 
           />
         </div>
 
-        <div className="flex items-center bg-brand-sand p-1 rounded-2xl border border-brand-mitti">
+        <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700 overflow-x-auto max-w-full gap-1">
           {[
             { id: "all", label: `All (${rows.length})` },
             { id: "high", label: `High Value (${highValueDebtors.length})` },
@@ -417,35 +456,34 @@ export default function Udhaar() {
             <button
               key={tab.id}
               onClick={() => setFilter(tab.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
                 filter === tab.id 
-                  ? "bg-white text-brand-indigo shadow-xs" 
-                  : "text-brand-indigo/60 hover:text-brand-indigo"
+                  ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-white shadow-2xs" 
+                  : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
               }`}
             >
               {tab.label}
             </button>
           ))}
         </div>
-
       </div>
 
       {/* =========================================================
           UDHAAR CARDS / TABLE
       ========================================================= */}
-      <div className="grid gap-4" data-testid="udhaar-list">
+      <div className="grid gap-3" data-testid="udhaar-list">
         {filtered.length === 0 ? (
-          <div className="p-12 text-center text-brand-indigo/60 border-2 border-dashed border-brand-mitti rounded-3xl bg-white space-y-3">
+          <div className="p-12 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-white dark:bg-slate-900 space-y-3 shadow-2xs">
             <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
-            <h3 className="font-heading font-bold text-lg text-brand-indigo">No Pending Udhaar!</h3>
-            <p className="text-xs text-brand-indigo/50 max-w-sm mx-auto">
-              All customer credit accounts are clear and settled. You can add a new credit transaction anytime.
+            <h3 className="font-bold text-base text-slate-900 dark:text-white">No Pending Udhaar!</h3>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              All customer credit accounts are clear and settled. You can record a new credit entry anytime.
             </p>
             <Button
               onClick={() => setAddModal({ open: true, customerId: "", newName: "", newPhone: "", amount: "", note: "" })}
-              className="rounded-2xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-xs mt-2"
+              className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs mt-2"
             >
-              <Plus className="w-4 h-4 mr-1.5" /> Record First Udhaar Entry
+              <Plus className="w-4 h-4 mr-1.5" /> Record Udhaar Entry
             </Button>
           </div>
         ) : (
@@ -454,33 +492,33 @@ export default function Udhaar() {
             return (
               <div 
                 key={r.customer_id} 
-                className="rounded-2xl sm:rounded-3xl border-2 border-brand-mitti bg-white p-4 sm:p-6 shadow-xs hover:border-brand-indigo/30 hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-5"
+                className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-5 shadow-2xs hover:border-blue-300 dark:hover:border-slate-700 hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-heading font-bold text-base sm:text-lg text-brand-indigo">
+                    <span className="font-bold text-base text-slate-900 dark:text-white">
                       {r.customer_name}
                     </span>
                     {isHigh && (
-                      <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-bold text-[10px] uppercase tracking-wider">
+                      <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 font-bold text-[10px] uppercase tracking-wider">
                         High Priority
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-brand-indigo/60 mt-1 flex items-center gap-2 font-mono flex-wrap">
-                    <Phone className="w-3.5 h-3.5 text-brand-indigo/40" />
+                  <div className="text-xs text-slate-400 mt-1 flex items-center gap-2 font-mono flex-wrap">
+                    <Phone className="w-3.5 h-3.5 text-slate-400" />
                     <span>{r.customer_phone || "No phone registered"}</span>
                     <span>·</span>
-                    <span>Last: {(r.last_order_at || "").slice(0, 10) || "Recent"}</span>
+                    <span>Last Activity: {(r.last_order_at || "").slice(0, 10) || "Recent"}</span>
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 pt-3 border-t border-brand-mitti/60 md:border-t-0 md:pt-0">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 pt-3 border-t border-slate-100 dark:border-slate-800 md:border-t-0 md:pt-0">
                   <div className="text-left md:text-right">
-                    <div className="text-[10px] uppercase tracking-wider font-extrabold text-brand-terracotta">
+                    <div className="text-[10px] uppercase tracking-wider font-bold text-slate-400">
                       Pending Udhaar
                     </div>
-                    <div className="font-display text-2xl sm:text-3xl font-extrabold text-brand-terracotta tracking-tight">
+                    <div className="font-display text-2xl font-extrabold text-rose-600 dark:text-rose-400 tracking-tight">
                       {money(r.pending)}
                     </div>
                   </div>
@@ -489,7 +527,7 @@ export default function Udhaar() {
                     {/* View Ledger Button */}
                     <button
                       onClick={() => nav(`/app/customers/${r.customer_id}`)}
-                      className="px-2.5 py-2.5 rounded-xl border border-brand-mitti hover:border-brand-indigo text-brand-indigo font-bold text-xs transition-colors flex items-center justify-center gap-1 bg-brand-sand/40 active:scale-95"
+                      className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-400 text-slate-700 dark:text-slate-200 font-bold text-xs transition-colors flex items-center justify-center gap-1 bg-slate-50 dark:bg-slate-800 active:scale-95 cursor-pointer"
                     >
                       <FileText className="w-3.5 h-3.5" />
                       <span>Ledger</span>
@@ -502,20 +540,20 @@ export default function Udhaar() {
                         target="_blank" 
                         rel="noreferrer" 
                         data-testid={`udhaar-wa-${r.customer_id}`} 
-                        className="inline-flex items-center justify-center gap-1 text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-2.5 rounded-xl hover:bg-emerald-100 active:scale-95 transition-all shadow-xs"
+                        className="inline-flex items-center justify-center gap-1 text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800 px-3 py-2 rounded-xl hover:bg-emerald-100 active:scale-95 transition-all shadow-2xs cursor-pointer"
                       >
                         <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
                         <span>WhatsApp</span>
                       </a>
                     ) : (
-                      <div className="h-10" />
+                      <div className="h-9" />
                     )}
 
                     {/* Collect Payment / Jama Button */}
                     <Button 
                       data-testid={`udhaar-pay-${r.customer_id}`} 
                       onClick={() => setPay({ open: true, row: r, amount: String(r.pending), note: "" })} 
-                      className="rounded-xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-xs h-10 px-3 sm:px-5 shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1"
+                      className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs h-9 px-4 shadow-2xs active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <Banknote className="w-3.5 h-3.5" />
                       <span>Collect</span>
@@ -532,22 +570,22 @@ export default function Udhaar() {
           ADD NEW UDHAAR ENTRY MODAL
       ========================================================= */}
       <Dialog open={addModal.open} onOpenChange={(o) => setAddModal({ ...addModal, open: o })}>
-        <DialogContent className="max-w-md rounded-3xl p-7 border-2 border-brand-mitti bg-white">
+        <DialogContent className="max-w-md rounded-3xl p-6 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
           <DialogHeader>
-            <DialogTitle className="font-display text-2xl text-brand-indigo flex items-center gap-2">
-              <Plus className="w-5 h-5 text-brand-terracotta" />
+            <DialogTitle className="font-display text-xl text-slate-900 dark:text-white flex items-center gap-2">
+              <Plus className="w-5 h-5 text-blue-600" />
               <span>Record New Udhaar Credit</span>
             </DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleAddUdhaar} className="space-y-4 py-2 text-sm">
             <div>
-              <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Customer *</Label>
+              <Label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase">Customer *</Label>
               <Select 
                 value={addModal.customerId} 
                 onValueChange={(val) => setAddModal(prev => ({ ...prev, customerId: val }))}
               >
-                <SelectTrigger className="mt-1 h-11 rounded-xl border-brand-mitti text-xs font-medium">
+                <SelectTrigger className="mt-1 h-10 rounded-xl border-slate-200 dark:border-slate-800 text-xs font-medium">
                   <SelectValue placeholder="Select existing customer or + New" />
                 </SelectTrigger>
                 <SelectContent>
@@ -562,32 +600,32 @@ export default function Udhaar() {
             </div>
 
             {addModal.customerId === "new" && (
-              <div className="p-3.5 rounded-2xl bg-brand-sand border border-brand-mitti space-y-3">
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
                 <div>
-                  <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Customer Full Name *</Label>
+                  <Label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase">Customer Full Name *</Label>
                   <Input
                     required
                     value={addModal.newName}
                     onChange={(e) => setAddModal(prev => ({ ...prev, newName: e.target.value }))}
                     placeholder="e.g. Mukesh Kumar"
-                    className="mt-1 h-10 rounded-xl border-brand-mitti bg-white font-semibold"
+                    className="mt-1 h-10 rounded-xl border-slate-200 dark:border-slate-800 font-semibold text-sm"
                   />
                 </div>
                 <div>
-                  <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Mobile Number (10 Digits)</Label>
+                  <Label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase">Mobile Number (10 Digits)</Label>
                   <Input
                     value={addModal.newPhone}
                     onChange={(e) => setAddModal(prev => ({ ...prev, newPhone: e.target.value }))}
                     placeholder="9825100000"
                     maxLength={10}
-                    className="mt-1 h-10 rounded-xl border-brand-mitti bg-white font-mono"
+                    className="mt-1 h-10 rounded-xl border-slate-200 dark:border-slate-800 font-mono text-xs"
                   />
                 </div>
               </div>
             )}
 
             <div>
-              <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Credit Amount (₹) *</Label>
+              <Label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase">Credit Amount (₹) *</Label>
               <Input
                 required
                 type="number"
@@ -595,33 +633,33 @@ export default function Udhaar() {
                 value={addModal.amount}
                 onChange={(e) => setAddModal(prev => ({ ...prev, amount: e.target.value }))}
                 placeholder="500"
-                className="mt-1 h-12 text-xl font-bold font-mono rounded-xl border-brand-mitti text-brand-indigo"
+                className="mt-1 h-11 text-xl font-bold font-mono rounded-xl border-slate-200 dark:border-slate-800"
               />
             </div>
 
             <div>
-              <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Items / Description / Note</Label>
+              <Label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase">Items / Description / Remarks</Label>
               <Input
                 value={addModal.note}
                 onChange={(e) => setAddModal(prev => ({ ...prev, note: e.target.value }))}
                 placeholder="e.g. 5kg Atta + 1L Oil"
-                className="mt-1 h-11 rounded-xl border-brand-mitti"
+                className="mt-1 h-10 rounded-xl border-slate-200 dark:border-slate-800 text-xs"
               />
             </div>
 
-            <DialogFooter className="mt-5 gap-2">
+            <DialogFooter className="mt-4 gap-2">
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => setAddModal({ ...addModal, open: false })}
-                className="rounded-full text-brand-indigo/70 font-bold"
+                className="rounded-xl text-xs font-bold"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={busy}
-                className="rounded-full bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold h-11 px-6 shadow-md"
+                className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold h-10 px-5 text-xs shadow-md"
               >
                 {busy ? "Saving..." : "Save Credit Entry"}
               </Button>
@@ -634,24 +672,24 @@ export default function Udhaar() {
           RECORD PAYMENT / JAMA MODAL
       ========================================================= */}
       <Dialog open={pay.open} onOpenChange={(o) => setPay({ ...pay, open: o })}>
-        <DialogContent className="max-w-md rounded-3xl p-7 border-2 border-brand-mitti bg-white">
+        <DialogContent className="max-w-md rounded-3xl p-6 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
           <DialogHeader>
-            <DialogTitle className="font-display text-2xl text-brand-indigo flex items-center gap-2">
-              <Banknote className="w-5 h-5 text-brand-terracotta" />
+            <DialogTitle className="font-display text-xl text-slate-900 dark:text-white flex items-center gap-2">
+              <Banknote className="w-5 h-5 text-blue-600" />
               <span>Collect Payment: {pay.row?.customer_name}</span>
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-2 text-sm">
-            <div className="p-4 rounded-2xl bg-brand-sand border border-brand-mitti flex items-center justify-between">
-              <span className="text-xs uppercase font-bold text-brand-indigo/60">Current Outstanding</span>
-              <span className="font-display text-2xl font-bold text-brand-terracotta">
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <span className="text-xs uppercase font-bold text-slate-500">Current Outstanding</span>
+              <span className="font-display text-2xl font-extrabold text-rose-600 dark:text-rose-400">
                 {money(pay.row?.pending || 0)}
               </span>
             </div>
 
             <div>
-              <Label className="text-xs font-bold text-brand-indigo/70 uppercase">
+              <Label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase">
                 Payment Amount Received (₹) *
               </Label>
               <Input
@@ -659,7 +697,7 @@ export default function Udhaar() {
                 value={pay.amount}
                 onChange={(e) => setPay({ ...pay, amount: e.target.value })}
                 placeholder={String(pay.row?.pending || 0)}
-                className="mt-1 h-12 text-xl font-bold font-mono rounded-xl border-brand-mitti text-brand-indigo"
+                className="mt-1 h-11 text-xl font-bold font-mono rounded-xl border-slate-200 dark:border-slate-800"
               />
             </div>
 
@@ -668,35 +706,35 @@ export default function Udhaar() {
               <button
                 type="button"
                 onClick={() => setPay({ ...pay, amount: String(pay.row?.pending || 0) })}
-                className="px-3 py-1 rounded-lg bg-brand-sand border border-brand-mitti text-xs font-bold hover:border-brand-indigo text-brand-indigo"
+                className="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold hover:border-blue-400 text-slate-700 dark:text-slate-200 cursor-pointer"
               >
                 Pay Full Balance ({money(pay.row?.pending || 0)})
               </button>
             </div>
 
             <div>
-              <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Payment Note (Optional)</Label>
+              <Label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase">Payment Remarks (Optional)</Label>
               <Input
                 value={pay.note}
                 onChange={(e) => setPay({ ...pay, note: e.target.value })}
                 placeholder="e.g. Paid via UPI / Cash"
-                className="mt-1 h-11 rounded-xl border-brand-mitti"
+                className="mt-1 h-10 rounded-xl border-slate-200 dark:border-slate-800 text-xs"
               />
             </div>
           </div>
 
-          <DialogFooter className="mt-5 gap-2">
+          <DialogFooter className="mt-4 gap-2">
             <Button
               variant="ghost"
               onClick={() => setPay({ open: false, row: null, amount: "", note: "" })}
-              className="rounded-full text-brand-indigo/70 font-bold"
+              className="rounded-xl text-xs font-bold"
             >
               Cancel
             </Button>
             <Button
               disabled={busy || !pay.amount}
               onClick={submit}
-              className="rounded-full bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold h-11 px-6 shadow-md"
+              className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold h-10 px-5 text-xs shadow-md"
             >
               {busy ? "Recording…" : "Save Payment"}
             </Button>

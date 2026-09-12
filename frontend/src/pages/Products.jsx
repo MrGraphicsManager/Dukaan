@@ -35,11 +35,8 @@ import {
   Zap,
   RefreshCw,
   Store,
-  Lock,
-  Crown,
-  Image as ImageIcon
+  Lock
 } from "lucide-react";
-import { getLibraryImages, getProductLetterBadge, findLibraryImage } from "@/lib/productImageLibrary";
 import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
 import { useAuth } from "@/lib/AuthContext";
 import { FMCG_MASTER_CATALOG, findFMCGByBarcode, searchFMCGCatalog } from "@/lib/fmcgMasterCatalog";
@@ -96,8 +93,7 @@ const EMPTY = {
   min_stock: 5, 
   unlimited_stock: false,
   batch_number: "",
-  expiry_date: "",
-  image_url: ""
+  expiry_date: ""
 };
 
 const DEFAULT_CATEGORIES = [
@@ -126,29 +122,6 @@ export default function Products() {
   const isMedicalStore = shopCategory.includes("medical") || shopCategory.includes("pharmacy");
   const isPremium = user?.subscription?.plan === "premium" || user?.is_premium || user?.is_admin || user?.plan === "premium";
   const canUseExpiryGuard = isPremium && isMedicalStore;
-
-  // Pro Plan Gating: Custom Product Images & Master Library available only on Pro
-  const userPlan = user?.subscription?.plan || user?.plan || "starter";
-  const isPro = userPlan === "pro" || userPlan === "premium" || user?.is_premium || user?.is_admin || activeShop?.plan === "pro";
-
-  const [imageLibraryOpen, setImageLibraryOpen] = useState(false);
-  const [proUpgradeModalOpen, setProUpgradeModalOpen] = useState(false);
-  const [librarySearch, setLibrarySearch] = useState("");
-  const [libraryImages, setLibraryImages] = useState(() => getLibraryImages());
-  useEffect(() => {
-    if (imageLibraryOpen) {
-      setLibraryImages(getLibraryImages());
-    }
-  }, [imageLibraryOpen]);
-  const filteredLibraryImages = useMemo(() => {
-    if (!librarySearch.trim()) return libraryImages;
-    const term = librarySearch.toLowerCase().trim();
-    return libraryImages.filter(img => 
-      img.name.toLowerCase().includes(term) || 
-      img.category?.toLowerCase().includes(term) ||
-      (img.tags || []).some(t => t.toLowerCase().includes(term))
-    );
-  }, [libraryImages, librarySearch]);
 
   const [items, setItems] = useState(() => getStoredProducts());
   const [q, setQ] = useState("");
@@ -652,35 +625,15 @@ export default function Products() {
                     </span>
                   </div>
 
-                  <div className="flex items-start gap-3 my-2">
-                    <div className="w-14 h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
-                      {p.image_url || findLibraryImage(p.name) ? (
-                        <img 
-                          src={p.image_url || findLibraryImage(p.name)} 
-                          alt={p.name} 
-                          className="w-full h-full object-contain group-hover:scale-105 transition-transform" 
-                        />
-                      ) : (
-                        (() => {
-                          const badge = getProductLetterBadge(p.name);
-                          return (
-                            <div className={`w-full h-full rounded-xl border flex items-center justify-center font-extrabold text-xl ${badge.bg} ${badge.text} ${badge.border}`}>
-                              {badge.letter}
-                            </div>
-                          );
-                        })()
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-heading font-bold text-base text-brand-indigo dark:text-white leading-snug line-clamp-2">
-                        {p.name}
-                      </h3>
-                      {p.barcode && (
-                        <div className="text-[10px] font-mono text-brand-indigo/50 dark:text-slate-400 mt-0.5 truncate">
-                          #{p.barcode}
-                        </div>
-                      )}
-                    </div>
+                  <div className="my-2">
+                    <h3 className="font-heading font-bold text-base text-brand-indigo dark:text-white leading-snug line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                      {p.name}
+                    </h3>
+                    {p.barcode && (
+                      <div className="text-[11px] font-mono text-slate-400 dark:text-slate-500 mt-1 truncate">
+                        Barcode: #{p.barcode}
+                      </div>
+                    )}
                   </div>
 
                   {/* Feature #45: Medicine Expiry & Batch Badges for Medical Stores */}
@@ -928,99 +881,6 @@ export default function Products() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            {/* Product Image Selection with Pro Gating */}
-            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase flex items-center gap-1.5">
-                  <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Product Image</span>
-                </Label>
-                {!isPro ? (
-                  <button
-                    type="button"
-                    onClick={() => setProUpgradeModalOpen(true)}
-                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800 animate-pulse hover:bg-amber-200 transition-colors cursor-pointer"
-                  >
-                    <Crown className="w-3 h-3 text-amber-600" />
-                    <span>PRO Feature</span>
-                  </button>
-                ) : (
-                  <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">
-                    PRO Plan Unlocked
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-3">
-                {/* Image Preview or Letter Avatar */}
-                <div className="w-14 h-14 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
-                  {form.data.image_url ? (
-                    <img
-                      src={form.data.image_url}
-                      alt="Preview"
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    (() => {
-                      const badge = getProductLetterBadge(form.data.name || "P");
-                      return (
-                        <div className={`w-full h-full rounded-lg border flex items-center justify-center font-extrabold text-xl shadow-2xs ${badge.bg} ${badge.text} ${badge.border}`}>
-                          {badge.letter}
-                        </div>
-                      );
-                    })()
-                  )}
-                </div>
-
-                <div className="flex-1 space-y-1.5">
-                  {isPro ? (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setImageLibraryOpen(true)}
-                        className="h-9 px-3 rounded-xl border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-700 font-bold text-xs flex items-center gap-1.5"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Choose from Library</span>
-                      </Button>
-                      {form.data.image_url && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setForm(prev => ({ ...prev, data: { ...prev.data, image_url: "" } }))}
-                          className="h-9 px-2 text-xs text-rose-600 hover:text-rose-700 font-semibold"
-                        >
-                          Remove
-                        </Button>
-                      )}
-                    </div>
-                  ) : (
-                    <div 
-                      onClick={() => setProUpgradeModalOpen(true)}
-                      className="cursor-pointer group flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-amber-400 transition-all"
-                    >
-                      <div className="text-xs text-slate-500">
-                        Defaulting to colorful letter avatar (<span className="font-bold text-amber-600">Yellow/Red/Blue</span>). Upgrade to Pro to add photos.
-                      </div>
-                      <Crown className="w-4 h-4 text-amber-500 shrink-0 ml-2 group-hover:scale-110 transition-transform" />
-                    </div>
-                  )}
-
-                  {isPro && (
-                    <Input
-                      value={form.data.image_url || ""}
-                      onChange={(e) => setForm(prev => ({ ...prev, data: { ...prev.data, image_url: e.target.value } }))}
-                      placeholder="Or paste external image URL (e.g. https://...)..."
-                      className="h-9 text-xs rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-                    />
-                  )}
-                </div>
-              </div>
             </div>
 
             {/* Pricing Rows */}
@@ -1280,189 +1140,7 @@ export default function Products() {
         }}
         shopId={currentShopId}
         title="Delete Protected Product"
-        description={`Owner Security PIN required to delete "${pendingDeleteProduct?.name || ''}" during Cashier Mode.`}
       />
-
-      {/* =========================================================
-          PRODUCT IMAGE LIBRARY MODAL (Pro Feature)
-      ========================================================= */}
-      <Dialog open={imageLibraryOpen} onOpenChange={setImageLibraryOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col rounded-3xl p-6 border-2 border-brand-mitti dark:border-slate-800 bg-white dark:bg-slate-900">
-          <DialogHeader>
-            <DialogTitle className="font-display text-xl text-brand-indigo dark:text-white flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-blue-600" />
-              <span>Dukaan Master Product Image Library</span>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                PRO Catalog
-              </span>
-            </DialogTitle>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Select verified high-resolution FMCG packaging images for your products. Pick an image to apply it to your product catalog.
-            </p>
-          </DialogHeader>
-
-          {/* Search bar */}
-          <div className="relative my-2">
-            <Search className="w-4 h-4 absolute left-3 top-3.5 text-slate-400" />
-            <Input
-              value={librarySearch}
-              onChange={(e) => setLibrarySearch(e.target.value)}
-              placeholder="Search library by brand or product (e.g. Atta, Oil, Milk, Salt, Tea, Maggi)..."
-              className="pl-9 h-11 rounded-2xl border-slate-200 dark:border-slate-800 text-sm bg-slate-50 dark:bg-slate-800/50"
-            />
-          </div>
-
-          {/* Image Grid */}
-          <div className="flex-1 overflow-y-auto pr-1 my-2 max-h-[50vh]">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {filteredLibraryImages.map(img => (
-                <div
-                  key={img.id}
-                  onClick={() => {
-                    setForm(prev => ({ ...prev, data: { ...prev.data, image_url: img.url } }));
-                    setImageLibraryOpen(false);
-                    toast.success(`Selected image: ${img.name}`);
-                  }}
-                  className="group cursor-pointer rounded-2xl border border-slate-200 dark:border-slate-800 p-3 bg-white dark:bg-slate-900 hover:border-blue-500 hover:shadow-md transition-all flex flex-col items-center text-center space-y-2"
-                >
-                  <div className="w-20 h-20 rounded-xl bg-slate-50 dark:bg-slate-800/80 p-1 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform">
-                    <img
-                      src={img.url}
-                      alt={img.name}
-                      className="w-full h-full object-contain"
-                      loading="lazy"
-                    />
-                  </div>
-                  <div className="w-full">
-                    <div className="font-bold text-xs text-slate-800 dark:text-slate-200 line-clamp-1 group-hover:text-blue-600 transition-colors">
-                      {img.name}
-                    </div>
-                    <div className="text-[10px] text-slate-400 truncate mt-0.5">
-                      {img.category}
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="w-full h-7 text-[11px] font-bold rounded-lg group-hover:bg-blue-500 group-hover:text-white group-hover:border-blue-500 transition-colors"
-                  >
-                    Select
-                  </Button>
-                </div>
-              ))}
-            </div>
-
-            {filteredLibraryImages.length === 0 && (
-              <div className="py-12 text-center text-slate-400 text-xs">
-                No matching images found in library for "{librarySearch}".
-              </div>
-            )}
-          </div>
-
-          <DialogFooter className="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center">
-            <div className="text-[11px] text-slate-400">
-              Showing {filteredLibraryImages.length} verified packaging items
-            </div>
-            <Button variant="outline" onClick={() => setImageLibraryOpen(false)} className="rounded-xl text-xs font-bold">
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* =========================================================
-          PRO PLAN UPGRADE MODAL (Images Gated to Pro)
-      ========================================================= */}
-      <Dialog open={proUpgradeModalOpen} onOpenChange={setProUpgradeModalOpen}>
-        <DialogContent className="max-w-md rounded-3xl p-6 border-2 border-amber-300 dark:border-amber-900/60 bg-gradient-to-b from-amber-50/50 to-white dark:from-amber-950/20 dark:to-slate-900 shadow-xl">
-          <div className="text-center space-y-3 pt-2">
-            <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-950/70 border border-amber-300 dark:border-amber-800 text-amber-600 dark:text-amber-300 flex items-center justify-center mx-auto shadow-sm">
-              <Crown className="w-7 h-7" />
-            </div>
-
-            <div>
-              <h3 className="font-heading font-extrabold text-lg text-slate-900 dark:text-white">
-                Unlock Product Images with Pro
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
-                Product packaging photos & Master Image Library are exclusive to Dukaan Pro merchants.
-              </p>
-            </div>
-
-            {/* Letter badge preview note */}
-            <div className="p-3 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-left space-y-2">
-              <div className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                <span>Free Plan Representation:</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {["A", "F", "T", "P", "M"].map((char, idx) => {
-                  const colors = [
-                    "bg-amber-100 text-amber-800 border-amber-300",
-                    "bg-rose-100 text-rose-800 border-rose-300",
-                    "bg-blue-100 text-blue-800 border-blue-300",
-                    "bg-emerald-100 text-emerald-800 border-emerald-300",
-                    "bg-purple-100 text-purple-800 border-purple-300"
-                  ];
-                  return (
-                    <div key={char} className={`w-8 h-8 rounded-lg border font-extrabold text-sm flex items-center justify-center ${colors[idx % colors.length]}`}>
-                      {char}
-                    </div>
-                  );
-                })}
-                <span className="text-[10px] text-slate-400 ml-1 font-medium">
-                  Colorful first-letter badges (Yellow, Red, Blue)
-                </span>
-              </div>
-            </div>
-
-            {/* Pro Features Checklist */}
-            <div className="text-left space-y-2 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs">
-              <div className="font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                <span>What you get with Dukaan Pro:</span>
-              </div>
-              <ul className="space-y-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Upload your own custom product photos & packaging</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Access 500+ verified FMCG Master Brand Library</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>High-speed visual POS Billing with product thumbnails</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Multi-cashier roles & Owner PIN security</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <DialogFooter className="mt-4 flex-col sm:flex-row gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => setProUpgradeModalOpen(false)}
-              className="rounded-full text-xs font-semibold"
-            >
-              Maybe Later
-            </Button>
-            <Button
-              onClick={() => {
-                setProUpgradeModalOpen(false);
-                navigate("/subscribe");
-              }}
-              className="rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs h-10 px-5 shadow-md flex items-center justify-center gap-1.5"
-            >
-              <Crown className="w-3.5 h-3.5" />
-              <span>Upgrade to Pro Plan</span>
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
     </div>
   );

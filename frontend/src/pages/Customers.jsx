@@ -161,70 +161,110 @@ export default function Customers() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-up max-w-[1400px] mx-auto pb-16 font-sans selection:bg-brand-terracotta/20">
+    <div className="space-y-6 animate-fade-up max-w-[1400px] mx-auto pb-16 font-sans">
       
       {/* =========================================================
-          HERO BANNER & KPI METRICS
+          HERO BANNER & TOP STATS
       ========================================================= */}
-      <div className="bg-gradient-to-r from-brand-indigo via-[#261E7A] to-brand-indigo text-white p-7 md:p-8 rounded-3xl shadow-lg border-2 border-brand-indigo/40 flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative overflow-hidden">
-        <div className="absolute -right-16 -top-16 w-64 h-64 bg-brand-terracotta/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 dark:from-slate-950 dark:via-indigo-950/80 dark:to-slate-950 text-white p-6 sm:p-8 rounded-3xl shadow-lg border border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative overflow-hidden">
+        <div className="absolute -right-16 -top-16 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-brand-terracotta flex items-center justify-center shrink-0 shadow-md">
-            <Users className="w-7 h-7 text-white" />
+          <div className="w-13 h-13 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shrink-0 text-blue-400">
+            <Users className="w-7 h-7" />
           </div>
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs uppercase tracking-widest text-white/60 font-semibold font-mono">CUSTOMER DIRECTORY</span>
-              <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-xs font-bold text-white">
-                Khata Ledger Active
+              <span className="text-[11px] uppercase tracking-wider text-slate-400 font-bold font-mono">CUSTOMER DIRECTORY</span>
+              <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-[11px] font-bold text-blue-300 border border-blue-500/30">
+                Khata Active
               </span>
             </div>
             <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight text-white">
               Customers & Khata
             </h1>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Record customer profiles, track credit ledgers, and send instant WhatsApp payment reminders.
+            </p>
           </div>
         </div>
 
-        {/* 3 Summary Badges */}
-        <div className="relative z-10 flex flex-wrap items-center gap-3">
-          <div className="bg-white/10 border border-white/15 px-4 py-2 rounded-2xl backdrop-blur-md">
-            <div className="text-[10px] uppercase font-bold text-white/60">Total Customers</div>
-            <div className="font-display text-xl font-bold text-white">{items.length}</div>
-          </div>
-          <div className="bg-white/10 border border-white/15 px-4 py-2 rounded-2xl backdrop-blur-md">
-            <div className="text-[10px] uppercase font-bold text-amber-300">Pending Udhaar</div>
-            <div className="font-display text-xl font-bold text-amber-300">{money(totalUdhaarPending)}</div>
-          </div>
+        {/* Action Button */}
+        <div className="relative z-10 flex items-center gap-3">
           <Button
             onClick={() => setForm({ open: true, name: "", phone: "", notes: "" })}
             data-testid="add-customer-btn"
-            className="h-12 px-6 rounded-2xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-sm shadow-glow active:scale-95 transition-all flex items-center gap-2"
+            className="h-11 px-5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
           >
-            <UserPlus className="w-4 h-4" /> Add Customer
+            <UserPlus className="w-4 h-4" />
+            <span>Add Customer</span>
           </Button>
+        </div>
+      </div>
+
+      {/* =========================================================
+          KPI METRIC CARDS
+      ========================================================= */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-semibold">
+            <span>Total Customers</span>
+            <Users className="w-4 h-4 text-blue-500" />
+          </div>
+          <div className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">
+            {items.length}
+          </div>
+          <div className="text-[11px] text-slate-400 mt-0.5">
+            Registered in shop directory
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-semibold">
+            <span>Accounts with Udhaar</span>
+            <AlertTriangle className="w-4 h-4 text-amber-500" />
+          </div>
+          <div className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 mt-1">
+            {customersWithUdhaar.length}
+          </div>
+          <div className="text-[11px] text-slate-400 mt-0.5">
+            Active credit balance pending
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-semibold">
+            <span>Total Pending Udhaar</span>
+            <Wallet className="w-4 h-4 text-rose-500" />
+          </div>
+          <div className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 mt-1">
+            {money(totalUdhaarPending)}
+          </div>
+          <div className="text-[11px] text-slate-400 mt-0.5">
+            Total market credit receivable
+          </div>
         </div>
       </div>
 
       {/* =========================================================
           CONTROLS: SEARCH & FILTER TABS
       ========================================================= */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border-2 border-brand-mitti dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         
         {/* Search by Name or Phone */}
         <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-brand-indigo/40 dark:text-slate-500" />
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <Input 
             data-testid="customer-search" 
             placeholder="Search by customer name or phone number…" 
             value={q} 
             onChange={(e) => setQ(e.target.value)} 
-            className="pl-11 pr-4 h-11 rounded-2xl border-brand-mitti dark:border-slate-700 bg-brand-sand/50 dark:bg-slate-800 text-sm font-medium text-brand-indigo dark:text-white placeholder:text-brand-indigo/40 dark:placeholder:text-slate-500" 
+            className="pl-10 pr-4 h-10 rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 text-xs font-medium text-slate-900 dark:text-white" 
           />
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center bg-brand-sand dark:bg-slate-800 p-1 rounded-2xl border border-brand-mitti dark:border-slate-700 overflow-x-auto max-w-full">
+        <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700 overflow-x-auto max-w-full gap-1">
           {[
             { id: "all", label: `All (${items.length})` },
             { id: "udhaar", label: `Has Udhaar (${customersWithUdhaar.length})` },
@@ -233,67 +273,68 @@ export default function Customers() {
             <button
               key={tab.id}
               onClick={() => setFilter(tab.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
                 filter === tab.id 
-                  ? "bg-white dark:bg-slate-900 text-brand-indigo dark:text-white shadow-xs" 
-                  : "text-brand-indigo/60 dark:text-slate-400 hover:text-brand-indigo dark:hover:text-white"
+                  ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-white shadow-2xs" 
+                  : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
               }`}
             >
               {tab.label}
             </button>
           ))}
         </div>
-
       </div>
 
       {/* =========================================================
           CUSTOMER CARDS GRID
       ========================================================= */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="customers-list">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="customers-list">
         {filtered.length === 0 ? (
-          <div className="col-span-full text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border-2 border-dashed border-brand-mitti dark:border-slate-800 p-8">
-            <Users className="w-12 h-12 text-brand-indigo/30 dark:text-slate-600 mx-auto mb-3" />
-            <h3 className="font-heading font-bold text-lg text-brand-indigo dark:text-white">No customers found</h3>
-            <p className="text-xs text-brand-indigo/60 dark:text-slate-400 mt-1">Add your first customer to track their purchase history and udhaar.</p>
+          <div className="col-span-full text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 p-8 shadow-2xs">
+            <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto mb-3">
+              <Users className="w-6 h-6" />
+            </div>
+            <h3 className="font-bold text-base text-slate-900 dark:text-white">No customers found</h3>
+            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">Add your first customer to track their purchase history and credit.</p>
             <Button
               onClick={() => setForm({ open: true, name: "", phone: "", notes: "" })}
-              className="mt-4 rounded-full bg-brand-terracotta text-white text-xs font-bold"
+              className="mt-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold"
             >
               + Add Customer
             </Button>
           </div>
         ) : (
           filtered.map(c => {
-            const hasPending = (c.total_pending || 0) > 0;
+            const hasPending = (c.total_pending || c.udhaar || 0) > 0;
             const initials = (c.name || "Customer").split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
 
             return (
               <div 
                 key={c.id} 
                 data-testid={`customer-${c.id}`}
-                className="bg-white dark:bg-slate-900 rounded-3xl border-2 border-brand-mitti dark:border-slate-800 p-6 shadow-xs hover:border-brand-indigo/30 dark:hover:border-slate-700 hover:shadow-md transition-all flex flex-col justify-between group"
+                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-2xs hover:border-blue-300 dark:hover:border-slate-700 hover:shadow-md transition-all flex flex-col justify-between group"
               >
                 <div>
-                  {/* Top Bar: Avatar, Name & Phone */}
+                  {/* Top Bar: Avatar, Name & Status */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-brand-sand dark:bg-slate-800 border-2 border-brand-mitti dark:border-slate-700 grid place-items-center font-display font-extrabold text-brand-indigo dark:text-white text-lg shadow-xs">
+                      <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 grid place-items-center font-extrabold text-sm shadow-2xs">
                         {initials}
                       </div>
                       <div>
-                        <h3 className="font-heading font-bold text-lg text-brand-indigo dark:text-white leading-tight group-hover:text-brand-terracotta dark:group-hover:text-amber-400 transition-colors">
+                        <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                           {c.name}
                         </h3>
-                        <div className="flex items-center gap-1.5 text-xs text-brand-indigo/60 dark:text-slate-400 mt-1 font-mono">
-                          <Phone className="w-3 h-3 text-brand-indigo/40 dark:text-slate-500" />
-                          <span>{c.phone || "No phone registered"}</span>
+                        <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5 font-mono">
+                          <Phone className="w-3 h-3 text-slate-400" />
+                          <span>{c.phone || "No phone"}</span>
                         </div>
                       </div>
                     </div>
 
-                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
                       hasPending 
-                        ? "bg-amber-100 text-amber-900 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800" 
+                        ? "bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800" 
                         : "bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
                     }`}>
                       {hasPending ? "Udhaar Due" : "Settled"}
@@ -301,47 +342,50 @@ export default function Customers() {
                   </div>
 
                   {/* Financial Ledger Mini Summary */}
-                  <div className="mt-5 p-4 rounded-2xl bg-brand-sand/50 dark:bg-slate-800/80 border border-brand-mitti/70 dark:border-slate-700 grid grid-cols-3 gap-2 text-center">
+                  <div className="mt-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 grid grid-cols-3 gap-2 text-center">
                     <div>
-                      <div className="text-[10px] uppercase font-bold text-brand-indigo/50 dark:text-slate-400">Purchases</div>
-                      <div className="font-heading font-extrabold text-sm text-brand-indigo dark:text-white mt-1">
-                        {money(c.total_purchases || 0)}
+                      <div className="text-[10px] uppercase font-bold text-slate-400">Purchases</div>
+                      <div className="font-bold text-xs text-slate-900 dark:text-white mt-0.5">
+                        {money(c.total_purchases || c.totalSpent || 0)}
                       </div>
                     </div>
-                    <div className="border-x border-brand-mitti dark:border-slate-700">
-                      <div className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400">Paid</div>
-                      <div className="font-heading font-extrabold text-sm text-emerald-700 dark:text-emerald-400 mt-1">
+                    <div className="border-x border-slate-200 dark:border-slate-700">
+                      <div className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400">Paid</div>
+                      <div className="font-bold text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
                         {money(c.total_paid || 0)}
                       </div>
                     </div>
                     <div>
-                      <div className="text-[10px] uppercase font-bold text-brand-terracotta dark:text-rose-400">Pending</div>
-                      <div className="font-heading font-extrabold text-sm text-brand-terracotta dark:text-rose-400 mt-1">
-                        {money(c.total_pending || 0)}
+                      <div className="text-[10px] uppercase font-bold text-rose-600 dark:text-rose-400">Udhaar</div>
+                      <div className="font-bold text-xs text-rose-600 dark:text-rose-400 mt-0.5">
+                        {money(c.total_pending || c.udhaar || 0)}
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Bottom Actions: WhatsApp Reminder + Edit + View Ledger */}
-                <div className="mt-5 pt-3.5 border-t border-brand-mitti/60 dark:border-slate-800 flex items-center justify-between gap-2">
+                <div className="mt-3.5 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
                   {hasPending && c.phone ? (
                     <a
                       href={`https://wa.me/91${c.phone}?text=${encodeURIComponent(
-                        `Hello ${c.name}, this is a gentle reminder from Dukaan that your pending balance is ${money(c.total_pending)}. Please clear it at your convenience. Thank you!`
+                        `Hello ${c.name}, this is a gentle reminder from Dukaan that your pending balance is ${money(c.total_pending || c.udhaar)}. Please clear it at your convenience. Thank you!`
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs active:scale-95 transition-all flex items-center gap-1.5"
+                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] shadow-2xs active:scale-95 transition-all flex items-center gap-1"
                     >
-                      <MessageSquare className="w-3.5 h-3.5" />
+                      <MessageSquare className="w-3 h-3" />
                       <span>WhatsApp</span>
                     </a>
                   ) : (
-                    <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Khata Clean</span>
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>Clean Ledger</span>
+                    </span>
                   )}
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -357,7 +401,7 @@ export default function Customers() {
                           created_at: c.created_at
                         });
                       }}
-                      className="text-xs font-bold text-brand-indigo/70 dark:text-slate-300 hover:text-brand-indigo dark:hover:text-white border border-brand-mitti dark:border-slate-700 px-2.5 py-1 rounded-lg hover:border-brand-indigo dark:hover:border-slate-500 transition-colors flex items-center gap-1"
+                      className="text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 border border-slate-200 dark:border-slate-700 px-2 py-1 rounded-lg hover:border-blue-400 transition-colors flex items-center gap-1"
                     >
                       <Edit2 className="w-3 h-3" />
                       <span>Edit</span>
@@ -365,10 +409,10 @@ export default function Customers() {
 
                     <button
                       onClick={() => nav(`/app/customers/${c.id}`)}
-                      className="text-xs font-bold text-brand-indigo dark:text-slate-300 hover:text-brand-terracotta dark:hover:text-amber-400 transition-colors flex items-center gap-1"
+                      className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline transition-colors flex items-center gap-0.5"
                     >
                       <span>Ledger</span>
-                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                      <ChevronRight className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
@@ -383,45 +427,45 @@ export default function Customers() {
           ADD / EDIT CUSTOMER MODAL
       ========================================================= */}
       <Dialog open={form.open} onOpenChange={(o) => setForm({ ...form, open: o })}>
-        <DialogContent className="max-w-md rounded-3xl p-7 border-2 border-brand-mitti dark:border-slate-800 bg-white dark:bg-slate-900">
+        <DialogContent className="max-w-md rounded-3xl p-6 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
           <DialogHeader>
-            <DialogTitle className="font-display text-2xl text-brand-indigo dark:text-white flex items-center gap-2">
-              <Users className="w-5 h-5 text-brand-terracotta" />
+            <DialogTitle className="font-display text-xl text-slate-900 dark:text-white flex items-center gap-2">
+              <Users className="w-5 h-5 text-blue-600" />
               <span>{form.id ? "Edit Customer Details" : "Add Customer to Directory"}</span>
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-2 text-sm">
             <div>
-              <Label className="text-xs font-bold text-brand-indigo/70 dark:text-slate-300 uppercase">Customer Full Name *</Label>
+              <Label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase">Customer Full Name *</Label>
               <Input
                 data-testid="cf-name"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="e.g. Ramesh Bhai Patel"
-                className="mt-1 h-11 rounded-xl border-brand-mitti dark:border-slate-700 bg-white dark:bg-slate-800 text-brand-indigo dark:text-white text-base font-semibold"
+                placeholder="e.g. Ramesh Patel"
+                className="mt-1 h-10 rounded-xl border-slate-200 dark:border-slate-800 text-sm font-semibold"
               />
             </div>
 
             <div>
-              <Label className="text-xs font-bold text-brand-indigo/70 dark:text-slate-300 uppercase">10-Digit Mobile Number</Label>
+              <Label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase">10-Digit Mobile Number</Label>
               <Input
                 data-testid="cf-phone"
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 placeholder="9825100000"
                 maxLength={10}
-                className="mt-1 h-11 rounded-xl border-brand-mitti dark:border-slate-700 bg-white dark:bg-slate-800 text-brand-indigo dark:text-white font-mono"
+                className="mt-1 h-10 rounded-xl border-slate-200 dark:border-slate-800 font-mono text-xs"
               />
             </div>
 
             <div>
-              <Label className="text-xs font-bold text-brand-indigo/70 dark:text-slate-300 uppercase">Address / Khata Notes</Label>
+              <Label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase">Address / Khata Remarks</Label>
               <Input
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                placeholder="e.g. Regular buyer, Block B-204"
-                className="mt-1 h-11 rounded-xl border-brand-mitti dark:border-slate-700 bg-white dark:bg-slate-800 text-brand-indigo dark:text-white"
+                placeholder="e.g. Regular buyer, House #42"
+                className="mt-1 h-10 rounded-xl border-slate-200 dark:border-slate-800 text-xs"
               />
             </div>
           </div>
@@ -430,14 +474,14 @@ export default function Customers() {
             <Button 
               variant="outline" 
               onClick={() => setForm({ open: false, id: null, name: "", phone: "", notes: "" })}
-              className="rounded-xl border-brand-mitti dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 font-bold text-xs"
+              className="rounded-xl border-slate-200 dark:border-slate-700 font-bold text-xs"
             >
               Cancel
             </Button>
             <Button 
               onClick={save} 
               disabled={busy} 
-              className="rounded-xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-xs"
+              className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs h-10 px-5 shadow-md"
             >
               {busy ? "Saving..." : form.id ? "Update Customer" : "Save to Directory"}
             </Button>
