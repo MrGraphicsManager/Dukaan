@@ -33,6 +33,7 @@ import Udhaar from "@/pages/Udhaar";
 import Orders from "@/pages/Orders";
 import OrderDetail from "@/pages/OrderDetail";
 import Reports from "@/pages/Reports";
+import Expenses from "@/pages/Expenses";
 import Settings from "@/pages/Settings";
 import Subscribe from "@/pages/Subscribe";
 import Billing from "@/pages/Billing";
@@ -50,6 +51,8 @@ import StarterPlanPage from "./pages/StarterPlanPage";
 import BusinessPlanPage from "./pages/BusinessPlanPage";
 import PremiumPlanPage from "./pages/PremiumPlanPage";
 import NexoraRoutes from "./nexoraos/App";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import PublicStoreFront from "./pages/PublicStoreFront";
 
 /* =========================================================
    PROTECTED ROUTES
@@ -293,6 +296,18 @@ function LaunchController() {
       />
 
       {/* ===================================================
+          DUKAAN 3.0 OMNICHANNEL CONSUMER STOREFRONT
+      =================================================== */}
+      <Route
+        path="/store"
+        element={<PublicStoreFront />}
+      />
+      <Route
+        path="/store/:shopSlug"
+        element={<PublicStoreFront />}
+      />
+
+      {/* ===================================================
           NEXORAOS CAFÉ OPERATIONS SUITE (officialdukaan.in/nexoraos)
       =================================================== */}
       <Route
@@ -448,8 +463,17 @@ function LaunchController() {
         />
 
 
-        {/* Reports */}
+        {/* Expenses */}
+        <Route
+          path="/app/expenses"
+          element={
+            <SubGate>
+              <Expenses />
+            </SubGate>
+          }
+        />
 
+        {/* Reports */}
         <Route
           path="/app/reports"
           element={
@@ -534,20 +558,22 @@ function LaunchController() {
 
 function App() {
   return (
-    <AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
 
-      <BrowserRouter>
+        <BrowserRouter>
 
-        <Toaster
-          position="top-center"
-          richColors
-        />
+          <Toaster
+            position="top-center"
+            richColors
+          />
 
-        <LaunchController />
+          <LaunchController />
 
-      </BrowserRouter>
+        </BrowserRouter>
 
-    </AuthProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

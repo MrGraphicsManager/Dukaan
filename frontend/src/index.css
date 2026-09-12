@@ -5,8 +5,44 @@
 @tailwind utilities;
 
 body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;background:#F8FAFC;color:#0A1B39}
-@layer base{ :root{--background:210 50% 98%;--foreground:222 47% 11%;--card:0 0% 100%;--card-foreground:222 47% 11%;--popover:0 0% 100%;--popover-foreground:222 47% 11%;--primary:217 100% 50%;--primary-foreground:0 0% 100%;--secondary:222 47% 11%;--secondary-foreground:0 0% 100%;--muted:214 32% 91%;--muted-foreground:215 16% 47%;--accent:217 91% 60%;--accent-foreground:0 0% 100%;--destructive:0 84% 60%;--destructive-foreground:0 0% 100%;--border:214 32% 91%;--input:214 32% 91%;--ring:217 100% 50%;--radius:.75rem;--chart-1:217 100% 50%;--chart-2:222 47% 11%;--chart-3:158 46% 33%;--chart-4:217 91% 60%;--chart-5:224 76% 48%} }
+@layer base{ 
+  :root{--background:210 50% 98%;--foreground:222 47% 11%;--card:0 0% 100%;--card-foreground:222 47% 11%;--popover:0 0% 100%;--popover-foreground:222 47% 11%;--primary:217 100% 50%;--primary-foreground:0 0% 100%;--secondary:222 47% 11%;--secondary-foreground:0 0% 100%;--muted:214 32% 91%;--muted-foreground:215 16% 47%;--accent:217 91% 60%;--accent-foreground:0 0% 100%;--destructive:0 84% 60%;--destructive-foreground:0 0% 100%;--border:214 32% 91%;--input:214 32% 91%;--ring:217 100% 50%;--radius:.75rem;--chart-1:217 100% 50%;--chart-2:222 47% 11%;--chart-3:158 46% 33%;--chart-4:217 91% 60%;--chart-5:224 76% 48%}
+  .dark {
+    --background: 222 47% 7%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 10%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 10%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 100% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 18%;
+    --input: 217 33% 18%;
+    --ring: 217 100% 50%;
+  }
+}
 @layer base{*{@apply border-border}body{@apply bg-background text-foreground}h1,h2,h3{font-family:'DM Serif Display',serif;letter-spacing:-.01em}.font-display{font-family:'DM Serif Display',serif}}
+
+/* Dukaan 3.0 Dark Mode Overrides */
+html.dark body { background: #090D16 !important; color: #F8FAFC !important; }
+html.dark .bg-white { background-color: #111827 !important; color: #F8FAFC !important; border-color: #1F2937 !important; }
+html.dark .bg-slate-50, html.dark .bg-gray-50, html.dark .bg-brand-sand, html.dark .bg-brand-cream { background-color: #0F172A !important; }
+html.dark .border-slate-100, html.dark .border-slate-200, html.dark .border-brand-mitti, html.dark .border-brand-border { border-color: #1E293B !important; }
+html.dark .text-slate-900, html.dark .text-brand-indigo, html.dark .text-gray-900 { color: #F8FAFC !important; }
+html.dark .text-slate-600, html.dark .text-slate-500, html.dark .text-brand-indigo\/70, html.dark .text-brand-indigo\/60 { color: #94A3B8 !important; }
+html.dark input, html.dark select, html.dark textarea { background-color: #1E293B !important; color: #F8FAFC !important; border-color: #334155 !important; }
+html.dark .premium-topbar { background: rgba(17, 24, 39, 0.96) !important; border-color: #1F2937 !important; color: #F8FAFC !important; }
+html.dark .premium-control { background: #1F2937 !important; color: #F8FAFC !important; border-color: #374151 !important; }
+html.dark .premium-bottom-nav { background: rgba(17, 24, 39, 0.96) !important; border-color: #1F2937 !important; }
+html.dark .premium-bottom-item { color: #94A3B8 !important; }
 .mobile-shell, .mobile-shell h1, .mobile-shell h2, .mobile-shell h3, .mobile-shell h4, .mobile-shell h5, .mobile-shell h6 {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
 }

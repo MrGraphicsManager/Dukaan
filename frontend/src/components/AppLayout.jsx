@@ -1,8 +1,9 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { t } from "@/lib/i18n";
-import { LayoutDashboard, Receipt, Package, Warehouse, Users, Wallet, ClipboardList, BarChart3, Settings as Cog, LogOut, Store, CreditCard, ShieldCheck, ShieldAlert, Lock, Monitor, Bell, CheckCheck, AlertTriangle, X, RotateCw, Eye, Menu, ChevronRight, Sparkles } from "lucide-react";
+import { LayoutDashboard, Receipt, Package, Warehouse, Users, Wallet, ClipboardList, BarChart3, Settings as Cog, LogOut, Store, CreditCard, ShieldCheck, ShieldAlert, Lock, Monitor, Bell, CheckCheck, AlertTriangle, X, RotateCw, Eye, Menu, ChevronRight, Sparkles, Sun, Moon, ShoppingBag, Search, ChevronDown } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
 import { PLAN_TIER, ROUTE_PLAN } from "@/components/SubGate";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -13,26 +14,22 @@ import OwnerPinDialog from "@/components/OwnerPinDialog";
 import { toast } from "sonner";
 
 const NAV = [
-  { to: "/app", key: "dashboard", Icon: LayoutDashboard, end: true },
-  { to: "/app/pos", key: "new_bill", Icon: Receipt },
-  { to: "/app/products", key: "products", Icon: Package },
-  { to: "/app/stock", key: "stock", Icon: Warehouse },
-  { to: "/app/customers", key: "customers", Icon: Users },
-  { to: "/app/udhaar", key: "udhaar", Icon: Wallet },
-  { to: "/app/orders", key: "orders", Icon: ClipboardList },
-  { to: "/app/reports", key: "reports", Icon: BarChart3 },
-  { to: "/app/billing", key: "billing", Icon: CreditCard },
-  { to: "/app/studio", key: "pro_studio", Icon: Sparkles, isProStudio: true },
-  { to: "/app/settings", key: "settings", Icon: Cog },
-  { to: "/app/counter", key: "counter_mode", Icon: Monitor },
+  { to: "/app", key: "dashboard", label: "Dashboard", Icon: LayoutDashboard, end: true },
+  { to: "/app/pos", key: "new_bill", label: "New Bill", Icon: Receipt },
+  { to: "/app/products", key: "products", label: "Products", Icon: Package },
+  { to: "/app/customers", key: "customers", label: "Customers", Icon: Users },
+  { to: "/app/udhaar", key: "udhaar", label: "Udhaar / Credit", Icon: Wallet },
+  { to: "/app/expenses", key: "expenses", label: "Expenses", Icon: CreditCard },
+  { to: "/app/reports", key: "reports", label: "Reports", Icon: BarChart3 },
+  { to: "/app/settings", key: "settings", label: "Settings", Icon: Cog },
 ];
 
 const MOBILE_NAV = [
-  { to: "/app", key: "dashboard", Icon: LayoutDashboard, end: true },
-  { to: "/app/pos", key: "new_bill", Icon: Receipt },
-  { to: "/app/products", key: "products", Icon: Package },
-  { to: "/app/udhaar", key: "udhaar", Icon: Wallet },
-  { to: "#menu", key: "menu", Icon: Menu, isAction: true },
+  { to: "/app", key: "dashboard", label: "Dashboard", Icon: LayoutDashboard, end: true },
+  { to: "/app/pos", key: "new_bill", label: "New Bill", Icon: Receipt },
+  { to: "/app/products", key: "products", label: "Products", Icon: Package },
+  { to: "/app/udhaar", key: "udhaar", label: "Udhaar", Icon: Wallet },
+  { to: "#menu", key: "menu", label: "Menu", Icon: Menu, isAction: true },
 ];
 
 
@@ -146,6 +143,16 @@ export default function AppLayout() {
   const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const { notifications, unreadCount, fetchNotifications, markRead, markAllRead } = useNotifications();
+  const { theme, toggleTheme, isDark } = useTheme();
+  const [topSearch, setTopSearch] = useState("");
+  const userInitials = useMemo(() => {
+    const name = (user?.name || "Priyen Naik").trim();
+    const parts = name.split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  }, [user?.name]);
   const [activeTheme, setActiveTheme] = useState(() => {
     return localStorage.getItem("dukaan_active_theme") || "terracotta";
   });
@@ -518,135 +525,222 @@ export default function AppLayout() {
   }
 
   return (
-    <div className={`min-h-screen theme-${activeTheme} ${isPremium ? "premium-app-shell" : "bg-brand-sand"} ${premiumClass}`}>
-
-      {/* Store Inspector Mode Banner (Feature #1) */}
-      {inspectorSession && (
-        <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 text-white px-4 py-2 text-xs font-bold flex items-center justify-between shadow-md sticky top-0 z-50">
-          <div className="flex items-center gap-2">
-            <Eye className="w-4 h-4 shrink-0 text-amber-200" />
-            <span>
-              <strong>👀 Store Inspector Active:</strong> Viewing store of <span className="underline decoration-amber-300 font-extrabold">{inspectorSession.target_name || "Merchant"}</span> ({inspectorSession.target_email}) as Super Administrator.
-            </span>
-          </div>
-          <Button
-            onClick={exitInspector}
-            size="sm"
-            className="bg-white text-slate-900 hover:bg-amber-100 font-extrabold text-[11px] h-7 px-3 rounded-lg shadow-sm border border-amber-200"
-          >
-            Exit Inspector & Return to Admin
-          </Button>
-        </div>
-      )}
-
-      {/* Cashier Mode Active Alert Banner */}
-      {isCashierMode && (
-        <div className="bg-gradient-to-r from-amber-600 via-purple-950 to-amber-700 text-white px-4 py-1.5 text-xs font-bold flex items-center justify-between shadow-md sticky top-0 z-50">
-          <div className="flex items-center gap-2">
-            <Lock className="w-4 h-4 shrink-0 text-amber-300 animate-pulse" />
-            <span>
-              <strong>🔒 Cashier Counter Active ({cashierName}):</strong> Wholesale cost prices & margins hidden. Deleting bills & products requires Owner PIN.
-            </span>
-          </div>
-          <Button
-            onClick={() => setPinModalOpen(true)}
-            size="sm"
-            className="bg-amber-400 text-slate-950 hover:bg-amber-300 font-extrabold text-[11px] h-6 px-3 rounded-lg shadow-sm"
-          >
-            Owner PIN Unlock
-          </Button>
-        </div>
-      )}
+    <div className={`min-h-screen bg-[#F8FAFC] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col md:flex-row theme-${activeTheme} ${premiumClass}`}>
 
       {/* =====================================================
-          TOP NAVIGATION BAR
+          DESKTOP SIDEBAR (Full-height sticky on the left)
       ===================================================== */}
+      <aside className="hidden md:flex flex-col w-60 xl:w-64 shrink-0 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 h-screen sticky top-0 z-40">
+        {/* Logo & Tagline (Matching Screenshot) */}
+        <div className="p-4 sm:p-5 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center text-white shadow-sm shrink-0">
+            <ShoppingBag className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="font-bold text-lg text-slate-900 dark:text-white leading-tight">
+              Dukaan
+            </div>
+            <div className="text-[11px] text-slate-400 font-medium mt-0.5">
+              Business, Simplified.
+            </div>
+          </div>
+        </div>
 
-      <header className={`sticky top-0 z-30 backdrop-blur-xl border-b ${isPremium ? "premium-topbar" : "bg-brand-cream/95 border-brand-mitti"}`}>
-        <div className="mx-auto max-w-[1400px] px-4 h-16 flex items-center justify-between gap-3">
+        {/* Navigation Links (Matching Screenshot: 8 items) */}
+        <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
+          {NAV.map(({ to, key, label, Icon, end }) => {
+            const locked = isLocked(to);
+            return (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                data-testid={`nav-${key}`}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                    isActive
+                      ? "bg-blue-50 text-blue-600 font-bold dark:bg-blue-950/60 dark:text-blue-400 shadow-2xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                  }`
+                }
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="flex-1">{t(lang, key) || label}</span>
+                {locked && <Lock className="w-3 h-3 text-amber-500 shrink-0" />}
+              </NavLink>
+            );
+          })}
+          {user?.is_admin && (
+            <NavLink
+              to="/admin"
+              data-testid="nav-admin"
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                  isActive
+                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-bold"
+                    : "text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`
+              }
+            >
+              <ShieldCheck className="w-4 h-4 shrink-0" />
+              <span>Admin</span>
+            </NavLink>
+          )}
+        </nav>
 
-          {/* Logo (Switches to official Premium logo for Premium plan users) */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Mobile Hamburger Toggle Button */}
+        {/* Bottom Store Card (Matching Screenshot) */}
+        <div className="p-3 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-3 p-2 rounded-xl bg-slate-50/70 dark:bg-slate-800/40">
+            <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center text-white shrink-0">
+              <Store className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                {activeShop?.name || user?.store_name || user?.name || "Shree Kirana Store"}
+              </div>
+              <button
+                onClick={() => nav("/app/settings?tab=shop")}
+                className="text-[11px] text-blue-600 font-semibold hover:underline flex items-center gap-0.5 mt-0.5 cursor-pointer"
+              >
+                <span>View Profile</span>
+                <span>→</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* =====================================================
+          RIGHT CONTENT COLUMN (Topbar + Main Outlet)
+      ===================================================== */}
+      <div className="flex-1 flex flex-col min-w-0">
+
+        {/* Store Inspector Mode Banner (Feature #1) */}
+        {inspectorSession && (
+          <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 text-white px-4 py-2 text-xs font-bold flex items-center justify-between shadow-md sticky top-0 z-50">
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 shrink-0 text-amber-200" />
+              <span>
+                <strong>👀 Store Inspector Active:</strong> Viewing store of <span className="underline decoration-amber-300 font-extrabold">{inspectorSession.target_name || "Merchant"}</span> ({inspectorSession.target_email}) as Super Administrator.
+              </span>
+            </div>
+            <Button
+              onClick={exitInspector}
+              size="sm"
+              className="bg-white text-slate-900 hover:bg-amber-100 font-extrabold text-[11px] h-7 px-3 rounded-lg shadow-sm border border-amber-200"
+            >
+              Exit Inspector & Return to Admin
+            </Button>
+          </div>
+        )}
+
+        {/* Cashier Mode Active Alert Banner */}
+        {isCashierMode && (
+          <div className="bg-gradient-to-r from-amber-600 via-purple-950 to-amber-700 text-white px-4 py-1.5 text-xs font-bold flex items-center justify-between shadow-md sticky top-0 z-50">
+            <div className="flex items-center gap-2">
+              <Lock className="w-4 h-4 shrink-0 text-amber-300 animate-pulse" />
+              <span>
+                <strong>🔒 Cashier Counter Active ({cashierName}):</strong> Wholesale cost prices & margins hidden. Deleting bills & products requires Owner PIN.
+              </span>
+            </div>
+            <Button
+              onClick={() => setPinModalOpen(true)}
+              size="sm"
+              className="bg-amber-400 text-slate-950 hover:bg-amber-300 font-extrabold text-[11px] h-6 px-3 rounded-lg shadow-sm"
+            >
+              Owner PIN Unlock
+            </Button>
+          </div>
+        )}
+
+        {/* Admin Simulation Alert Bar */}
+        {(isMasterAdmin || inspectorSession) && (platformConfig.maintenance_mode || isMerchantFrozen) && (
+          <div className="bg-amber-500 text-slate-950 px-4 py-2 text-xs font-black flex items-center justify-between shadow-md border-b border-amber-600 sticky top-0 z-50">
+            <div className="flex-1 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-slate-950 animate-pulse flex-shrink-0" />
+              <span>
+                [ADMIN SIMULATION ACTIVE] — 
+                {platformConfig.maintenance_mode ? " ⚠️ PLATFORM MAINTENANCE IS ACTIVE." : ""}
+                {isMerchantFrozen ? " 🛡️ STORE SECURITY FREEZE IS ACTIVE." : ""}
+              </span>
+            </div>
+            <span className="text-[10px] uppercase font-mono tracking-wider bg-slate-950 text-amber-300 px-2 py-0.5 rounded font-bold ml-3">
+              Admin View
+            </span>
+          </div>
+        )}
+
+        {/* Global Merchant Broadcast Banner */}
+        {platformConfig.announcement && dismissedAnnouncement !== platformConfig.announcement && (
+          <div className="bg-slate-900 text-white px-4 py-2 text-xs font-semibold flex items-center justify-between border-b border-slate-800 shadow-md">
+            <div className="flex-1 flex items-center gap-2.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+              </span>
+              <span className="text-amber-300 font-bold uppercase tracking-wider text-[10px] bg-amber-400/20 px-2 py-0.5 rounded border border-amber-300/30">
+                Announcement
+              </span>
+              <span>{platformConfig.announcement}</span>
+            </div>
+            <button 
+              onClick={() => setDismissedAnnouncement(platformConfig.announcement)}
+              className="text-white/60 hover:text-white p-1 rounded-lg hover:bg-white/10 ml-3"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Topbar Header (Matching Screenshot) */}
+        <header className="h-16 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 sticky top-0 z-30 px-4 sm:px-6 flex items-center justify-between gap-4">
+          
+          {/* Mobile Header: Hamburger + Brand */}
+          <div className="flex md:hidden items-center gap-2.5">
             <button
               type="button"
               onClick={() => setMobileDrawerOpen(true)}
-              className="md:hidden w-9 h-9 rounded-xl border border-brand-mitti bg-white text-brand-indigo flex items-center justify-center shadow-xs active:scale-95 transition-transform shrink-0"
-              aria-label="Open Navigation Menu"
+              className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-200 active:scale-95 shrink-0"
+              aria-label="Open menu"
             >
-              <Menu className="w-5 h-5 text-brand-indigo" />
+              <Menu className="w-5 h-5" />
             </button>
-
-            <button className="md:hidden flex items-center gap-1.5" onClick={() => nav("/app")} data-testid="topbar-logo" aria-label="Home">
-              <img 
-                src={isPremium ? "/logo-premium.png" : "/logo.png"} 
-                alt="Dukaan" 
-                className={`${isPremium ? "h-8 sm:h-10" : "h-7 sm:h-8"} w-auto object-contain`} 
-              />
-              <span className="text-[9px] font-mono font-bold text-brand-indigo/40 tracking-wider">by PEAN</span>
-            </button>
-            <div className="hidden md:flex items-center gap-2.5">
-              <img 
-                src={isPremium ? "/logo-premium.png" : "/logo.png"} 
-                alt="Dukaan" 
-                className={`${isPremium ? "h-11 sm:h-12" : "h-9"} w-auto object-contain cursor-pointer transition-transform hover:scale-105 drop-shadow-xs`} 
-                onClick={() => nav("/app")} 
-              />
-              <span className="text-[10px] font-mono font-bold text-brand-indigo/50 tracking-wider bg-brand-sand px-2 py-0.5 rounded-full border border-brand-mitti">
-                by PEAN
-              </span>
-              {isCashierMode ? (
-                <button
-                  onClick={() => setPinModalOpen(true)}
-                  title="Cashier Counter Active · Click to Unlock as Owner"
-                  className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-md border border-amber-300 font-sans flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer animate-pulse"
-                >
-                  <Lock className="w-3.5 h-3.5 text-slate-950" />
-                  <span>Cashier ({cashierName})</span>
-                  <span className="text-[10px] bg-black/20 px-1.5 py-0.5 rounded font-mono font-semibold">Unlock</span>
-                </button>
-              ) : isPro ? (
-                <button
-                  onClick={() => nav("/app/settings?tab=pro")}
-                  title="Open Dukaan Pro Flagship Studio"
-                  className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-gradient-to-r from-purple-700 via-indigo-600 to-brand-terracotta text-white shadow-sm border border-purple-400 font-mono flex items-center gap-1 hover:scale-105 active:scale-95 transition-transform cursor-pointer"
-                >
-                  <Sparkles className="w-3 h-3 text-amber-300" /> DUKAAN PRO
-                </button>
-              ) : isPremium ? (
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 text-slate-900 shadow-xs border border-amber-300 font-mono">
-                  PREMIUM MERCHANT
-                </span>
-              ) : null}
-              {(user?.is_verified || user?.is_verified_store || currentShop?.gst_status === "approved") && (
-                <span className="hidden lg:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono" title="Verified Dukaan Merchant">
-                  <ShieldCheck className="w-3 h-3 text-emerald-600" /> VERIFIED
-                </span>
-              )}
+            <div className="w-8 h-8 rounded-lg bg-black flex items-center justify-center text-white shrink-0">
+              <ShoppingBag className="w-4 h-4" />
             </div>
+            <span className="font-bold text-base text-slate-900 dark:text-white">Dukaan</span>
           </div>
 
+          {/* Center/Left: Search Bar (Matching Screenshot) */}
+          <div className="relative flex-1 max-w-xl hidden sm:block">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search anything... (products, customers, bills)"
+              value={topSearch}
+              onChange={(e) => setTopSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && topSearch.trim()) {
+                  nav(`/app/products?search=${encodeURIComponent(topSearch.trim())}`);
+                }
+              }}
+              className="w-full pl-10 pr-4 py-2 bg-slate-100/90 dark:bg-slate-800 border-0 rounded-2xl text-xs sm:text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all"
+            />
+          </div>
 
-          {/* Right controls */}
-          <div className="flex items-center gap-2">
+          {/* Right Controls: Notification Bell, Theme toggle, User Profile Chip */}
+          <div className="flex items-center gap-3">
 
-            {/* ================================================
-                NOTIFICATION BELL
-            ================================================ */}
-
+            {/* Notification Bell */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   data-testid="notification-bell"
-                  className={`relative w-9 h-9 rounded-full grid place-items-center transition-colors ${isPremium ? "premium-control" : "border border-brand-mitti bg-white text-brand-indigo hover:border-brand-indigo"}`}
+                  className="relative w-9 h-9 rounded-full grid place-items-center hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
                   aria-label="Notifications"
                 >
                   <Bell className="w-4 h-4" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-brand-terracotta text-white text-[10px] font-bold grid place-items-center leading-none px-1">
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </span>
-                  )}
+                  <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-900" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto">
@@ -655,7 +749,7 @@ export default function AppLayout() {
                   {unreadCount > 0 && (
                     <button
                       onClick={(e) => { e.stopPropagation(); markAllRead(); }}
-                      className="text-xs text-brand-terracotta hover:underline flex items-center gap-1"
+                      className="text-xs text-blue-600 hover:underline flex items-center gap-1"
                     >
                       <CheckCheck className="w-3 h-3" /> Mark all read
                     </button>
@@ -663,7 +757,7 @@ export default function AppLayout() {
                 </div>
                 <DropdownMenuSeparator />
                 {notifications.length === 0 ? (
-                  <div className="px-4 py-8 text-center text-sm text-brand-indigo/50">
+                  <div className="px-4 py-8 text-center text-sm text-slate-400">
                     <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     No notifications yet
                   </div>
@@ -671,15 +765,15 @@ export default function AppLayout() {
                   notifications.map((notif) => (
                     <DropdownMenuItem
                       key={notif.id}
-                      className={`flex items-start gap-3 px-3 py-2.5 cursor-pointer ${!notif.read ? "bg-brand-sand/50" : ""}`}
+                      className={`flex items-start gap-3 px-3 py-2.5 cursor-pointer ${!notif.read ? "bg-slate-50 dark:bg-slate-800" : ""}`}
                       onClick={() => markRead(notif.id)}
                     >
-                      <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${!notif.read ? "bg-brand-terracotta" : "bg-transparent"}`} />
+                      <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${!notif.read ? "bg-blue-600" : "bg-transparent"}`} />
                       <div className="flex-1 min-w-0">
                         <span className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${NOTIF_COLORS[notif.type] || NOTIF_COLORS.info}`}>
                           {notif.title}
                         </span>
-                        <p className="text-xs text-brand-indigo/70 mt-0.5 leading-snug">{notif.message}</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 leading-snug">{notif.message}</p>
                       </div>
                     </DropdownMenuItem>
                   ))
@@ -687,204 +781,85 @@ export default function AppLayout() {
               </DropdownMenuContent>
             </DropdownMenu>
 
+            {/* Dukaan Theme Switcher */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              data-testid="theme-toggle"
+              className="w-9 h-9 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 grid place-items-center transition-all cursor-pointer"
+              title={isDark ? "Switch to Light Mode" : "Switch to OLED Dark Mode"}
+            >
+              {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+            </button>
 
-            {/* ================================================
-                SHOP SWITCHER
-            ================================================ */}
-
+            {/* User Profile Chip (Matching Screenshot) */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button data-testid="shop-switcher" className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full border text-xs sm:text-sm transition-colors ${isPremium ? "premium-control" : "border-brand-mitti bg-white text-brand-indigo hover:border-brand-indigo"}`}>
-                  <Store className="w-4 h-4 shrink-0"/><span className="hidden sm:inline max-w-[140px] truncate">{activeShop?.name || "Select shop"}</span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                <DropdownMenuLabel>Your shops</DropdownMenuLabel>
-                {shops.map(s => <DropdownMenuItem key={s.id} onClick={() => setActiveShop(s.id)} data-testid={`shop-option-${s.id}`}><Store className="w-4 h-4 mr-2"/> {s.name}</DropdownMenuItem>)}
-                <DropdownMenuSeparator/>
-                <DropdownMenuItem onClick={() => nav("/app/settings")} data-testid="shop-add">+ Add / manage shops</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-
-
-
-
-            {/* ================================================
-                USER MENU
-            ================================================ */}
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button data-testid="user-menu" className={`w-9 h-9 rounded-full overflow-hidden grid place-items-center font-heading font-semibold transition-all border ${isPremium ? "premium-avatar border-amber-400 shadow-sm" : "bg-brand-indigo text-white border-brand-indigo/30"}`}>
-                  {user?.avatar ? (
-                    <img src={user.avatar} alt={user?.name || "Avatar"} className="w-full h-full object-cover" />
-                  ) : (
-                    (user?.name || user?.email || "U")[0].toUpperCase()
-                  )}
+                <button
+                  data-testid="user-menu"
+                  className="flex items-center gap-2.5 p-1 sm:px-2 sm:py-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left cursor-pointer"
+                >
+                  <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
+                    {userInitials}
+                  </div>
+                  <div className="hidden sm:block text-left">
+                    <div className="text-xs font-bold text-slate-800 dark:text-white leading-tight">
+                      {user?.name || "Priyen Naik"}
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-medium leading-tight truncate max-w-[130px]">
+                      {activeShop?.name || user?.store_name || "Shree Kirana Store"}
+                    </div>
+                  </div>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64 p-2">
-                <div className="px-3 py-2 bg-brand-sand/60 rounded-xl mb-1">
-                  <div className="font-heading font-bold text-sm text-brand-indigo truncate">
-                    {user?.name || "Merchant"}
+                <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl mb-1">
+                  <div className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                    {user?.name || "Priyen Naik"}
                   </div>
-                  <div className="text-xs text-brand-indigo/60 truncate">
+                  <div className="text-xs text-slate-500 truncate">
                     {user?.email || "owner@dukaan.in"}
                   </div>
                   <div className="mt-1.5 flex items-center gap-1.5">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-brand-indigo text-white">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-600 text-white">
                       {user?.subscription?.plan || "Starter"} Plan
                     </span>
-                    {user?.subscription?.is_trial && (
-                      <span className="px-1.5 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-100 text-emerald-800">
-                        Trial
-                      </span>
-                    )}
                   </div>
                 </div>
-                <DropdownMenuSeparator/>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => nav("/app/settings?tab=account")} className="cursor-pointer py-2 text-xs font-semibold">
-                  <Cog className="w-4 h-4 mr-2 text-brand-terracotta" /> My Account & Profile
+                  <Cog className="w-4 h-4 mr-2 text-slate-500" /> My Account & Profile
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => nav("/app/settings?tab=shop")} className="cursor-pointer py-2 text-xs font-semibold">
-                  <Store className="w-4 h-4 mr-2 text-brand-indigo" /> Shop & Branches
+                  <Store className="w-4 h-4 mr-2 text-slate-500" /> Shop & Branches
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => nav("/app/stock")} className="cursor-pointer py-2 text-xs font-semibold">
+                  <Package className="w-4 h-4 mr-2 text-emerald-600" /> Stock & Inventory
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => nav("/app/orders")} className="cursor-pointer py-2 text-xs font-semibold">
+                  <Receipt className="w-4 h-4 mr-2 text-blue-600" /> All Bills & Orders
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => nav("/app/counter")} className="cursor-pointer py-2 text-xs font-semibold">
+                  <Monitor className="w-4 h-4 mr-2 text-purple-600" /> Fullscreen Counter Mode
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => nav("/app/billing")} className="cursor-pointer py-2 text-xs font-semibold">
-                  <CreditCard className="w-4 h-4 mr-2 text-blue-600" /> Billing & Plan
+                  <CreditCard className="w-4 h-4 mr-2 text-indigo-600" /> Billing & Subscription
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => nav("/subscribe")} className="cursor-pointer py-2 text-xs font-semibold">
-                  <ShieldCheck className="w-4 h-4 mr-2 text-amber-500" /> Upgrade / Change Plan
-                </DropdownMenuItem>
-                <DropdownMenuSeparator/>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={async () => { await logout(); nav("/"); }} data-testid="logout-btn" className="cursor-pointer py-2 text-xs font-semibold text-red-600 hover:text-red-700">
-                  <LogOut className="w-4 h-4 mr-2"/> {t(lang,"logout")}
+                  <LogOut className="w-4 h-4 mr-2" /> {t(lang, "logout")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Admin Simulation Alert Bar for Master Admin & Store Inspector */}
-      {(isMasterAdmin || inspectorSession) && (platformConfig.maintenance_mode || isMerchantFrozen) && (
-        <div className="bg-amber-500 text-slate-950 px-4 py-2.5 text-xs font-black flex items-center justify-between shadow-md border-b border-amber-600">
-          <div className="mx-auto max-w-[1400px] flex-1 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-slate-950 animate-pulse flex-shrink-0" />
-            <span>
-              [ADMIN SIMULATION ACTIVE] — 
-              {platformConfig.maintenance_mode ? " ⚠️ PLATFORM MAINTENANCE IS ACTIVE (All regular merchants are blocked)." : ""}
-              {isMerchantFrozen ? " 🛡️ STORE SECURITY FREEZE IS ACTIVE for this merchant/shop." : ""}
-              {" (Bypassed for you as Master Admin / Store Inspector)"}
-            </span>
-          </div>
-          <span className="text-[10px] uppercase font-mono tracking-wider bg-slate-950 text-amber-300 px-2 py-0.5 rounded font-bold ml-3">
-            Admin View
-          </span>
-        </div>
-      )}
-
-      {/* Global Merchant Broadcast Banner */}
-      {platformConfig.announcement && dismissedAnnouncement !== platformConfig.announcement && (
-        <div className="bg-gradient-to-r from-[#1B1464] via-indigo-900 to-[#1B1464] text-white px-4 py-2.5 text-xs font-semibold flex items-center justify-between border-b border-indigo-700/50 shadow-md">
-          <div className="mx-auto max-w-[1400px] flex-1 flex items-center gap-2.5">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-            </span>
-            <span className="text-amber-300 font-bold uppercase tracking-wider text-[10px] bg-amber-400/20 px-2 py-0.5 rounded border border-amber-300/30">
-              Announcement
-            </span>
-            <span className="text-white font-medium">{platformConfig.announcement}</span>
-          </div>
-          <button 
-            onClick={() => setDismissedAnnouncement(platformConfig.announcement)}
-            className="text-white/60 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors ml-3"
-            title="Dismiss notification"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {/* =====================================================
-          CONTENT AREA (SIDEBAR + MAIN)
-      ===================================================== */}
-
-      <div className={`mx-auto max-w-[1400px] flex ${isPremium ? "premium-content" : ""}`}>
-
-        {/* Desktop sidebar */}
-        <aside className="hidden md:flex flex-col w-56 shrink-0 border-r border-brand-mitti min-h-[calc(100vh-4rem)] pt-6 px-3 bg-white">
-          <nav className="space-y-1 flex-1">
-            {NAV.map(({ to, key, Icon, end, isProStudio }) => {
-              const locked = isLocked(to);
-              return (
-                <NavLink
-                  key={to}
-                  to={to}
-                  end={end}
-                  data-testid={`nav-${key}`}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                      isActive
-                        ? isProStudio
-                          ? "bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-800 text-white shadow-sm"
-                          : "bg-brand-indigo text-white"
-                        : isProStudio
-                          ? "text-purple-800 hover:bg-purple-50 font-semibold"
-                          : "text-brand-indigo/80 hover:bg-brand-mitti/50"
-                    }`
-                  }
-                >
-                  <Icon className={`w-4 h-4 ${isProStudio ? "text-amber-500" : ""}`}/>
-                  <span className="flex-1">{t(lang, key)}</span>
-                  {isProStudio && (
-                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-mono tracking-wider shadow-2xs">
-                      PRO
-                    </span>
-                  )}
-                  {locked && <Lock className="w-3 h-3 text-brand-terracotta" data-testid={`lock-${key}`}/>}
-                </NavLink>
-              );
-            })}
-            {user?.is_admin && (
-              <NavLink
-                to="/admin"
-                data-testid="nav-admin"
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive ? "bg-brand-terracotta text-white" : "text-brand-terracotta hover:bg-brand-terracotta/10"}`
-                }
-              >
-                <ShieldCheck className="w-4 h-4"/> Admin
-              </NavLink>
-            )}
-          </nav>
-          <div className="mt-6 mb-4 px-1">
-            <Button
-              className="w-full bg-brand-terracotta hover:bg-brand-terracotta/90 text-white rounded-full active:scale-95 transition-all"
-              onClick={() => nav("/app/pos")}
-              data-testid="sidebar-new-bill"
-            >
-              + {t(lang, "new_bill")}
-            </Button>
-          </div>
-          {/* PEAN Parent Brand Footnote */}
-          <div className="mt-auto pb-4 pt-3 border-t border-brand-mitti/70 px-2 text-center">
-            <div className="text-[11px] font-bold text-brand-indigo/80 flex items-center justify-center gap-1.5">
-              <span>Dukaan</span>
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-brand-sand font-mono text-brand-indigo/60">POS</span>
-            </div>
-            <div className="text-[10px] text-brand-indigo/50 mt-0.5 font-medium">
-              A Product of <span className="font-bold text-brand-indigo/70">PEAN</span>
-            </div>
-          </div>
-        </aside>
-
-        {/* Main content */}
-        <main className={`flex-1 min-w-0 px-3 sm:px-4 md:px-8 py-4 sm:py-6 ${isPremium ? "premium-main pb-28 md:pb-6" : "pb-28 md:pb-6"}`}>
+        {/* Main Outlet */}
+        <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 pb-24 md:pb-8">
           <RenewalBanner />
-          <Outlet/>
+          <Outlet />
         </main>
       </div>
 

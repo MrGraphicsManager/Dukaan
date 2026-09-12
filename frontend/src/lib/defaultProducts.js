@@ -159,3 +159,5 @@ export const deleteStoredProduct = (id) => {
   }
 };
 
+export const DEFAULT_PRODUCTS_LIST = DEFAULT_PRODUCTS;
+

@@ -27,6 +27,7 @@ import {
   FileText
 } from "lucide-react";
 import { getStoredCustomers, saveStoredCustomers } from "@/pages/Customers";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function Udhaar() {
   const nav = useNavigate();
@@ -305,9 +306,25 @@ export default function Udhaar() {
     }).catch(() => {});
   };
 
+  const { user, shops, currentShopId } = useAuth();
+  const activeShop = (shops || []).find(s => s?.id === currentShopId) || shops?.[0];
+  const shopName = user?.store_name || activeShop?.name || "Apni Dukaan";
+  const upiId = user?.upi_id || "merchant@upi";
+
   const waLink = (row) => {
     const phone = (row.customer_phone || "").replace(/\D/g, "");
-    const msg = `Hello ${row.customer_name}, this is a reminder from Dukaan that your outstanding Udhaar balance is ${money(row.pending)}. Please clear it at your convenience. Thank you!`;
+    const amt = Number(row.pending || 0);
+    const upiPayUri = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(shopName)}&am=${amt}&cu=INR&tn=Udhaar%20Payment`;
+    
+    const msg = `🙏 *Namaste ${row.customer_name} ji*,\n\n` +
+      `This is a friendly payment reminder from *${shopName}*.\n` +
+      `Your outstanding Khata / Udhaar balance is: *₹${amt.toFixed(2)}*.\n\n` +
+      `📲 *Pay Instantly via UPI (PhonePe / GPay / Paytm):*\n` +
+      `${upiPayUri}\n\n` +
+      `UPI ID: *${upiId}*\n\n` +
+      `Please clear the balance at your earliest convenience. Thank you for your continued trust!\n` +
+      `_Dukaan 3.0 Smart Khata Engine_`;
+
     return `https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`;
   };
 

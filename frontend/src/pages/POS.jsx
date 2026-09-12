@@ -42,8 +42,15 @@ import {
   PauseCircle,
   PlayCircle,
   ShieldCheck,
-  Clock
+  Clock,
+  Mic,
+  Monitor,
+  Split
 } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
+import VoiceBillingModal from "@/components/pos/VoiceBillingModal";
+import CustomerDisplayModal from "@/components/pos/CustomerDisplayModal";
+import SplitPaymentModal from "@/components/pos/SplitPaymentModal";
 import { getStoredProducts, saveStoredProducts } from "@/lib/defaultProducts";
 import { getStoredCustomers, saveStoredCustomers } from "@/pages/Customers";
 import { useAuth } from "@/lib/AuthContext";
@@ -125,6 +132,54 @@ export default function POS() {
     ? getActiveCashierName(currentShopId) 
     : (user?.name || "Owner");
 
+  const { playAudioChime } = useTheme();
+
+  // Dukaan 3.0 Modals State
+  const [voiceModalOpen, setVoiceModalOpen] = useState(false);
+  const [customerDisplayOpen, setCustomerDisplayOpen] = useState(false);
+  const [splitPaymentOpen, setSplitPaymentOpen] = useState(false);
+
+  // Dukaan 3.0 Multi-Cart Slots (Hold & Switch between 3 concurrent active carts)
+  const [activeCartSlot, setActiveCartSlot] = useState(1);
+  const [cartSlots, setCartSlots] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem(`dukaan_cart_slots_${currentShopId}`);
+      return raw ? JSON.parse(raw) : {
+        1: { cart: [], customerId: "", discount: 0, discountType: "flat" },
+        2: { cart: [], customerId: "", discount: 0, discountType: "flat" },
+        3: { cart: [], customerId: "", discount: 0, discountType: "flat" }
+      };
+    } catch {
+      return {
+        1: { cart: [], customerId: "", discount: 0, discountType: "flat" },
+        2: { cart: [], customerId: "", discount: 0, discountType: "flat" },
+        3: { cart: [], customerId: "", discount: 0, discountType: "flat" }
+      };
+    }
+  });
+
+  const switchCartSlot = (slotNum) => {
+    if (slotNum === activeCartSlot) return;
+    const updated = {
+      ...cartSlots,
+      [activeCartSlot]: { cart, customerId, discount, discountType }
+    };
+    setCartSlots(updated);
+    try {
+      sessionStorage.setItem(`dukaan_cart_slots_${currentShopId}`, JSON.stringify(updated));
+    } catch {}
+
+    const target = updated[slotNum] || { cart: [], customerId: "", discount: 0, discountType: "flat" };
+    setActiveCartSlot(slotNum);
+    setCart(target.cart || []);
+    setCustomerId(target.customerId || "");
+    setDiscount(target.discount || 0);
+    setDiscountType(target.discountType || "flat");
+
+    if (playAudioChime) playAudioChime("hold");
+    toast.info(`Switched to Cart #${slotNum} (${(target.cart || []).length} items)`);
+  };
+
   const handleHoldCart = () => {
     if (cart.length === 0) {
       toast.info("Cart is empty. Add products before holding bill.");
@@ -161,8 +216,24 @@ export default function POS() {
 
   useEffect(() => {
     const handlePosShortcuts = (e) => {
+      // F2: AI Voice Billing (Dukaan 3.0)
+      if (e.key === "F2") {
+        e.preventDefault();
+        setVoiceModalOpen(true);
+      }
+      // F4: Cycle Cart Slot (Dukaan 3.0)
+      else if (e.key === "F4") {
+        e.preventDefault();
+        const next = activeCartSlot === 3 ? 1 : activeCartSlot + 1;
+        switchCartSlot(next);
+      }
+      // F6: Customer Display (Dukaan 3.0)
+      else if (e.key === "F6") {
+        e.preventDefault();
+        setCustomerDisplayOpen(true);
+      }
       // F7: Hold Cart
-      if (e.key === "F7") {
+      else if (e.key === "F7") {
         e.preventDefault();
         handleHoldCart();
       }
@@ -180,7 +251,7 @@ export default function POS() {
     window.addEventListener("keydown", handlePosShortcuts);
     return () => window.removeEventListener("keydown", handlePosShortcuts);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cart, customerId, discount, discountType, heldCart, currentShopId]);
+  }, [cart, customerId, discount, discountType, heldCart, currentShopId, activeCartSlot, cartSlots]);
 
   // Shift Handover Computation (F9)
   const currentShift = getCurrentShift() || {
@@ -415,8 +486,8 @@ export default function POS() {
     );
   }, [products, q, selectedCategory]);
 
-  // Cart operations
-  const addToCart = (p) => {
+  // Cart operations (Dukaan 3.0 Hyper-Engine)
+  const addToCart = (p, extraQty = 1) => {
     const isUnlimited = p.unlimited_stock === true;
     const availableStock = Number(p.stock !== undefined ? p.stock : 9999);
 
@@ -424,6 +495,8 @@ export default function POS() {
       toast.error(`"${p.name}" is out of stock!`);
       return;
     }
+
+    if (playAudioChime) playAudioChime("scan");
 
     // Feature #45: Expiry verification on item scan / addition
     if (canUseExpiryGuard && p.expiry_date) {
@@ -450,19 +523,19 @@ export default function POS() {
       const idx = prev.findIndex(x => x.product_id === p.id);
       if (idx >= 0) {
         const currentQty = prev[idx].qty;
-        if (!isUnlimited && currentQty >= availableStock) {
+        if (!isUnlimited && currentQty + extraQty > availableStock) {
           toast.warning(`Cannot add more! Only ${availableStock} units available in stock for ${p.name}.`);
           return prev;
         }
         const copy = [...prev];
-        copy[idx] = { ...copy[idx], qty: currentQty + 1 };
+        copy[idx] = { ...copy[idx], qty: currentQty + extraQty };
         return copy;
       }
       return [...prev, { 
         product_id: p.id, 
         name: p.name, 
         price: p.selling_price, 
-        qty: 1, 
+        qty: extraQty, 
         category: p.category,
         batch_number: p.batch_number || "",
         expiry_date: p.expiry_date || "",
@@ -470,6 +543,14 @@ export default function POS() {
         unlimited_stock: isUnlimited
       }];
     });
+  };
+
+  const handleVoiceAddItems = (detectedItems) => {
+    if (!Array.isArray(detectedItems) || detectedItems.length === 0) return;
+    detectedItems.forEach(({ product, qty }) => {
+      addToCart(product, qty || 1);
+    });
+    toast.success(`⚡ Added ${detectedItems.length} items via AI Voice!`);
   };
 
   const updateQty = (idx, delta) => {
@@ -701,6 +782,79 @@ export default function POS() {
         } catch {}
       }
     }).catch(() => {});
+  };
+
+  // Dukaan 3.0 Split Payment Processor
+  const handleSplitPaymentConfirm = ({ payment_mode, split }) => {
+    if (cart.length === 0) {
+      toast.error("Cart is empty");
+      return;
+    }
+
+    const orderId = `ord_${Date.now()}`;
+    const orderNo = `OD-${Date.now().toString().slice(-4)}`;
+    const now = new Date();
+
+    const order = {
+      id: orderId,
+      order_no: orderNo,
+      total,
+      subtotal,
+      discount: discountAmount,
+      payment_method: "split",
+      split_breakdown: split,
+      status: split.khata > 0 ? "partial_udhaar" : "paid",
+      pending_amount: split.khata || 0,
+      paid_amount: (split.cash || 0) + (split.upi || 0) + (split.card || 0),
+      customer_id: split.khata_customer_id || customerId || null,
+      customer_name: selectedCustomerObj?.name || "Split Payment Customer",
+      customer_phone: selectedCustomerObj?.phone || "",
+      created_at: now.toISOString(),
+      items: cart,
+      change: split.change_due || 0,
+      billed_by: activeCashierName
+    };
+
+    const billData = {
+      order_no: orderNo,
+      id: orderId,
+      total,
+      payment_method: "split",
+      items: cart,
+      customer_name: selectedCustomerObj?.name || "Split Payment Customer",
+      customer_phone: selectedCustomerObj?.phone || "",
+      change: split.change_due || 0,
+      billed_by: activeCashierName
+    };
+
+    const savedOrders = JSON.parse(localStorage.getItem("dukaan_orders") || "[]");
+    const updatedOrders = [order, ...savedOrders];
+    localStorage.setItem("dukaan_orders", JSON.stringify(updatedOrders));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("dukaan_orders_updated", { detail: updatedOrders }));
+    }
+
+    deductStockAndSync(cart);
+    updateCustomerLedger(order);
+
+    if (playAudioChime) playAudioChime("success");
+    setCompletedBill(billData);
+    setWaPhone(selectedCustomerObj?.phone || "");
+
+    toast.success(`⚡ Split Bill #${orderNo} created successfully!`);
+
+    const isChimeMuted = localStorage.getItem("dukaan_payment_alert_chime") === "false";
+    if (soundboxEnabled && isPremium && !isChimeMuted) {
+      playVoiceSoundbox(total, "split", lang);
+    }
+
+    const timer = setTimeout(() => {
+      setCompletedBill(null);
+      clearCart();
+    }, 6000);
+    setAutoResetTimer(timer);
+
+    api.post("/orders", order).catch(() => {});
   };
 
   const handleSendWhatsAppBill = (billToShare) => {
@@ -1015,6 +1169,28 @@ export default function POS() {
               <span className="hidden md:inline">Fast</span>
             </button>
           </div>
+
+          {/* Dukaan 3.0 AI Voice Billing Button (F2) */}
+          <button
+            onClick={() => setVoiceModalOpen(true)}
+            className="px-3 h-10 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+            title="AI Voice-to-Cart Assistant (F2)"
+          >
+            <Mic className="w-3.5 h-3.5 animate-pulse text-blue-200" />
+            <span className="hidden sm:inline">Voice Bill</span>
+            <span className="font-mono text-[10px] text-blue-200 bg-white/20 px-1 rounded">F2</span>
+          </button>
+
+          {/* Dukaan 3.0 Customer Display Mode (F6) */}
+          <button
+            onClick={() => setCustomerDisplayOpen(true)}
+            className="px-3 h-10 rounded-full border border-brand-mitti bg-white hover:bg-brand-sand text-brand-indigo text-xs font-bold flex items-center gap-1.5 shadow-xs active:scale-95 transition-all"
+            title="Customer Facing 2nd Screen & Dynamic QR (F6)"
+          >
+            <Monitor className="w-3.5 h-3.5 text-emerald-600" />
+            <span className="hidden sm:inline">2nd Screen</span>
+            <span className="font-mono text-[10px] text-brand-indigo/50">F6</span>
+          </button>
 
           {/* Hold & Recall Buttons (F7 & F8) */}
           <button
@@ -1371,7 +1547,7 @@ export default function POS() {
           
           <div>
             {/* Bill Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-brand-mitti">
+            <div className="flex items-center justify-between pb-3 border-b border-brand-mitti">
               <div>
                 <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-brand-indigo/50">ACTIVE BILL SLIP</span>
                 <h3 className="font-display text-2xl font-bold text-brand-indigo mt-0.5">
@@ -1380,6 +1556,41 @@ export default function POS() {
               </div>
               <span className="px-3 py-1 rounded-full bg-brand-sand border border-brand-mitti text-xs font-bold text-brand-indigo">
                 Live POS
+              </span>
+            </div>
+
+            {/* Dukaan 3.0 Multi-Cart Slots Bar */}
+            <div className="flex items-center justify-between pt-3 pb-1">
+              <div className="flex items-center gap-1.5">
+                {[1, 2, 3].map((slotNum) => {
+                  const slotItems = slotNum === activeCartSlot ? cart : (cartSlots[slotNum]?.cart || []);
+                  const count = slotItems.reduce((a, b) => a + (b.qty || 1), 0);
+                  const isActive = slotNum === activeCartSlot;
+                  return (
+                    <button
+                      key={slotNum}
+                      type="button"
+                      onClick={() => switchCartSlot(slotNum)}
+                      className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                        isActive
+                          ? "bg-brand-indigo text-white shadow-xs"
+                          : "bg-brand-sand/70 border border-brand-mitti text-brand-indigo/70 hover:bg-white hover:text-brand-indigo"
+                      }`}
+                    >
+                      <span>Cart {slotNum}</span>
+                      {count > 0 && (
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                          isActive ? "bg-white text-brand-indigo" : "bg-brand-indigo/15 text-brand-indigo"
+                        }`}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <span className="text-[10px] font-mono font-bold text-brand-indigo/50 bg-brand-sand px-1.5 py-0.5 rounded border border-brand-mitti" title="Cycle cart slots with F4">
+                F4
               </span>
             </div>
 
@@ -1596,6 +1807,21 @@ export default function POS() {
                 </button>
               );
             })}
+          </div>
+
+          {/* Dukaan 3.0 Smart Split Payment Button */}
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => {
+                setPayOpen(false);
+                setSplitPaymentOpen(true);
+              }}
+              className="w-full py-2.5 px-3 rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/70 hover:bg-amber-100/70 text-amber-900 font-bold text-xs flex items-center justify-center gap-2 transition active:scale-[0.98]"
+            >
+              <Split className="w-4 h-4 text-amber-600" />
+              <span>Smart Split Payment · Cash + UPI + Khata (Dukaan 3.0)</span>
+            </button>
           </div>
 
           {/* CASH MODE SPECIFIC */}
@@ -2225,6 +2451,39 @@ export default function POS() {
           </div>
         </div>
       )}
+
+      {/* Dukaan 3.0 Voice Billing Modal */}
+      <VoiceBillingModal
+        isOpen={voiceModalOpen}
+        onClose={() => setVoiceModalOpen(false)}
+        products={products}
+        onAddItems={handleVoiceAddItems}
+      />
+
+      {/* Dukaan 3.0 Customer-Facing Secondary Display Modal */}
+      <CustomerDisplayModal
+        isOpen={customerDisplayOpen}
+        onClose={() => setCustomerDisplayOpen(false)}
+        cart={cart.map(c => ({ name: c.name, price: c.price, quantity: c.qty }))}
+        totals={{ subtotal, discount: discountAmount, grandTotal: total }}
+        storeName={shop?.name || activeShop?.name || "Dukaan Superstore"}
+        upiId={shop?.upi_id || "merchant@upi"}
+        isPaid={Boolean(completedBill)}
+        onSendWhatsappSlip={(phone) => {
+          setWaPhone(phone);
+          handleSendWhatsAppBill({ ...completedBill, customer_phone: phone });
+        }}
+      />
+
+      {/* Dukaan 3.0 Split Payment Modal */}
+      <SplitPaymentModal
+        isOpen={splitPaymentOpen}
+        onClose={() => setSplitPaymentOpen(false)}
+        grandTotal={total}
+        customers={customers}
+        selectedCustomer={selectedCustomerObj}
+        onConfirmSplitPayment={handleSplitPaymentConfirm}
+      />
 
     </div>
   );

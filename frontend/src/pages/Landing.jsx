@@ -61,6 +61,7 @@ import Card3D from "@/components/Card3D";
 import ThreeDBackground from "@/components/ThreeDBackground";
 import { playVoiceSoundbox } from "@/lib/soundbox";
 import useButterSmoothScroll from "@/lib/useButterSmoothScroll";
+import Dukaan3Showcase from "@/components/landing/Dukaan3Showcase";
 
 // 5 Official Subscription Plans
 const PLANS = [
@@ -407,17 +408,17 @@ export default function Landing() {
       <ThreeDBackground />
 
       {/* =========================================================
-          1. TOP ANNOUNCEMENT BANNER
+          1. TOP ANNOUNCEMENT BANNER: MISSION DUKAAN 3.0
       ========================================================= */}
-      <div className="relative z-30 bg-gradient-to-r from-[#24140E] via-[#3E2723] to-[#1E1B4B] text-white text-[11px] sm:text-xs font-semibold px-4 py-2 text-center flex items-center justify-center gap-2 shadow-xs">
-        <span className="inline-flex items-center gap-1 bg-[#D7CCC8] text-[#24140E] text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-          ☕ NexoraOS
+      <div className="relative z-30 bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 text-white text-[11px] sm:text-xs font-semibold px-4 py-2.5 text-center flex items-center justify-center gap-2 shadow-md">
+        <span className="inline-flex items-center gap-1 bg-white text-blue-700 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
+          🚀 Mission 3.0
         </span>
-        <span className="truncate max-w-[280px] sm:max-w-none">
-          COMING SOON: Cafe Plan by NexoraOS (by PEAN)! Special: Get 2 Months FREE Dukaan Pro on Pre-Registration
+        <span className="truncate max-w-[320px] sm:max-w-none">
+          <strong>LAUNCHING NEXT MONTH:</strong> Dukaan 3.0 Complete New Experience — AI Voice Billing, &lt;0.3s Checkout, Dual Screen & WhatsApp Web Store!
         </span>
-        <a href="#cafe-suite" className="underline font-bold hover:text-[#D7CCC8] hidden xs:inline ml-1 shrink-0">
-          Preview & Pre-Register →
+        <a href="#dukaan-3" className="underline font-bold hover:text-amber-300 hidden xs:inline ml-1 shrink-0 transition">
+          Explore 3.0 Roadmap →
         </a>
       </div>
 
@@ -435,14 +436,21 @@ export default function Landing() {
               className="h-9 sm:h-11 w-auto object-contain transition-transform group-hover:scale-105" 
             />
             <div className="flex flex-col">
-              <span className="text-[9px] font-black font-mono tracking-widest text-blue-600 uppercase bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200/60 self-start">
-                Retail OS 2.0
+              <span className="text-[9px] font-black font-mono tracking-widest text-blue-600 uppercase bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200/60 self-start flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                Retail OS 3.0
               </span>
             </div>
           </Link>
 
           {/* Desktop Navigation Links */}
           <nav className="hidden lg:flex items-center gap-1 text-xs font-bold text-slate-600">
+            <a href="#dukaan-3" className="px-3.5 py-2 rounded-xl text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all font-black flex items-center gap-1">
+              <span>🚀 Dukaan 3.0</span>
+            </a>
+            <Link to="/store" className="px-3.5 py-2 rounded-xl text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-all font-bold flex items-center gap-1">
+              <span>Online Store</span>
+            </Link>
             <a href="#features" className="px-3.5 py-2 rounded-xl hover:text-blue-600 hover:bg-slate-100/80 transition-all">
               Features
             </a>
@@ -856,6 +864,11 @@ export default function Landing() {
         </div>
 
       </section>
+
+      {/* =========================================================
+          3.5 DUKAAN 3.0 MISSION & REVOLUTIONARY PILLARS SHOWCASE
+      ========================================================= */}
+      <Dukaan3Showcase />
 
       {/* =========================================================
           4. KEY METRICS BANNER (PROVEN RESULTS)
