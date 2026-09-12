@@ -27,27 +27,27 @@ export const ROUTE_PLAN = {
 function Wall({ title, msg, cta, onCta, neededPlan }) {
   return (
     <div className="min-h-[70vh] grid place-items-center px-4" data-testid="paywall">
-      <div className="max-w-md w-full text-center rounded-3xl border-2 border-brand-mitti bg-white p-8 shadow-lift animate-fade-up">
-        <div className="w-16 h-16 mx-auto rounded-2xl bg-brand-terracotta/10 text-brand-terracotta grid place-items-center mb-2">
-          <Lock className="w-8 h-8 text-brand-terracotta" />
+      <div className="max-w-md w-full text-center rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 shadow-xl animate-fade-up">
+        <div className="w-16 h-16 mx-auto rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 grid place-items-center mb-3">
+          <Lock className="w-8 h-8 text-blue-600 dark:text-blue-400" />
         </div>
-        <div className="text-xs uppercase font-extrabold tracking-widest text-brand-terracotta">
+        <div className="text-xs uppercase font-extrabold tracking-widest text-blue-600 dark:text-blue-400">
           {NAMES[neededPlan] || "UPGRADE"} PLAN REQUIRED
         </div>
-        <h1 className="mt-2 font-display text-2xl font-bold text-brand-indigo">{title}</h1>
-        <p className="mt-2 text-xs text-brand-indigo/70 leading-relaxed">{msg}</p>
+        <h1 className="mt-2 font-display text-2xl font-bold text-slate-900 dark:text-white">{title}</h1>
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{msg}</p>
         
         <Button
           onClick={onCta}
           data-testid="paywall-subscribe"
-          className="mt-6 w-full h-12 rounded-2xl bg-brand-terracotta hover:bg-brand-terracotta/90 text-white font-bold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
+          className="mt-6 w-full h-11 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
           <span>{cta}</span>
           <ArrowRight className="w-4 h-4"/>
         </Button>
-        <div className="mt-4 text-[11px] text-brand-indigo/60 flex items-center justify-center gap-1.5">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Instant upgrade · 100% money-back guarantee</span>
+        <div className="mt-4 text-[11px] text-slate-400 flex items-center justify-center gap-1.5">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+          <span>Instant upgrade · Cancel or change anytime</span>
         </div>
       </div>
     </div>
@@ -84,7 +84,7 @@ export default function SubGate({ children }) {
         <Wall
           title={`${NAMES[needed]} Feature`}
           msg={`This feature requires the ${NAMES[needed]} or Premium plan. Your current plan is ${NAMES[userPlan]}. Upgrade your subscription to unlock this feature.`}
-          cta={`Upgrade to ${NAMES[needed]} (₹${needed === "business" ? "399" : "799"}/mo)`}
+          cta={`Upgrade to ${NAMES[needed]} (₹${needed === "business" ? "119" : "239"}/mo)`}
           neededPlan={needed}
           onCta={() => nav(`/subscribe?plan=${needed}&renew=1`)}
         />
