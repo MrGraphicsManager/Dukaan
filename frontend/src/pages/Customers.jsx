@@ -209,22 +209,22 @@ export default function Customers() {
       {/* =========================================================
           CONTROLS: SEARCH & FILTER TABS
       ========================================================= */}
-      <div className="bg-white p-4 rounded-3xl border-2 border-brand-mitti shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border-2 border-brand-mitti dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         
         {/* Search by Name or Phone */}
         <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-brand-indigo/40" />
+          <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-brand-indigo/40 dark:text-slate-500" />
           <Input 
             data-testid="customer-search" 
             placeholder="Search by customer name or phone number…" 
             value={q} 
             onChange={(e) => setQ(e.target.value)} 
-            className="pl-11 pr-4 h-11 rounded-2xl border-brand-mitti bg-brand-sand/50 text-sm font-medium text-brand-indigo" 
+            className="pl-11 pr-4 h-11 rounded-2xl border-brand-mitti dark:border-slate-700 bg-brand-sand/50 dark:bg-slate-800 text-sm font-medium text-brand-indigo dark:text-white placeholder:text-brand-indigo/40 dark:placeholder:text-slate-500" 
           />
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center bg-brand-sand p-1 rounded-2xl border border-brand-mitti overflow-x-auto max-w-full">
+        <div className="flex items-center bg-brand-sand dark:bg-slate-800 p-1 rounded-2xl border border-brand-mitti dark:border-slate-700 overflow-x-auto max-w-full">
           {[
             { id: "all", label: `All (${items.length})` },
             { id: "udhaar", label: `Has Udhaar (${customersWithUdhaar.length})` },
@@ -235,8 +235,8 @@ export default function Customers() {
               onClick={() => setFilter(tab.id)}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                 filter === tab.id 
-                  ? "bg-white text-brand-indigo shadow-xs" 
-                  : "text-brand-indigo/60 hover:text-brand-indigo"
+                  ? "bg-white dark:bg-slate-900 text-brand-indigo dark:text-white shadow-xs" 
+                  : "text-brand-indigo/60 dark:text-slate-400 hover:text-brand-indigo dark:hover:text-white"
               }`}
             >
               {tab.label}
@@ -251,10 +251,10 @@ export default function Customers() {
       ========================================================= */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="customers-list">
         {filtered.length === 0 ? (
-          <div className="col-span-full text-center py-16 bg-white rounded-3xl border-2 border-dashed border-brand-mitti p-8">
-            <Users className="w-12 h-12 text-brand-indigo/30 mx-auto mb-3" />
-            <h3 className="font-heading font-bold text-lg text-brand-indigo">No customers found</h3>
-            <p className="text-xs text-brand-indigo/60 mt-1">Add your first customer to track their purchase history and udhaar.</p>
+          <div className="col-span-full text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border-2 border-dashed border-brand-mitti dark:border-slate-800 p-8">
+            <Users className="w-12 h-12 text-brand-indigo/30 dark:text-slate-600 mx-auto mb-3" />
+            <h3 className="font-heading font-bold text-lg text-brand-indigo dark:text-white">No customers found</h3>
+            <p className="text-xs text-brand-indigo/60 dark:text-slate-400 mt-1">Add your first customer to track their purchase history and udhaar.</p>
             <Button
               onClick={() => setForm({ open: true, name: "", phone: "", notes: "" })}
               className="mt-4 rounded-full bg-brand-terracotta text-white text-xs font-bold"
@@ -271,21 +271,21 @@ export default function Customers() {
               <div 
                 key={c.id} 
                 data-testid={`customer-${c.id}`}
-                className="bg-white rounded-3xl border-2 border-brand-mitti p-6 shadow-xs hover:border-brand-indigo/30 hover:shadow-md transition-all flex flex-col justify-between group"
+                className="bg-white dark:bg-slate-900 rounded-3xl border-2 border-brand-mitti dark:border-slate-800 p-6 shadow-xs hover:border-brand-indigo/30 dark:hover:border-slate-700 hover:shadow-md transition-all flex flex-col justify-between group"
               >
                 <div>
                   {/* Top Bar: Avatar, Name & Phone */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-brand-sand border-2 border-brand-mitti grid place-items-center font-display font-extrabold text-brand-indigo text-lg shadow-xs">
+                      <div className="w-12 h-12 rounded-2xl bg-brand-sand dark:bg-slate-800 border-2 border-brand-mitti dark:border-slate-700 grid place-items-center font-display font-extrabold text-brand-indigo dark:text-white text-lg shadow-xs">
                         {initials}
                       </div>
                       <div>
-                        <h3 className="font-heading font-bold text-lg text-brand-indigo leading-tight group-hover:text-brand-terracotta transition-colors">
+                        <h3 className="font-heading font-bold text-lg text-brand-indigo dark:text-white leading-tight group-hover:text-brand-terracotta dark:group-hover:text-amber-400 transition-colors">
                           {c.name}
                         </h3>
-                        <div className="flex items-center gap-1.5 text-xs text-brand-indigo/60 mt-1 font-mono">
-                          <Phone className="w-3 h-3 text-brand-indigo/40" />
+                        <div className="flex items-center gap-1.5 text-xs text-brand-indigo/60 dark:text-slate-400 mt-1 font-mono">
+                          <Phone className="w-3 h-3 text-brand-indigo/40 dark:text-slate-500" />
                           <span>{c.phone || "No phone registered"}</span>
                         </div>
                       </div>
@@ -293,30 +293,30 @@ export default function Customers() {
 
                     <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
                       hasPending 
-                        ? "bg-amber-100 text-amber-900 border border-amber-200" 
-                        : "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                        ? "bg-amber-100 text-amber-900 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800" 
+                        : "bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
                     }`}>
                       {hasPending ? "Udhaar Due" : "Settled"}
                     </span>
                   </div>
 
                   {/* Financial Ledger Mini Summary */}
-                  <div className="mt-5 p-4 rounded-2xl bg-brand-sand/50 border border-brand-mitti/70 grid grid-cols-3 gap-2 text-center">
+                  <div className="mt-5 p-4 rounded-2xl bg-brand-sand/50 dark:bg-slate-800/80 border border-brand-mitti/70 dark:border-slate-700 grid grid-cols-3 gap-2 text-center">
                     <div>
-                      <div className="text-[10px] uppercase font-bold text-brand-indigo/50">Purchases</div>
-                      <div className="font-heading font-extrabold text-sm text-brand-indigo mt-1">
+                      <div className="text-[10px] uppercase font-bold text-brand-indigo/50 dark:text-slate-400">Purchases</div>
+                      <div className="font-heading font-extrabold text-sm text-brand-indigo dark:text-white mt-1">
                         {money(c.total_purchases || 0)}
                       </div>
                     </div>
-                    <div className="border-x border-brand-mitti">
-                      <div className="text-[10px] uppercase font-bold text-emerald-700">Paid</div>
-                      <div className="font-heading font-extrabold text-sm text-emerald-700 mt-1">
+                    <div className="border-x border-brand-mitti dark:border-slate-700">
+                      <div className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400">Paid</div>
+                      <div className="font-heading font-extrabold text-sm text-emerald-700 dark:text-emerald-400 mt-1">
                         {money(c.total_paid || 0)}
                       </div>
                     </div>
                     <div>
-                      <div className="text-[10px] uppercase font-bold text-brand-terracotta">Pending</div>
-                      <div className="font-heading font-extrabold text-sm text-brand-terracotta mt-1">
+                      <div className="text-[10px] uppercase font-bold text-brand-terracotta dark:text-rose-400">Pending</div>
+                      <div className="font-heading font-extrabold text-sm text-brand-terracotta dark:text-rose-400 mt-1">
                         {money(c.total_pending || 0)}
                       </div>
                     </div>
@@ -324,7 +324,7 @@ export default function Customers() {
                 </div>
 
                 {/* Bottom Actions: WhatsApp Reminder + Edit + View Ledger */}
-                <div className="mt-5 pt-3.5 border-t border-brand-mitti/60 flex items-center justify-between gap-2">
+                <div className="mt-5 pt-3.5 border-t border-brand-mitti/60 dark:border-slate-800 flex items-center justify-between gap-2">
                   {hasPending && c.phone ? (
                     <a
                       href={`https://wa.me/91${c.phone}?text=${encodeURIComponent(
@@ -338,7 +338,7 @@ export default function Customers() {
                       <span>WhatsApp</span>
                     </a>
                   ) : (
-                    <span className="text-xs text-brand-indigo/50 font-medium">Khata Clean</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Khata Clean</span>
                   )}
 
                   <div className="flex items-center gap-2">
@@ -357,7 +357,7 @@ export default function Customers() {
                           created_at: c.created_at
                         });
                       }}
-                      className="text-xs font-bold text-brand-indigo/70 hover:text-brand-indigo border border-brand-mitti px-2.5 py-1 rounded-lg hover:border-brand-indigo transition-colors flex items-center gap-1"
+                      className="text-xs font-bold text-brand-indigo/70 dark:text-slate-300 hover:text-brand-indigo dark:hover:text-white border border-brand-mitti dark:border-slate-700 px-2.5 py-1 rounded-lg hover:border-brand-indigo dark:hover:border-slate-500 transition-colors flex items-center gap-1"
                     >
                       <Edit2 className="w-3 h-3" />
                       <span>Edit</span>
@@ -365,7 +365,7 @@ export default function Customers() {
 
                     <button
                       onClick={() => nav(`/app/customers/${c.id}`)}
-                      className="text-xs font-bold text-brand-indigo hover:text-brand-terracotta transition-colors flex items-center gap-1"
+                      className="text-xs font-bold text-brand-indigo dark:text-slate-300 hover:text-brand-terracotta dark:hover:text-amber-400 transition-colors flex items-center gap-1"
                     >
                       <span>Ledger</span>
                       <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
@@ -383,9 +383,9 @@ export default function Customers() {
           ADD / EDIT CUSTOMER MODAL
       ========================================================= */}
       <Dialog open={form.open} onOpenChange={(o) => setForm({ ...form, open: o })}>
-        <DialogContent className="max-w-md rounded-3xl p-7 border-2 border-brand-mitti bg-white">
+        <DialogContent className="max-w-md rounded-3xl p-7 border-2 border-brand-mitti dark:border-slate-800 bg-white dark:bg-slate-900">
           <DialogHeader>
-            <DialogTitle className="font-display text-2xl text-brand-indigo flex items-center gap-2">
+            <DialogTitle className="font-display text-2xl text-brand-indigo dark:text-white flex items-center gap-2">
               <Users className="w-5 h-5 text-brand-terracotta" />
               <span>{form.id ? "Edit Customer Details" : "Add Customer to Directory"}</span>
             </DialogTitle>
@@ -393,35 +393,35 @@ export default function Customers() {
 
           <div className="space-y-4 py-2 text-sm">
             <div>
-              <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Customer Full Name *</Label>
+              <Label className="text-xs font-bold text-brand-indigo/70 dark:text-slate-300 uppercase">Customer Full Name *</Label>
               <Input
                 data-testid="cf-name"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="e.g. Ramesh Bhai Patel"
-                className="mt-1 h-11 rounded-xl border-brand-mitti text-base font-semibold"
+                className="mt-1 h-11 rounded-xl border-brand-mitti dark:border-slate-700 bg-white dark:bg-slate-800 text-brand-indigo dark:text-white text-base font-semibold"
               />
             </div>
 
             <div>
-              <Label className="text-xs font-bold text-brand-indigo/70 uppercase">10-Digit Mobile Number</Label>
+              <Label className="text-xs font-bold text-brand-indigo/70 dark:text-slate-300 uppercase">10-Digit Mobile Number</Label>
               <Input
                 data-testid="cf-phone"
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 placeholder="9825100000"
                 maxLength={10}
-                className="mt-1 h-11 rounded-xl border-brand-mitti font-mono"
+                className="mt-1 h-11 rounded-xl border-brand-mitti dark:border-slate-700 bg-white dark:bg-slate-800 text-brand-indigo dark:text-white font-mono"
               />
             </div>
 
             <div>
-              <Label className="text-xs font-bold text-brand-indigo/70 uppercase">Address / Khata Notes</Label>
+              <Label className="text-xs font-bold text-brand-indigo/70 dark:text-slate-300 uppercase">Address / Khata Notes</Label>
               <Input
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 placeholder="e.g. Regular buyer, Block B-204"
-                className="mt-1 h-11 rounded-xl border-brand-mitti"
+                className="mt-1 h-11 rounded-xl border-brand-mitti dark:border-slate-700 bg-white dark:bg-slate-800 text-brand-indigo dark:text-white"
               />
             </div>
           </div>
@@ -430,7 +430,7 @@ export default function Customers() {
             <Button 
               variant="outline" 
               onClick={() => setForm({ open: false, id: null, name: "", phone: "", notes: "" })}
-              className="rounded-xl border-brand-mitti font-bold text-xs"
+              className="rounded-xl border-brand-mitti dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 font-bold text-xs"
             >
               Cancel
             </Button>

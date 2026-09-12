@@ -15,7 +15,10 @@ const ThemeContext = createContext({
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => {
     try {
-      return localStorage.getItem("dukaan_theme") || "light";
+      const explicit = localStorage.getItem("dukaan_user_theme");
+      if (explicit === "dark" || explicit === "light") return explicit;
+      // Default to light mode (matching user mockup)
+      return "light";
     } catch {
       return "light";
     }
@@ -47,6 +50,7 @@ export function ThemeProvider({ children }) {
       root.classList.remove("dark");
     }
     try {
+      localStorage.setItem("dukaan_user_theme", theme);
       localStorage.setItem("dukaan_theme", theme);
     } catch {}
   }, [theme, isDark]);

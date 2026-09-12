@@ -21,6 +21,7 @@ const NAV = [
   { to: "/app/udhaar", key: "udhaar", label: "Udhaar / Credit", Icon: Wallet },
   { to: "/app/expenses", key: "expenses", label: "Expenses", Icon: CreditCard },
   { to: "/app/reports", key: "reports", label: "Reports", Icon: BarChart3 },
+  { to: "/app/billing", key: "subscription", label: "Subscription", Icon: ShieldCheck },
   { to: "/app/settings", key: "settings", label: "Settings", Icon: Cog },
 ];
 
@@ -29,6 +30,7 @@ const MOBILE_NAV = [
   { to: "/app/pos", key: "new_bill", label: "New Bill", Icon: Receipt },
   { to: "/app/products", key: "products", label: "Products", Icon: Package },
   { to: "/app/udhaar", key: "udhaar", label: "Udhaar", Icon: Wallet },
+  { to: "/app/billing", key: "subscription", label: "Subscription", Icon: ShieldCheck },
   { to: "#menu", key: "menu", label: "Menu", Icon: Menu, isAction: true },
 ];
 
@@ -565,7 +567,7 @@ export default function AppLayout() {
                 }
               >
                 <Icon className="w-4 h-4 shrink-0" />
-                <span className="flex-1">{t(lang, key) || label}</span>
+                <span className="flex-1">{label}</span>
                 {locked && <Lock className="w-3 h-3 text-amber-500 shrink-0" />}
               </NavLink>
             );
@@ -931,7 +933,7 @@ export default function AppLayout() {
                     }
                   >
                     <Icon className={`w-4 h-4 shrink-0 ${isProStudio ? "text-amber-500" : ""}`} />
-                    <span className="flex-1 text-xs">{t(lang, key)}</span>
+                    <span className="flex-1 text-xs">{label || t(lang, key)}</span>
                     {isProStudio && (
                       <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-mono tracking-wider">
                         PRO
