@@ -119,117 +119,116 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-slate-50 font-sans selection:bg-blue-500/20 flex flex-col justify-between">
+    <div className="min-h-screen relative overflow-hidden bg-[#090C10] text-slate-100 font-sans selection:bg-blue-500/30 selection:text-blue-400 flex flex-col justify-between">
       
-      {/* 3D Particle Ambient Canvas */}
-      <ThreeDBackground />
-
-      {/* Ambient 3D Glowing Orbs */}
-      <div className="absolute -top-32 -left-32 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-32 -right-32 w-[30rem] h-[30rem] bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      {/* Ambient glowing radial blooms */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[450px] bg-gradient-to-b from-blue-600/20 via-indigo-600/10 to-transparent blur-[120px] rounded-full" />
+        <div className="absolute top-[40%] right-[-10%] w-[500px] h-[500px] bg-purple-600/10 blur-[140px] rounded-full" />
+        <div className="absolute bottom-10 left-[-10%] w-[500px] h-[500px] bg-blue-600/10 blur-[140px] rounded-full" />
+      </div>
 
       {/* Top Brand Navbar */}
       <header className="relative z-20 max-w-7xl mx-auto w-full px-6 py-6 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3 group">
-          <img 
-            src="/logo.png" 
-            alt="Dukaan" 
-            className="h-10 sm:h-11 w-auto object-contain transition-transform group-hover:scale-105" 
-          />
-          <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase tracking-widest bg-blue-50 text-blue-700 border border-blue-200">
+          <div className="flex items-center px-2.5 py-1 rounded-xl bg-white/95 backdrop-blur-md shadow-md border border-white/20 group-hover:scale-105 transition-transform">
+            <img 
+              src="/dukaan-logo.png" 
+              alt="Dukaan" 
+              className="h-6 sm:h-7 w-auto object-contain" 
+            />
+          </div>
+          <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase tracking-widest bg-blue-500/10 text-blue-400 border border-blue-500/20">
             Retail OS
           </span>
         </Link>
 
         <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-slate-500 hidden sm:inline">New to Dukaan?</span>
+          <span className="text-xs font-semibold text-slate-400 hidden sm:inline">New to Dukaan?</span>
           <Link 
             to="/register" 
-            className="text-xs font-bold px-4 py-2 rounded-full border-2 border-blue-200 text-blue-700 hover:border-blue-600 bg-white/80 backdrop-blur-md shadow-xs active:scale-95 transition-all"
+            className="text-xs font-bold px-4 py-2 rounded-full border border-white/20 text-white hover:border-blue-500 bg-white/5 hover:bg-white/10 backdrop-blur-md shadow-xs active:scale-95 transition-all"
           >
             Create Account
           </Link>
         </div>
       </header>
 
-      {/* Main 3D Dual-Pane Stage */}
+      {/* Main Dual-Pane Stage */}
       <main className="relative z-20 max-w-7xl mx-auto w-full px-6 py-4 my-auto">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
 
-          {/* =========================================================
-              LEFT COLUMN: 3D INTERACTIVE HERO SHOWCASE (DESKTOP)
-          ========================================================= */}
-          <div className="hidden lg:flex lg:col-span-6 flex-col justify-center space-y-8 animate-fade-up">
+          {/* LEFT COLUMN: 3D INTERACTIVE SHOWCASE (DESKTOP) */}
+          <div className="hidden lg:flex lg:col-span-6 flex-col justify-center space-y-8">
             
             <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/80 border border-blue-200 shadow-xs backdrop-blur-md">
-                <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                <span className="text-xs font-bold text-blue-800 uppercase tracking-wider font-mono">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 shadow-xs backdrop-blur-md">
+                <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                <span className="text-xs font-bold text-blue-300 uppercase tracking-wider font-mono">
                   Retail Command Center
                 </span>
               </div>
-              <h1 className="font-display text-5xl xl:text-6xl font-extrabold text-slate-900 leading-[1.1] tracking-tight">
+              <h1 className="font-display text-5xl xl:text-6xl font-extrabold text-white leading-[1.1] tracking-tight">
                 Run your shop.<br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-sky-500 to-indigo-600">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-sky-300 to-indigo-400">
                   Smarter & Faster.
                 </span>
               </h1>
-              <p className="text-base text-slate-600 max-w-lg font-medium leading-relaxed">
+              <p className="text-base text-slate-400 max-w-lg font-medium leading-relaxed">
                 Log in to access high-speed POS billing, digital customer khata, WhatsApp payment reminders, and multi-year tax reports.
               </p>
             </div>
 
-            {/* 3D Floating Interactive Widgets Stage */}
+            {/* 3D Floating Showcase Card */}
             <div className="relative pt-4 pb-8">
               
-              {/* Main 3D Showcase Card */}
               <Card3D depth={18} className="w-full max-w-md">
-                <div className="bg-gradient-to-br from-white via-white/95 to-blue-50/50 p-6 rounded-3xl border-2 border-white/80 shadow-2xl backdrop-blur-xl relative overflow-hidden">
+                <div className="bg-slate-900/60 p-6 rounded-3xl border border-white/10 shadow-2xl backdrop-blur-xl relative overflow-hidden">
                   
-                  {/* Decorative background grid line */}
-                  <div className="absolute inset-0 bg-[radial-gradient(#2563EB_1px,transparent_1px)] [background-size:16px_16px] opacity-5 pointer-events-none" />
+                  {/* Decorative ambient line */}
+                  <div className="absolute inset-0 bg-[radial-gradient(#3B82F6_1px,transparent_1px)] [background-size:16px_16px] opacity-10 pointer-events-none" />
                   
                   {/* Terminal Header */}
-                  <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+                  <div className="flex items-center justify-between pb-4 border-b border-white/10">
                     <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
-                      <span className="text-xs font-bold text-slate-800 font-mono uppercase tracking-wider">
-                        COUNTER 01 · READY
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                      <span className="text-xs font-bold text-slate-200 font-mono uppercase tracking-wider">
+                        COUNTER 01 · LIVE
                       </span>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                      F1 Billing Active
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                      0.8s POS Billing
                     </span>
                   </div>
 
                   {/* Bill Simulation Preview */}
-                  <div className="mt-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                  <div className="mt-4 p-4 rounded-2xl bg-slate-950/60 border border-white/10 space-y-2">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="font-medium text-slate-600">Walk-in Customer Memo</span>
-                      <span className="font-mono font-bold text-slate-900">#OD-8821</span>
+                      <span className="font-medium text-slate-400">Walk-in Customer Memo</span>
+                      <span className="font-mono font-bold text-slate-200">#OD-8821</span>
                     </div>
                     <div className="flex justify-between items-baseline">
-                      <span className="text-xs font-semibold text-slate-700">Total Collected</span>
-                      <span className="font-display font-extrabold text-2xl text-emerald-700">₹450.00</span>
+                      <span className="text-xs font-semibold text-slate-400">Total Collected</span>
+                      <span className="font-display font-extrabold text-2xl text-emerald-400">₹450.00</span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 pt-1 border-t border-slate-200">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Paid via UPI · E-Receipt Dispatched
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400 pt-1 border-t border-white/5">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Paid via UPI · WhatsApp Receipt Sent
                     </div>
                   </div>
 
                   {/* 3 Live Mini Stats */}
                   <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                    <div className="p-2 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                    <div className="p-2.5 rounded-xl bg-slate-800/40 border border-white/5">
                       <div className="text-[10px] uppercase font-bold text-slate-400">Speed</div>
-                      <div className="font-mono font-bold text-slate-800 text-xs">0.8s / Bill</div>
+                      <div className="font-mono font-bold text-white text-xs mt-0.5">0.8s / Bill</div>
                     </div>
-                    <div className="p-2 rounded-xl bg-white border border-slate-200 shadow-2xs">
-                      <div className="text-[10px] uppercase font-bold text-emerald-600">Recovery</div>
-                      <div className="font-mono font-bold text-emerald-700 text-xs">92% Khata</div>
+                    <div className="p-2.5 rounded-xl bg-slate-800/40 border border-white/5">
+                      <div className="text-[10px] uppercase font-bold text-emerald-400">Recovery</div>
+                      <div className="font-mono font-bold text-emerald-300 text-xs mt-0.5">92% Khata</div>
                     </div>
-                    <div className="p-2 rounded-xl bg-white border border-slate-200 shadow-2xs">
-                      <div className="text-[10px] uppercase font-bold text-blue-600">Stock</div>
-                      <div className="font-mono font-bold text-blue-600 text-xs">Live Sync</div>
+                    <div className="p-2.5 rounded-xl bg-slate-800/40 border border-white/5">
+                      <div className="text-[10px] uppercase font-bold text-blue-400">Stock</div>
+                      <div className="font-mono font-bold text-blue-300 text-xs mt-0.5">Live Sync</div>
                     </div>
                   </div>
 
@@ -237,7 +236,7 @@ export default function Login() {
               </Card3D>
 
               {/* Floating Hologram Soundbox Pill */}
-              <div className="absolute -bottom-4 right-6 bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-4 py-2.5 rounded-2xl shadow-xl border-2 border-blue-400/40 flex items-center gap-2.5 animate-bounce">
+              <div className="absolute -bottom-4 right-6 bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-4 py-2.5 rounded-2xl shadow-xl border border-blue-400/30 flex items-center gap-2.5">
                 <Volume2 className="w-4 h-4 text-amber-300" />
                 <span className="text-xs font-mono font-bold">Soundbox: ₹450 Prapt Hue!</span>
               </div>
@@ -245,58 +244,58 @@ export default function Login() {
             </div>
 
             {/* Security Guarantee */}
-            <div className="flex items-center gap-6 text-xs font-medium text-slate-600 pt-2">
+            <div className="flex items-center gap-6 text-xs font-medium text-slate-400 pt-2">
               <div className="flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
                 <span>256-Bit Encrypted Khata</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                <CheckCircle2 className="w-4 h-4 text-blue-400" />
                 <span>GST & Thermal Ready</span>
               </div>
             </div>
 
           </div>
 
-          {/* =========================================================
-              RIGHT COLUMN: 3D CARD LOGIN FORM
-          ========================================================= */}
-          <div className="lg:col-span-6 w-full max-w-md mx-auto animate-fade-up">
+          {/* RIGHT COLUMN: GEN-Z GLASS LOGIN FORM */}
+          <div className="lg:col-span-6 w-full max-w-md mx-auto">
             
             <Card3D depth={12}>
-              <div className="bg-white/95 backdrop-blur-xl p-8 sm:p-10 rounded-3xl border-2 border-slate-200 shadow-2xl relative overflow-hidden">
+              <div className="bg-slate-900/70 backdrop-blur-2xl p-8 sm:p-10 rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden">
                 
-                {/* Top Subtle Light Bar */}
-                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-600 via-sky-400 to-indigo-600" />
+                {/* Top Glowing Gradient Bar */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-sky-400 to-indigo-500" />
 
-                {/* Form Header */}
+                {/* Form Header with Official Logo */}
                 <div className="text-center mb-6">
                   <Link to="/" className="inline-block mb-3 transition-transform hover:scale-105">
-                    <img 
-                      src="/logo.png" 
-                      alt="Dukaan" 
-                      className="h-12 sm:h-14 w-auto object-contain mx-auto drop-shadow-xs" 
-                    />
+                    <div className="flex items-center px-3 py-1.5 rounded-xl bg-white/95 backdrop-blur-md shadow-md border border-white/20">
+                      <img 
+                        src="/dukaan-logo.png" 
+                        alt="Dukaan" 
+                        className="h-8 sm:h-9 w-auto object-contain" 
+                      />
+                    </div>
                   </Link>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[11px] font-bold text-blue-700 mb-2">
-                    <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-[11px] font-bold text-blue-300 mb-2">
+                    <Sparkles className="w-3.5 h-3.5 text-blue-400" />
                     <span>Retail OS · Owner Portal</span>
                   </div>
-                  <h2 className="font-display text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                  <h2 className="font-display text-2xl sm:text-3xl font-bold text-white tracking-tight">
                     Welcome Back
                   </h2>
-                  <p className="text-xs text-slate-500 font-medium mt-1">
+                  <p className="text-xs text-slate-400 font-medium mt-1">
                     Sign in to open your shop counter and billing register.
                   </p>
                 </div>
 
                 {/* Emergency Session Reset Notice */}
                 {isEmergencyLockdown && (
-                  <div className="mb-4 p-3 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-2.5 text-left text-xs text-amber-800 animate-fade-in">
-                    <AlertOctagon className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="mb-4 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-2.5 text-left text-xs text-amber-200">
+                    <AlertOctagon className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                     <div>
                       <span className="font-bold">Platform Security Refresh:</span>
-                      <p className="text-[11px] text-amber-700 mt-0.5 leading-relaxed">
+                      <p className="text-[11px] text-amber-300 mt-0.5 leading-relaxed">
                         An administrative reset occurred. Sign in with your password to reconnect your store.
                       </p>
                     </div>
@@ -311,10 +310,10 @@ export default function Login() {
                 {/* Divider */}
                 <div className="relative my-5">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-slate-200" />
+                    <div className="w-full border-t border-white/10" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-white px-3 text-slate-400 font-semibold font-mono tracking-wider">
+                    <span className="bg-slate-900 px-3 text-slate-500 font-semibold font-mono tracking-wider">
                       Or continue with email
                     </span>
                   </div>
@@ -322,16 +321,16 @@ export default function Login() {
 
                 {/* Error Banner */}
                 {err && (
-                  <div className="mb-5 p-3.5 rounded-2xl bg-red-50 border border-red-200 text-xs text-red-700 font-semibold space-y-1.5 animate-shake">
+                  <div className="mb-5 p-3.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-xs text-red-300 font-semibold space-y-1.5 text-left">
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-red-600 shrink-0" />
+                      <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
                       <span>{err}</span>
                     </div>
                     {needVerify && (
                       <div className="pt-1 pl-4">
                         <Link 
                           to={`/verify-email?email=${encodeURIComponent(email)}`} 
-                          className="text-xs font-bold text-blue-600 underline hover:text-blue-700 block"
+                          className="text-xs font-bold text-blue-400 underline hover:text-blue-300 block"
                         >
                           Click here to enter your verification code →
                         </Link>
@@ -341,7 +340,7 @@ export default function Login() {
                       <div className="pt-1 pl-4">
                         <Link 
                           to="/register" 
-                          className="text-xs font-bold text-blue-600 underline hover:text-blue-700 block"
+                          className="text-xs font-bold text-blue-400 underline hover:text-blue-300 block"
                         >
                           Create a new account now →
                         </Link>
@@ -354,50 +353,50 @@ export default function Login() {
                 <form onSubmit={submit} className="space-y-4">
                   
                   {/* Email Field */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  <div className="space-y-1.5 text-left">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-slate-300">
                       Shop Email
                     </Label>
                     <div className="relative">
-                      <Mail className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <Mail className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                       <Input
                         type="email"
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="owner@yourdukaan.com"
-                        className="pl-11 pr-4 h-12 rounded-2xl border-2 border-slate-200 focus-visible:border-blue-600 bg-slate-50/70 text-sm font-medium text-slate-900"
+                        className="pl-11 pr-4 h-12 rounded-2xl border border-white/10 focus-visible:border-blue-500 bg-slate-950/60 text-sm font-medium text-white placeholder:text-slate-500"
                       />
                     </div>
                   </div>
 
                   {/* Password Field */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 text-left">
                     <div className="flex items-center justify-between">
-                      <Label className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-slate-300">
                         Password
                       </Label>
                       <Link 
                         to="/forgot-password" 
-                        className="text-xs font-bold text-blue-600 hover:underline"
+                        className="text-xs font-bold text-blue-400 hover:text-blue-300 hover:underline"
                       >
                         Forgot?
                       </Link>
                     </div>
                     <div className="relative">
-                      <Lock className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <Lock className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                       <Input
                         type={showPassword ? "text" : "password"}
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="pl-11 pr-11 h-12 rounded-2xl border-2 border-slate-200 focus-visible:border-blue-600 bg-slate-50/70 text-sm font-medium text-slate-900 font-mono"
+                        className="pl-11 pr-11 h-12 rounded-2xl border border-white/10 focus-visible:border-blue-500 bg-slate-950/60 text-sm font-medium text-white placeholder:text-slate-500 font-mono"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 p-1"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -405,14 +404,14 @@ export default function Login() {
                   </div>
 
                   {/* Remember Me Toggle */}
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex items-center gap-2 pt-1 text-left">
                     <Checkbox
                       id="remember"
                       checked={rememberMe}
                       onCheckedChange={(checked) => setRememberMe(!!checked)}
-                      className="border-2 border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md"
+                      className="border border-white/20 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-md"
                     />
-                    <Label htmlFor="remember" className="text-xs font-semibold text-slate-600 cursor-pointer select-none">
+                    <Label htmlFor="remember" className="text-xs font-medium text-slate-400 cursor-pointer select-none">
                       Keep me logged in on this device
                     </Label>
                   </div>
@@ -421,7 +420,7 @@ export default function Login() {
                   <Button
                     type="submit"
                     disabled={busy}
-                    className="w-full h-13 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md shadow-blue-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 mt-3"
+                    className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-blue-600/30 active:scale-95 transition-all flex items-center justify-center gap-2 mt-3 cursor-pointer"
                   >
                     <span>{busy ? "Authenticating..." : "Log in to Dukaan"}</span>
                     <ArrowRight className="w-4 h-4" />
@@ -430,17 +429,17 @@ export default function Login() {
                 </form>
 
                 {/* Register Footer */}
-                <div className="pt-6 mt-6 border-t border-slate-200 text-center text-xs font-semibold text-slate-600">
+                <div className="pt-6 mt-6 border-t border-white/10 text-center text-xs font-semibold text-slate-400">
                   <span>Don't have a shop account? </span>
-                  <Link to="/register" className="text-blue-600 font-bold hover:underline">
+                  <Link to="/register" className="text-blue-400 font-bold hover:text-blue-300 hover:underline">
                     Create your free shop
                   </Link>
                 </div>
 
                 {/* PEAN Ecosystem Footnote */}
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-center gap-1.5 text-[11px] text-slate-400 font-medium">
+                <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-center gap-1.5 text-[11px] text-slate-500 font-medium">
                   <span>Part of the</span>
-                  <span className="font-bold text-slate-600">PEAN</span>
+                  <span className="font-bold text-slate-400">PEAN</span>
                   <span>Ecosystem</span>
                 </div>
 
@@ -453,7 +452,7 @@ export default function Login() {
       </main>
 
       {/* Bottom Footer Note */}
-      <footer className="relative z-20 py-4 text-center text-xs text-brand-indigo/50 font-medium">
+      <footer className="relative z-20 py-4 text-center text-xs text-slate-500 font-medium">
         Dukaan Retail OS · A Product of PEAN · © 2026
       </footer>
 

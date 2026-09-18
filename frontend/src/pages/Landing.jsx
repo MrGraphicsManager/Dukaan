@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { 
@@ -40,19 +40,14 @@ export default function Landing() {
       {/* 1. Sleek Floating Header */}
       <header className="sticky top-4 z-50 max-w-5xl mx-auto px-4">
         <nav className="bg-slate-900/70 backdrop-blur-xl border border-white/10 rounded-full px-5 py-3 flex items-center justify-between shadow-2xl">
-          {/* Brand */}
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-blue-500/25 group-hover:scale-105 transition-transform">
-              D
+          {/* Official Dukaan Brand Logo */}
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="flex items-center px-2.5 py-1 rounded-xl bg-white/95 backdrop-blur-md shadow-md border border-white/20 group-hover:scale-105 transition-transform">
+              <img src="/dukaan-logo.png" alt="Dukaan - Retail OS" className="h-6 sm:h-7 w-auto object-contain" />
             </div>
-            <div className="flex flex-col leading-none">
-              <span className="font-extrabold text-base tracking-tight text-white font-display">
-                Dukaan<span className="text-blue-500">.</span>
-              </span>
-              <span className="text-[8px] uppercase tracking-widest text-slate-400 font-semibold">
-                officialdukaan.in
-              </span>
-            </div>
+            <span className="hidden sm:inline-block text-[10px] font-bold font-mono uppercase tracking-widest text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-full border border-blue-500/20">
+              officialdukaan.in
+            </span>
           </Link>
 
           {/* Nav links */}
@@ -472,13 +467,18 @@ export default function Landing() {
       </main>
 
       {/* 7. Clean Minimalist Footer */}
-      <footer className="border-t border-white/5 py-8 text-center text-xs text-slate-500 relative z-10">
+      <footer className="border-t border-white/5 py-10 text-center text-xs text-slate-500 relative z-10">
+        <div className="flex justify-center mb-6">
+          <div className="flex items-center px-3.5 py-1.5 rounded-xl bg-white/95 backdrop-blur-md shadow-md border border-white/20">
+            <img src="/dukaan-logo.png" alt="Dukaan" className="h-6 w-auto object-contain" />
+          </div>
+        </div>
         <div className="flex flex-wrap items-center justify-center gap-6 mb-3 text-slate-400">
-          <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
-          <Link to="/refund" className="hover:text-white transition-colors">Refund Policy</Link>
+          <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
+          <Link to="/refund-policy" className="hover:text-white transition-colors">Refund Policy</Link>
           <a href="mailto:contact@officialdukaan.in" className="hover:text-white transition-colors">contact@officialdukaan.in</a>
         </div>
-        <p>© 2026 Dukaan • officialdukaan.in • A PRODUCT BY PEAN</p>
+        <p className="font-mono text-[11px] text-slate-500">© 2026 Dukaan • officialdukaan.in • A PRODUCT BY PEAN</p>
       </footer>
     </div>
   );

@@ -560,6 +560,8 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
+        {/* Global Gen-Z Analog Film Grain Texture Overlay */}
+        <div className="noise-overlay" aria-hidden="true" />
 
         <BrowserRouter>
 
