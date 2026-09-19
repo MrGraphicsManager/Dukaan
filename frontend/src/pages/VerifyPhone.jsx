@@ -12,7 +12,8 @@ import {
   ShieldCheck,
   AlertCircle,
   PhoneCall,
-  Edit3
+  Edit3,
+  MessageCircle
 } from "lucide-react";
 import Card3D from "@/components/Card3D";
 import ThreeDBackground from "@/components/ThreeDBackground";
@@ -342,24 +343,33 @@ export default function VerifyPhone() {
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center justify-between gap-3 bg-slate-950/80 p-2.5 rounded-xl border border-white/10">
-                      <span className="font-mono font-black text-xl tracking-[0.3em] text-white pl-2 select-all">
+                    <div className="flex items-center justify-between gap-3 bg-slate-950/80 p-3 rounded-xl border border-white/10">
+                      <span className="font-mono font-black text-2xl tracking-[0.35em] text-emerald-400 pl-2 select-all">
                         {demoOtp}
                       </span>
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => setOtp(demoOtp)}
-                        className="h-8 px-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shrink-0 cursor-pointer"
-                      >
-                        Auto-fill
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`https://wa.me/91${phone}?text=${encodeURIComponent(`Your Dukaan verification OTP is ${demoOtp}. Valid for 10 minutes.`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 font-bold text-[11px] transition-all"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                          <span className="hidden sm:inline">WhatsApp</span>
+                        </a>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => setOtp(demoOtp)}
+                          className="h-8 px-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shrink-0 cursor-pointer shadow-sm"
+                        >
+                          Auto-fill
+                        </Button>
+                      </div>
                     </div>
-                    {!smsActive && (
-                      <p className="text-[10px] text-amber-300/70 mt-2 leading-tight">
-                        Note: SMS gateway is in test mode. Code is delivered to your email and shown above. Click <b>Auto-fill</b> to verify instantly.
-                      </p>
-                    )}
+                    <p className="text-[11px] text-slate-400 mt-2 leading-tight flex items-center justify-between">
+                      <span>Instant 100% Free Verification · Code delivered to email & screen</span>
+                    </p>
                   </div>
                 )}
 
