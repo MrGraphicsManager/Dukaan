@@ -57,6 +57,7 @@ export default function PublicOrder() {
       setActiveOrders(data);
     } catch {}
   };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     reloadActive();
     const t = setInterval(reloadActive, 5000);
@@ -65,7 +66,8 @@ export default function PublicOrder() {
 
   const cats = data?.categories || [];
   const products = data?.products || [];
-  const filtered = useMemo(() => products.filter(p => cat === "all" || p.category_id === cat), [products, cat]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const filtered = useMemo(() => products.filter(p => cat === "all" || p.category_id === cat), [data?.products, cat]);
   const add = (p) => setCart(c => { const ex=c.find(i=>i.product_id===p.id); return ex?c.map(i=>i.product_id===p.id?{...i,qty:i.qty+1}:i):[...c,{product_id:p.id,name:p.name,price:p.price,qty:1}]; });
   const dec = (id) => setCart(c => c.flatMap(i => i.product_id!==id?[i]:(i.qty>1?[{...i,qty:i.qty-1}]:[])));
   const subtotal = cart.reduce((s,i)=>s+i.price*i.qty,0);
@@ -77,6 +79,7 @@ export default function PublicOrder() {
   const upiOn = data?.cafe?.upi_enabled;
 
   // Prefill from most recent active order (name/phone reuse)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (activeOrders?.length && !phone) {
       const last = activeOrders[0];

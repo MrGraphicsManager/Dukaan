@@ -120,6 +120,7 @@ function CafeSwitcher({ user, cafe, onSwitched }) {
     try { const { data } = await api.get("/cafes/mine"); setData(data); }
     catch { setData({ cafes: [cafe].filter(Boolean), current_id: cafe?.id, max_cafes: 1, is_pro: false }); }
   };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [cafe?.id]);
 
   const switchTo = async (cid) => {
