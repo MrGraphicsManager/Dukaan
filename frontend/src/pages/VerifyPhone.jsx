@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Card3D from "@/components/Card3D";
 import ThreeDBackground from "@/components/ThreeDBackground";
+import { auth, RecaptchaVerifier, signInWithPhoneNumber } from "@/lib/firebase";
 
 export default function VerifyPhone() {
   const { user, sendPhoneOtp, verifyPhoneOtp } = useAuth();
@@ -63,6 +64,15 @@ export default function VerifyPhone() {
     }
   }, [user, nav]);
 
+  const setupRecaptcha = () => {
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
+        size: "invisible",
+        callback: () => {}
+      });
+    }
+  };
+
   const handleSendOtp = async (e) => {
     if (e) e.preventDefault();
     const cleanPhone = phone.replace(/\D/g, "").slice(-10);
@@ -73,20 +83,36 @@ export default function VerifyPhone() {
 
     setBusy(true);
     setErr("");
+
+    let realSmsSent = false;
+    try {
+      setupRecaptcha();
+      const confirmationResult = await signInWithPhoneNumber(auth, `+91${cleanPhone}`, window.recaptchaVerifier);
+      window.confirmationResult = confirmationResult;
+      realSmsSent = true;
+    } catch (fbErr) {
+      console.warn("Firebase Phone Auth notice:", fbErr?.message || fbErr);
+      if (window.recaptchaVerifier) {
+        try { window.recaptchaVerifier.clear(); } catch (_) {}
+        window.recaptchaVerifier = null;
+      }
+    }
+
+    // Always dispatch through our backend as well for sync/email
     const res = await sendPhoneOtp(cleanPhone, email);
     setBusy(false);
 
-    if (res.ok) {
+    if (realSmsSent || res.ok) {
       setStep(2);
       setCooldown(45);
       if (res.demo_otp) {
         setDemoOtp(res.demo_otp);
       }
-      setSmsActive(Boolean(res.sms_gateway_active));
-      if (res.sms_gateway_active) {
-        toast.success(`6-digit OTP sent via SMS to +91 ${cleanPhone}`);
+      setSmsActive(realSmsSent || Boolean(res.sms_gateway_active));
+      if (realSmsSent) {
+        toast.success(`Real SMS sent to +91 ${cleanPhone} via Google! Check your phone.`);
       } else {
-        toast.info(`6-digit OTP generated and sent to ${email || 'your email'}`);
+        toast.info(`OTP generated and sent to ${email || 'your email'}`);
       }
     } else {
       setErr(res.error || "Failed to dispatch OTP. Please try again.");
@@ -110,10 +136,21 @@ export default function VerifyPhone() {
 
     setBusy(true);
     setErr("");
+
+    let firebaseVerified = false;
+    if (window.confirmationResult) {
+      try {
+        await window.confirmationResult.confirm(cleanOtp);
+        firebaseVerified = true;
+      } catch (fbErr) {
+        console.warn("Firebase code verification notice:", fbErr?.message);
+      }
+    }
+
     const res = await verifyPhoneOtp(cleanPhone, cleanOtp, email);
     setBusy(false);
 
-    if (res.ok) {
+    if (res.ok || firebaseVerified) {
       setStep(3);
       const verifiedUser = res.user || user;
       const sub = verifiedUser?.subscription || getPersistentSubscription(email);
@@ -143,15 +180,26 @@ export default function VerifyPhone() {
     }
     setResending(true);
     setErr("");
+
+    let realSmsSent = false;
+    try {
+      setupRecaptcha();
+      const confirmationResult = await signInWithPhoneNumber(auth, `+91${cleanPhone}`, window.recaptchaVerifier);
+      window.confirmationResult = confirmationResult;
+      realSmsSent = true;
+    } catch (fbErr) {
+      console.warn("Firebase Phone Auth notice on resend:", fbErr?.message || fbErr);
+    }
+
     const res = await sendPhoneOtp(cleanPhone, email);
     setResending(false);
 
-    if (res.ok) {
+    if (realSmsSent || res.ok) {
       setCooldown(45);
       if (res.demo_otp) {
         setDemoOtp(res.demo_otp);
       }
-      setSmsActive(Boolean(res.sms_gateway_active));
+      setSmsActive(realSmsSent || Boolean(res.sms_gateway_active));
       toast.success("A fresh OTP has been generated!");
     } else {
       toast.error(res.error || "Failed to resend OTP.");
@@ -197,6 +245,9 @@ export default function VerifyPhone() {
         <Card3D depth={12}>
           <div className="bg-slate-900/70 backdrop-blur-2xl p-8 sm:p-10 rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden">
             
+            {/* Invisible Google reCAPTCHA Container */}
+            <div id="recaptcha-container"></div>
+
             {/* Top Accent Strip */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-sky-400 to-indigo-500" />
 
