@@ -1,11 +1,10 @@
 import axios from "axios";
 
-// Ensure the app always talks to the live Netlify serverless API on officialdukaan.in
-// and never redirects to dead or legacy onrender.com endpoints
+// Ensure the app always talks to the live serverless API (works universally on Vercel, Netlify, and custom domain)
 const rawEnvUrl = (process.env.REACT_APP_BACKEND_URL || "").trim();
 const isLegacyRender = rawEnvUrl.includes("onrender.com");
 const BASE = (rawEnvUrl && !isLegacyRender) ? rawEnvUrl.replace(/\/$/, "") : "";
-export const API_BASE = BASE ? `${BASE}/api` : "/.netlify/functions/api";
+export const API_BASE = BASE ? `${BASE}/api` : "/api";
 
 export const api = axios.create({
   baseURL: API_BASE,
